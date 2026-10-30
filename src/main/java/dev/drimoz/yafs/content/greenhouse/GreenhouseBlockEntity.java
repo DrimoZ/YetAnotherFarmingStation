@@ -53,7 +53,7 @@ import java.util.List;
  * Toute la logique d'une serre : ses parcelles, leur croissance simulée, la réserve de sortie.
  *
  * <p>Une parcelle n'est pas un vrai bloc : elle ne reçoit pas de random ticks, sa croissance
- * avance par pas de {@link #STEP} ticks, à la vitesse que permet l'{@link #environment()
+ * avance à chaque tick, à la vitesse que permet l'{@link #environment()
  * environnement}. Toute culture que {@link Crops} reconnaît y pousse.
  */
 public class GreenhouseBlockEntity extends BlockEntity {
@@ -66,7 +66,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     public static final int OUTPUT_SLOTS = 9;
 
-    /** La croissance avance par pas, pas à chaque tick. */
+    /** Un pas de référence pour les tests et les relevés (une seconde) ; en jeu, la serre avance à chaque tick. */
     public static final int STEP = 20;
 
     /**
@@ -139,7 +139,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
     }
 
-    /** Une sorte de module par emplacement, empilable jusqu'à {@link ModuleItem#MAX_PER_SLOT} : les effets se combinent. */
+    /** Une sorte de module par emplacement, empilable jusqu'au maximum de sa définition : les effets s'additionnent. */
     private final ItemStackHandler modules;
 
     // Ce que voient les ports (YAF-051). Des objets fixes : les caches de capability des voisins les gardent.
@@ -174,6 +174,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** Ce que les modules ont fait de l'environnement au dernier pas. */
     @Nullable
     private Conditions effective;
+    /** La pluie recueillie, en fractions de mB, pas encore versée dans la réserve. */
+    private double rainfall;
+
+    /** Ce que la serre voudrait consommer, en FE/t, au dernier pas : modules et parcelles alimentées. */
+    private long demand;
     private int lightFloor;
     private double temperatureShift;
     // Les modules d'augment : tout se multiplie, la vitesse comme ce qu'elle coûte.
@@ -201,7 +206,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             @Override
             public int getSlotLimit(int slot) {
-                return ModuleItem.MAX_PER_SLOT;
+                return 64;
+            }
+
+            @Override
+            protected int getStackLimit(int slot, ItemStack stack) {
+                return ModuleItem.maxStack(stack, GreenhouseBlockEntity.this.level == null ? null : GreenhouseBlockEntity.this.level.registryAccess());
             }
 
             @Override
@@ -377,6 +387,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         case GreenhouseMenu.REDSTONE_MODE -> GreenhouseBlockEntity.this.condition.mode().ordinal();
                         case GreenhouseMenu.REDSTONE_THRESHOLD -> GreenhouseBlockEntity.this.condition.threshold();
                         case GreenhouseMenu.SIGNAL -> signal();
+                        case GreenhouseMenu.DEMAND_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) >>> 16);
+                        case GreenhouseMenu.DEMAND_LOW -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) & 0xFFFF);
                         case GreenhouseMenu.PORTS -> GreenhouseBlockEntity.this.level == null ? 0
                                 : ((GreenhouseBlock) getBlockState().getBlock()).portCount(GreenhouseBlockEntity.this.level, GreenhouseBlockEntity.this.worldPosition);
                         default -> 0;
@@ -417,7 +429,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
     public void serverTick() {
         this.ticks++;
         if (this.environment == null || this.ticks % SAMPLE_INTERVAL == 0) sampleEnvironment();
-        if (this.ticks % STEP == 0) grow(STEP);
+        // À chaque tick : l'énergie s'écoule au rythme du besoin affiché, au lieu de tomber par paliers.
+        // ponytail: quelques petits objets par parcelle et par tick ; regrouper en pas si un profil le réclame.
+        grow(1);
     }
 
     /**
@@ -449,6 +463,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
 
         runModules(elapsed);
+        collectRain();
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
         this.environment = new Conditions(this.environment.light(), this.environment.temperature(), waterCoverage());
@@ -469,11 +484,18 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /**
      * Chaque pile de modules tourne si elle a son énergie pour le pas entier, sinon elle ne fait
-     * rien. Empilés, les modules combinent leurs effets : les multiplicateurs se multiplient (deux
-     * Accélérateurs I, vitesse ×4 et énergie ×16), les décalages et la pluie s'ajoutent ; lumière
-     * et densité gardent la plus haute valeur, les empiler n'aurait pas de sens.
+     * rien. Une pile additionne ses effets (deux Accélérateurs I : vitesse ×3, énergie ×7) ; des
+     * modules différents se multiplient entre eux. Lumière et densité gardent la plus haute valeur.
      */
+    private void collectRain() {
+        int collected = (int) this.rainfall;
+        if (collected <= 0) return;
+        this.rainfall -= this.water.fill(new FluidStack(Fluids.WATER, collected), IFluidHandler.FluidAction.EXECUTE);
+        if (this.water.getFluidAmount() >= TANK_CAPACITY) this.rainfall = 0D;
+    }
+
     private void runModules(int elapsed) {
+        this.demand = 0;
         this.lightFloor = 0;
         this.temperatureShift = 0D;
         this.speedMultiplier = 1D;
@@ -494,12 +516,14 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
             this.temperatureShift += module.temperatureShift() * count;
-            this.speedMultiplier *= Math.pow(module.speedMultiplier(), count);
-            this.energyMultiplier *= Math.pow(module.energyMultiplier(), count);
-            this.waterMultiplier *= Math.pow(module.waterMultiplier(), count);
+            this.speedMultiplier *= ModuleDefinition.stacked(module.speedMultiplier(), count);
+            this.energyMultiplier *= ModuleDefinition.stacked(module.energyMultiplier(), count);
+            this.waterMultiplier *= ModuleDefinition.stacked(module.waterMultiplier(), count);
+            this.demand += (long) module.energyPerTick() * count;
             this.density = Math.min(Math.max(this.density, module.density()), this.tier.maxDensity());
+            // rain_collection est en mB par seconde : la serre avance à chaque tick, on reporte les fractions.
             if (this.raining && module.rainCollection() > 0) {
-                this.water.fill(new FluidStack(Fluids.WATER, module.rainCollection() * count), IFluidHandler.FluidAction.EXECUTE);
+                this.rainfall += (double) module.rainCollection() * count * elapsed / STEP;
             }
         }
     }
@@ -573,8 +597,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * densité. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
      */
     private double poweredSpeed(int elapsed) {
-        long cost = Math.round((double) YafsConfig.ENERGY_PER_PLOT.get() * elapsed * this.energyMultiplier * this.density);
-        if (!this.energy.spend(cost)) return 1D;
+        double perTick = YafsConfig.ENERGY_PER_PLOT.get() * this.energyMultiplier * this.density;
+        this.demand += Math.round(perTick);
+        if (!this.energy.spend(Math.round(perTick * elapsed))) return 1D;
         return YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier;
     }
 

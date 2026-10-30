@@ -1,1 +1,1 @@
-{ "temperature_shift": -20, "energy_per_tick": 40 }
+{ "temperature_shift": -20, "energy_per_tick": 40, "max_stack": 3 }

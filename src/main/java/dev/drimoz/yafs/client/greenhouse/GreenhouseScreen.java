@@ -300,10 +300,10 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             return MODULE_CONTENT_WIDTH;
         }
 
-        /** Les slots, un filet, puis le bilan : une ligne par effet, ou « Aucun module ». */
+        /** Les slots, un filet, puis le bilan : une ligne par effet (ou « Aucun module »), le besoin en énergie, l'alerte. */
         @Override
         protected int contentHeight() {
-            int rows = Math.max(1, moduleEffects().size()) + (starvedWithModules() ? 1 : 0);
+            int rows = Math.max(1, moduleEffects().size()) + (menu.demand() > 0 ? 1 : 0) + (starved() ? 1 : 0);
             return moduleRows() * GuiMetrics.SLOT + 6 + rows * GuiTheme.LINE;
         }
 
@@ -312,10 +312,15 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             int lineY = y + moduleRows() * GuiMetrics.SLOT + 6;
             graphics.fill(x, lineY - 3, x + MODULE_CONTENT_WIDTH, lineY - 2, 0x40FFFFFF);
 
-            List<Effect> effects = moduleEffects();
+            List<Effect> effects = new ArrayList<>(moduleEffects());
             if (effects.isEmpty()) {
                 GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.none"), x, lineY, GuiTheme.TAB_MUTED);
-                return;
+                lineY += GuiTheme.LINE;
+            }
+            // Ce que la serre demande : en rouge quand la réserve ne tient pas un pas.
+            if (menu.demand() > 0) {
+                effects.add(new Effect("yafs.gui.modules.demand", compact(menu.demand()) + " FE/t",
+                        starved() ? GuiTheme.Status.PROBLEM.tabColour : GuiTheme.TAB_VALUE));
             }
             for (Effect effect : effects) {
                 GuiTheme.tabLabel(graphics, font, Component.translatable(effect.label()), x, lineY);
@@ -323,7 +328,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                         x + MODULE_CONTENT_WIDTH - font.width(effect.value()), lineY, effect.colour());
                 lineY += GuiTheme.LINE;
             }
-            if (starvedWithModules()) {
+            if (starved()) {
                 GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.unpowered"), x, lineY, GuiTheme.Status.PROBLEM.tabColour);
             }
         }
@@ -412,6 +417,9 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         if (!this.menu.switchedOn() || !this.menu.condition().allows(this.menu.signal())) {
             verdict = Component.translatable(this.menu.switchedOn() ? "yafs.gui.env.redstone" : "yafs.gui.env.off");
             colour = GuiTheme.Status.OFF.tabColour;
+        } else if (starved()) {
+            verdict = Component.translatable("yafs.gui.modules.unpowered");
+            colour = GuiTheme.Status.PROBLEM.tabColour;
         } else if (problems > 0 && this.menu.water() <= 0) {
             verdict = Component.translatable("yafs.gui.env.dry");
             colour = GuiTheme.Status.PROBLEM.tabColour;
@@ -442,9 +450,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     /** Une ligne du bilan des modules : un gain en vert, un coût en orange. */
     private record Effect(String label, String value, int colour) {}
 
-    /** Des modules posés, et plus d'énergie : ils ne font rien, il faut le dire. */
-    private boolean starvedWithModules() {
-        return this.menu.energy() <= 0 && !moduleEffects().isEmpty();
+    /**
+     * La réserve ne tient pas un pas de croissance au rythme demandé : les parcelles retombent à
+     * vitesse 1, les accélérateurs ne font rien. Sans le dire, on croirait les modules cassés.
+     */
+    private boolean starved() {
+        return this.menu.demand() > 0 && (long) this.menu.energy() < (long) this.menu.demand() * GreenhouseBlockEntity.STEP;
     }
 
     /** Ce que les modules posés font ensemble, lu dans le registre que le jeu a synchronisé. */
@@ -466,11 +477,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
             ModuleDefinition module = kind == null ? null : registry.get(kind);
             if (module == null) continue;
-            // Le même calcul que la serre : empilés, les multiplicateurs se multiplient.
+            // Le même calcul que la serre : une pile additionne, des modules différents se multiplient.
             int count = stack.getCount();
-            speed *= Math.pow(module.speedMultiplier(), count);
-            energy *= Math.pow(module.energyMultiplier(), count);
-            water *= Math.pow(module.waterMultiplier(), count);
+            speed *= ModuleDefinition.stacked(module.speedMultiplier(), count);
+            energy *= ModuleDefinition.stacked(module.energyMultiplier(), count);
+            water *= ModuleDefinition.stacked(module.waterMultiplier(), count);
             density = Math.max(density, module.density());
             lightFloor = Math.max(lightFloor, module.lightFloor());
             shift += module.temperatureShift() * count;
@@ -653,15 +664,17 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
-    /** Sans décimale quand il n'y en a pas : ×16 plutôt que ×16.0. */
+    /** Sans décimale quand il n'y en a pas (×16 plutôt que ×16.0), abrégé quand c'est grand (×12.8k). */
     private static String number(double value) {
+        if (value >= 10_000D) return compact((long) value);
         return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
     }
 
-    /** 76 800 → 76.8k ; 1 000 000 → 1.0M : ça tient dans la colonne des valeurs. */
-    private static String compact(int value) {
-        if (value >= 1_000_000) return String.format(Locale.ROOT, "%.1fM", value / 1_000_000D);
-        if (value >= 10_000) return String.format(Locale.ROOT, "%.1fk", value / 1_000D);
+    /** 76 800 → 76.8k ; 1 000 000 → 1.0M ; au-delà, G : ça tient dans la colonne des valeurs. */
+    private static String compact(long value) {
+        if (value >= 1_000_000_000L) return String.format(Locale.ROOT, "%.1fG", value / 1_000_000_000D);
+        if (value >= 1_000_000L) return String.format(Locale.ROOT, "%.1fM", value / 1_000_000D);
+        if (value >= 10_000L) return String.format(Locale.ROOT, "%.1fk", value / 1_000D);
         return String.valueOf(value);
     }
 

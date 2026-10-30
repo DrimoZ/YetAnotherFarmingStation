@@ -1,6 +1,7 @@
 package dev.drimoz.yafs.content.module;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -18,11 +19,17 @@ import java.util.List;
  */
 public class ModuleItem extends Item {
 
-    /** Combien d'un même module un emplacement accepte. */
-    public static final int MAX_PER_SLOT = 8;
 
     public ModuleItem(Properties properties) {
         super(properties.stacksTo(16));
+    }
+
+    /** Combien de ce module une case accepte, d'après sa définition ; 1 si on ne la trouve pas. */
+    public static int maxStack(ItemStack stack, @Nullable HolderLookup.Provider registries) {
+        ResourceKey<ModuleDefinition> kind = kind(stack);
+        if (kind == null || registries == null) return 1;
+        return registries.lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind))
+                .map(holder -> holder.value().maxStack()).orElse(1);
     }
 
     /** La définition de ce module, nommée comme son item ; {@code null} si ce n'est pas un module. */
@@ -53,9 +60,10 @@ public class ModuleItem extends Item {
                 if (module.speedMultiplier() > 1D || module.energyPerTick() > 0) {
                     tooltip.add(Component.translatable("yafs.tooltip.module.needs_energy").withStyle(ChatFormatting.DARK_GRAY));
                 }
+                tooltip.add(Component.translatable(module.maxStack() > 1 ? "yafs.tooltip.module.stack" : "yafs.tooltip.module.single", module.maxStack())
+                        .withStyle(ChatFormatting.DARK_GRAY));
             });
         }
-        tooltip.add(Component.translatable("yafs.tooltip.module.stack", MAX_PER_SLOT).withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private static void gain(List<Component> tooltip, String key, Object value) {

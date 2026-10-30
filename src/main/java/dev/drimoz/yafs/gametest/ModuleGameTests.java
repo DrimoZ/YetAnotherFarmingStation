@@ -158,7 +158,7 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Empilés, les modules se combinent : deux Accélérateurs I, vitesse ×4 et énergie ×16. */
+    /** Une pile additionne : deux Accélérateurs I, vitesse ×3 et énergie ×7 ; une case n'en prend que 4. */
     @GameTest(template = PLATFORM)
     public static void stackedModulesCombine(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -171,11 +171,16 @@ public class ModuleGameTests {
         greenhouse.grow(GreenhouseBlockEntity.STEP);
 
         float step = (float) GreenhouseBlockEntity.STEP / GreenhouseBlockEntity.BASE_TICKS;
-        double speed = YafsConfig.ENERGIZED_SPEED.get() * 4;
+        double speed = YafsConfig.ENERGIZED_SPEED.get() * 3;
         helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - speed * step) < 1e-5, "Progression " + greenhouse.growth(0).progress());
-        int spent = YafsConfig.ENERGY_PER_PLOT.get() * GreenhouseBlockEntity.STEP * 16;
+        int spent = YafsConfig.ENERGY_PER_PLOT.get() * GreenhouseBlockEntity.STEP * 7;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
-        helper.assertTrue(greenhouse.modules().getSlotLimit(0) == ModuleItem.MAX_PER_SLOT, "Limite " + greenhouse.modules().getSlotLimit(0));
+
+        ItemStack many = module("accelerator_1");
+        many.setCount(16);
+        ItemStack left = greenhouse.modules().insertItem(1, many, true);
+        helper.assertTrue(left.getCount() == 16, "Une deuxième case a pris des Accélérateurs I");
+        helper.assertTrue(greenhouse.modules().insertItem(0, many, true).getCount() == 14, "La case n'est pas bornée à 4");
         helper.succeed();
     }
 

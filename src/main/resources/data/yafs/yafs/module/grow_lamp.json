@@ -1,1 +1,1 @@
-{ "light_floor": 15, "energy_per_tick": 20 }
+{ "light_floor": 15, "energy_per_tick": 20, "max_stack": 1 }

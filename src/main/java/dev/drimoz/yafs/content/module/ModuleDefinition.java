@@ -20,15 +20,24 @@ import net.minecraft.resources.ResourceLocation;
  *
  * @param lightFloor        la lumière ne descend pas sous ce niveau tant que le module tourne
  * @param temperatureShift  degrés ajoutés à la température du lieu (négatif pour refroidir)
- * @param rainCollection    mB recueillis par pas de croissance quand il pleut sur la serre
+ * @param rainCollection    mB recueillis par seconde quand il pleut sur la serre
  * @param energyPerTick     FE consommés par tick ; sans énergie, le module ne fait rien
  * @param speedMultiplier   vitesse d'une parcelle alimentée, multipliée ; sans énergie, rien
  * @param energyMultiplier  coût en énergie de chaque parcelle alimentée, multiplié
  * @param waterMultiplier   eau bue par une parcelle alimentée, multipliée
  * @param density           plants par parcelle ; le plus haut des modules, borné par le palier
+ * @param maxStack          combien de ce module une case accepte ; leurs effets s'additionnent
  */
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
-                               double speedMultiplier, double energyMultiplier, double waterMultiplier, int density) {
+                               double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack) {
+
+    /**
+     * Un multiplicateur empilé {@code count} fois : les bonus s'additionnent. Deux Accélérateurs I
+     * (×2, soit +100 % chacun) font ×3, pas ×4. Des modules différents, eux, se multiplient.
+     */
+    public static double stacked(double multiplier, int count) {
+        return 1D + (multiplier - 1D) * count;
+    }
 
     public static final ResourceKey<Registry<ModuleDefinition>> REGISTRY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "module"));
@@ -41,6 +50,7 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
             Codec.doubleRange(1D, 64D).optionalFieldOf("speed_multiplier", 1D).forGetter(ModuleDefinition::speedMultiplier),
             Codec.doubleRange(1D, 1_000D).optionalFieldOf("energy_multiplier", 1D).forGetter(ModuleDefinition::energyMultiplier),
             Codec.doubleRange(1D, 64D).optionalFieldOf("water_multiplier", 1D).forGetter(ModuleDefinition::waterMultiplier),
-            Codec.intRange(1, 16).optionalFieldOf("density", 1).forGetter(ModuleDefinition::density)
+            Codec.intRange(1, 16).optionalFieldOf("density", 1).forGetter(ModuleDefinition::density),
+            Codec.intRange(1, 64).optionalFieldOf("max_stack", 1).forGetter(ModuleDefinition::maxStack)
     ).apply(instance, ModuleDefinition::new));
 }

@@ -65,7 +65,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int SIGNAL = 8;
     /** Les ports posés : sans eux, rien n'entre ni ne sort, et l'écran doit le dire. */
     public static final int PORTS = 9;
-    private static final int SHARED_DATA = 10;
+    /** Le besoin en énergie, FE/t, en deux moitiés comme la réserve. */
+    public static final int DEMAND_HIGH = 10;
+    public static final int DEMAND_LOW = 11;
+    private static final int SHARED_DATA = 12;
 
     /** Boutons de menu de l'onglet Contrôle, au-dessus des rangs de parcelle (0 à 15) et de CLOSE_DETAIL. */
     public static final int SWITCH_OFF = 300;
@@ -104,17 +107,22 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, GreenhouseTier tier) {
-        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), clientModules(tier),
+        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), clientModules(tier, inventory),
                 new ItemStackHandler(tier.plots() * GreenhouseBlockEntity.SLOTS_PER_PLOT),
                 new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
     }
 
     /** Côté client, la même règle qu'au serveur, pour que le slot refuse sans aller-retour. */
-    private static ItemStackHandler clientModules(GreenhouseTier tier) {
+    private static ItemStackHandler clientModules(GreenhouseTier tier, Inventory inventory) {
         return new ItemStackHandler(tier.moduleSlots()) {
             @Override
             public int getSlotLimit(int slot) {
-                return ModuleItem.MAX_PER_SLOT;
+                return 64;
+            }
+
+            @Override
+            protected int getStackLimit(int slot, ItemStack stack) {
+                return ModuleItem.maxStack(stack, inventory.player.level().registryAccess());
             }
 
             @Override
@@ -241,6 +249,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     public int signal() {
         return this.data.get(waterData(this.tier) + SIGNAL);
+    }
+
+    public int demand() {
+        return (this.data.get(waterData(this.tier) + DEMAND_HIGH) << 16) | (this.data.get(waterData(this.tier) + DEMAND_LOW) & 0xFFFF);
     }
 
     public int ports() {
