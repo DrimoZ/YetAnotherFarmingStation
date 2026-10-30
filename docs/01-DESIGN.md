@@ -253,6 +253,13 @@ les recettes et l'inventaire.
 **Règle du mod : aucun bonus n'est gratuit.** Tout ce qui accélère multiplie aussi ce qu'il
 consomme.
 
+**Énergie et augments** (décidé le 30/10/2026). Une parcelle qui a son énergie pour le pas pousse
+plus vite (×2, réglable en config) pour un coût de base par parcelle (10 FE/t, réglable). Les
+modules d'augment **multiplient** : la vitesse (Accélérateur I/II/III : ×2/×4/×8), et en même temps
+l'énergie (×4/×16/×64) et l'eau (×2/×4/×8). Trois accélérateurs et le bonus de base font ×128 : on
+peut aller absurdement vite, à un prix absurde. La densité (×2/×3/×4 plants, bornée par le palier)
+multiplie récolte, eau et énergie. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
+
 ---
 
 ## 8. Ports

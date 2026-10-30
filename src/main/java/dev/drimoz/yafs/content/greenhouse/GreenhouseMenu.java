@@ -46,13 +46,15 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
-    /** Par parcelle : croissance, statut, facteur limitant (-1 : aucun), efficacité en %. */
-    public static final int DATA_PER_PLOT = 4;
-    /** Après les parcelles : la réserve d'eau en mB, la lumière, la température en dixièmes de degré. */
+    /** Par parcelle : croissance, statut, facteur limitant (-1 : aucun), efficacité en %, vitesse en dixièmes. */
+    public static final int DATA_PER_PLOT = 5;
+    /** Après les parcelles : l'eau en mB, la lumière, la température en dixièmes de degré, l'énergie en deux moitiés. */
     public static final int WATER = 0;
     public static final int LIGHT = 1;
     public static final int TEMPERATURE = 2;
-    private static final int SHARED_DATA = 3;
+    public static final int ENERGY_HIGH = 3;
+    public static final int ENERGY_LOW = 4;
+    private static final int SHARED_DATA = 5;
 
     /** Bouton de menu qui ferme le détail ; 0 à n-1 ouvrent la parcelle de ce rang. */
     public static final int CLOSE_DETAIL = 255;
@@ -179,6 +181,15 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         int ordinal = this.data.get(plot * DATA_PER_PLOT + 2);
         Efficiency.Factor[] factors = Efficiency.Factor.values();
         return ordinal >= 0 && ordinal < factors.length ? factors[ordinal] : null;
+    }
+
+    public int energy() {
+        return (this.data.get(waterData(this.tier) + ENERGY_HIGH) << 16) | (this.data.get(waterData(this.tier) + ENERGY_LOW) & 0xFFFF);
+    }
+
+    /** La vitesse de cette parcelle au dernier pas : 1 sans énergie, davantage avec. */
+    public double speed(int plot) {
+        return this.data.get(plot * DATA_PER_PLOT + 4) / 10D;
     }
 
     /** L'efficacité de cette parcelle, de 0 à 1. */

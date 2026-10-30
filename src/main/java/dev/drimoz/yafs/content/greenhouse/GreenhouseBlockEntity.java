@@ -1,6 +1,7 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import com.mojang.serialization.Codec;
+import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
@@ -109,14 +110,15 @@ public class GreenhouseBlockEntity extends BlockEntity {
     };
 
     /** L'énergie des modules (YAF-061) ; elle n'entre que par un port d'énergie. */
-    public static final int ENERGY_CAPACITY = 10_000;
+    /** De quoi tenir une serre P3 poussée à fond quelques secondes : les accélérateurs coûtent cher. */
+    public static final int ENERGY_CAPACITY = 1_000_000;
     private final Battery energy = new Battery();
 
     /** Une réserve qu'on remplit de l'extérieur et que seuls les modules vident. */
     public final class Battery extends EnergyStorage {
 
         Battery() {
-            super(ENERGY_CAPACITY, 1_000, 0);
+            super(ENERGY_CAPACITY, 100_000, 0);
         }
 
         @Override
@@ -127,10 +129,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
 
         /** Tout ou rien : le montant entier, ou rien n'est pris. */
-        boolean spend(int amount) {
+        boolean spend(long amount) {
             if (amount > this.energy) return false;
-            this.energy -= amount;
-            setChanged();
+            this.energy -= (int) amount;
+            if (amount > 0) setChanged();
             return true;
         }
     }
@@ -152,6 +154,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private final PlotStatus[] status;
     /** Le dernier verdict d'efficacité de chaque parcelle qui pousse ; {@code null} sinon. */
     private final Efficiency.Verdict[] verdicts;
+    /** La vitesse de chaque parcelle au dernier pas : 1 sans énergie, bien plus avec. */
+    private final double[] speeds;
 
     /** Le palier suivant prend la place : rien ne doit tomber (YAF-006). */
     private boolean upgrading;
@@ -167,6 +171,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private Conditions effective;
     private int lightFloor;
     private double temperatureShift;
+    // Les modules d'augment : tout se multiplie, la vitesse comme ce qu'elle coûte.
+    private double speedMultiplier = 1D;
+    private double energyMultiplier = 1D;
+    private double waterMultiplier = 1D;
+    private int density = 1;
 
     public GreenhouseBlockEntity(BlockPos pos, BlockState state) {
         super(YafsBlocks.GREENHOUSE_ENTITY.get(), pos, state);
@@ -203,6 +212,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.growth = new PlotGrowth[this.tier.plots()];
         this.status = new PlotStatus[this.tier.plots()];
         this.verdicts = new Efficiency.Verdict[this.tier.plots()];
+        this.speeds = new double[this.tier.plots()];
         Arrays.fill(this.growth, PlotGrowth.SOWN);
         Arrays.fill(this.status, PlotStatus.WAITING);
     }
@@ -309,6 +319,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         case GreenhouseMenu.WATER -> GreenhouseBlockEntity.this.water.getFluidAmount();
                         case GreenhouseMenu.LIGHT -> environment == null ? 0 : environment.light();
                         case GreenhouseMenu.TEMPERATURE -> environment == null ? 0 : (int) Math.round(environment.temperature() * 10);
+                        // Un DataSlot ne porte que 16 bits : l'énergie passe en deux moitiés.
+                        case GreenhouseMenu.ENERGY_HIGH -> GreenhouseBlockEntity.this.energy.getEnergyStored() >>> 16;
+                        case GreenhouseMenu.ENERGY_LOW -> GreenhouseBlockEntity.this.energy.getEnergyStored() & 0xFFFF;
                         default -> 0;
                     };
                 }
@@ -319,7 +332,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
                     case 0 -> Math.round(GreenhouseBlockEntity.this.growth[plot].progress() * GreenhouseMenu.PROGRESS_SCALE);
                     case 1 -> GreenhouseBlockEntity.this.status[plot].ordinal();
                     case 2 -> verdict == null ? -1 : verdict.limiting().ordinal();
-                    default -> verdict == null ? 0 : (int) Math.round(verdict.value() * 100);
+                    case 3 -> verdict == null ? 0 : (int) Math.round(verdict.value() * 100);
+                    // En dixièmes : ×1 024 tient encore dans 16 bits.
+                    default -> verdict == null ? 0 : (int) Math.round(GreenhouseBlockEntity.this.speeds[plot] * 10);
                 };
             }
 
@@ -389,7 +404,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             this.verdicts[plot] = null;
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
             visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
-            drink(before, this.growth[plot]);
+            drink(before, this.growth[plot], this.speeds[plot] > 1D ? this.waterMultiplier : 1D);
         }
         setChanged();
         if (visibleChange) syncToClient();
@@ -402,6 +417,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private void runModules(int elapsed) {
         this.lightFloor = 0;
         this.temperatureShift = 0D;
+        this.speedMultiplier = 1D;
+        this.energyMultiplier = 1D;
+        this.waterMultiplier = 1D;
+        this.density = 1;
         if (this.level == null) return;
 
         Registry<ModuleDefinition> registry = this.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
@@ -414,6 +433,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
             this.temperatureShift += module.temperatureShift();
+            this.speedMultiplier *= module.speedMultiplier();
+            this.energyMultiplier *= module.energyMultiplier();
+            this.waterMultiplier *= module.waterMultiplier();
+            this.density = Math.min(Math.max(this.density, module.density()), this.tier.maxDensity());
             if (this.raining && module.rainCollection() > 0) {
                 this.water.fill(new FluidStack(Fluids.WATER, module.rainCollection()), IFluidHandler.FluidAction.EXECUTE);
             }
@@ -428,10 +451,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.water.isEmpty() ? 0D : 1D;
     }
 
-    /** L'eau suit la croissance réellement faite, × densité ; une récolte ne boit rien de plus. */
-    private void drink(PlotGrowth before, PlotGrowth after) {
+    /**
+     * L'eau suit la croissance réellement faite, × densité, × ce que les accélérateurs y ajoutent
+     * quand la parcelle est alimentée ; une récolte ne boit rien de plus.
+     */
+    private void drink(PlotGrowth before, PlotGrowth after, double multiplier) {
         double grown = after.progress() >= before.progress() ? after.progress() - before.progress() : 1D - before.progress() + after.progress();
-        this.thirst += grown * WATER_PER_CYCLE * after.density();
+        this.thirst += grown * WATER_PER_CYCLE * this.density * multiplier;
 
         int drained = (int) Math.min(this.thirst, this.water.getFluidAmount());
         if (drained <= 0) return;
@@ -468,14 +494,27 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         Efficiency.Verdict verdict = Efficiency.evaluate(known.requirements(), this.effective);
         this.verdicts[plot] = verdict;
-        PlotGrowth current = this.growth[plot].advance(verdict.value() * elapsed / BASE_TICKS);
+        this.speeds[plot] = this.growth[plot].isMature() ? 0D : poweredSpeed(elapsed);
+        // ponytail: une récolte par pas au plus ; au-delà de ×1 400, la croissance en trop serait perdue.
+        PlotGrowth current = this.growth[plot].advance(verdict.value() * this.speeds[plot] * elapsed / BASE_TICKS);
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
 
-        if (!harvest(level, known.harvestState(), current.density())) return PlotStatus.BLOCKED;
+        if (!harvest(level, known.harvestState(), this.density)) return PlotStatus.BLOCKED;
 
         this.growth[plot] = current.harvested();
         return PlotStatus.WORKING;
+    }
+
+    /**
+     * Une parcelle qui a son énergie pour le pas pousse {@link YafsConfig#ENERGIZED_SPEED} fois plus
+     * vite, et les accélérateurs multiplient encore. Le prix suit : coût de base × multiplicateurs ×
+     * densité. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
+     */
+    private double poweredSpeed(int elapsed) {
+        long cost = Math.round((double) YafsConfig.ENERGY_PER_PLOT.get() * elapsed * this.energyMultiplier * this.density);
+        if (!this.energy.spend(cost)) return 1D;
+        return YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier;
     }
 
     /**

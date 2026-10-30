@@ -47,5 +47,19 @@
   "yafs.gui.env.drinks": "%s mB d'eau/min",
   "yafs.gui.factor.light": "la lumière",
   "yafs.gui.factor.water": "l'eau",
-  "yafs.gui.factor.temperature": "la température"
+  "yafs.gui.factor.temperature": "la température",
+  "item.yafs.accelerator_1": "Accélérateur I",
+  "item.yafs.accelerator_2": "Accélérateur II",
+  "item.yafs.accelerator_3": "Accélérateur III",
+  "item.yafs.density_1": "Densité I",
+  "item.yafs.density_2": "Densité II",
+  "item.yafs.density_3": "Densité III",
+  "block.yafs.creative_energy_source": "Source d'énergie créative",
+  "yafs.module.speed": "Parcelles alimentées ×%s plus rapides",
+  "yafs.module.density": "%s plants par parcelle (borné par le palier)",
+  "yafs.module.energy_cost": "Énergie par parcelle ×%s",
+  "yafs.module.water_cost": "Eau par parcelle ×%s",
+  "yafs.gui.energy": "Énergie : %s / %s FE",
+  "yafs.gui.env.energy": "Énergie : %s FE",
+  "yafs.gui.env.speed": "Vitesse : ×%s"
 }

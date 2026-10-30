@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "RNR",
+    "SAS",
+    "RNR"
+  ],
+  "key": {
+    "R": { "item": "minecraft:redstone_block" },
+    "N": { "item": "minecraft:netherite_ingot" },
+    "S": { "item": "minecraft:nether_star" },
+    "A": { "item": "yafs:accelerator_2" }
+  },
+  "result": { "id": "yafs:accelerator_3" }
+}

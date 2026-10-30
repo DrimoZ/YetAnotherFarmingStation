@@ -124,6 +124,35 @@ public final class GuiSprites {
                 GAUGE_U, GAUGE_V + GAUGE_SPRITE_HEIGHT - visible, GAUGE_SPRITE_WIDTH, visible, SHEET_SIZE, SHEET_SIZE);
     }
 
+    /**
+     * Jauge verticale de fluide : un creux où le fluide monte du fond, à sa texture et à sa teinte,
+     * répétée sur la hauteur. Rien à voir avec la jauge d'énergie à segments rouges : l'eau se voit.
+     */
+    public static void fluidGauge(GuiGraphics graphics, int x, int y, int width, int height, FluidStack fluid, int capacity) {
+        inset(graphics, x, y, width, height);
+        if (fluid.isEmpty()) return;
+
+        int inner = height - 2;
+        int filled = Math.round(inner * Math.min(1F, fluid.getAmount() / (float) Math.max(1, capacity)));
+        if (filled <= 0) return;
+
+        IClientFluidTypeExtensions extensions = IClientFluidTypeExtensions.of(fluid.getFluid());
+        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(extensions.getStillTexture(fluid));
+        int tint = extensions.getTintColor(fluid);
+
+        int left = x + 1;
+        int bottom = y + 1 + inner;
+        graphics.enableScissor(left, bottom - filled, left + width - 2, bottom);
+        RenderSystem.enableBlend();
+        graphics.setColor(red(tint), green(tint), blue(tint), 1.0F);
+        for (int tileY = bottom - 16; tileY > bottom - filled - 16; tileY -= 16) {
+            graphics.blit(left, tileY, 0, 16, 16, sprite);
+        }
+        graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.disableBlend();
+        graphics.disableScissor();
+    }
+
     /** Flèche de progression, remplie de gauche à droite. */
     public static void arrow(GuiGraphics graphics, int x, int y, float progress) {
         graphics.blit(SHEET, x, y, 112, 16, GuiMetrics.ARROW_WIDTH, GuiMetrics.ARROW_HEIGHT);

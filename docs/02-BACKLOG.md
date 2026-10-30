@@ -86,8 +86,8 @@ un monde).
 | 🟡 YAF-060 | P1 | M | **Modules** : un item par module (et non plus un item à composant, décidé le 30/10/2026) + registre `yafs/module` ; emplacements dans l'onglet bleu, effet recalculé en direct. — **fait** (registre de datapack, rechargé au lancement du monde ; effets dans l'infobulle de l'item, l'effet sur la serre s'affichera avec l'onglet Environnement, YAF-033 ; onglet à voir en jeu) | un module retouché en datapack change d'effet |
 | ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
 | ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
-| YAF-063 | P2 | S | Accélérateur, cumulable, coût croissant. | JUnit : coût proportionnel |
-| YAF-064 | P2 | S | Densité et Capacité. | GameTest : densité ×2 double la récolte **et** la consommation |
+| ~~YAF-063~~ | ✅ | S | **Accélérateurs I, II, III** — **fait** : vitesse ×2/×4/×8, énergie ×4/×16/×64, eau ×2/×4/×8, tout se multiplie entre modules et avec le bonus d'énergie de base (×2 réglable). Inactifs sans énergie. | GameTest : vitesse et coûts multipliés, inactifs sans énergie |
+| 🟡 YAF-064 | P2 | S | Densité et Capacité — **densité faite** (I, II, III : ×2/×3/×4 plants, bornés par le palier). **Capacité reste** : le format des piles plafonne à 99, il faudra des emplacements de sortie en plus plutôt que des piles plus grosses. | GameTest : densité ×2 double la récolte **et** la consommation |
 | YAF-065 | P2 | S | Composteur (résidus → engrais). | GameTest : la boucle tourne seule |
 
 ## Épic H — Progression
@@ -95,7 +95,8 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-070~~ | ✅ | S | Recettes : paliers, port, modules — **fait**, en JSON écrits à la main plutôt qu'en datagen (huit recettes ne valent pas l'outillage). P3 demande du melon scintillant. | `RecipeGameTests` : tout se fabrique en survie |
-| YAF-071 | P2 | XS | Config serveur : vitesse globale, résidus on/off, plafond de densité. | — |
+| 🟡 YAF-071 | P2 | XS | Config serveur — **commencée** : vitesse sous énergie (`energizedSpeed`, ×2) et coût par parcelle (`energyPerPlot`, 10 FE/t). Restent résidus on/off et plafond de densité. | — |
+| ~~YAF-072~~ | ✅ | XS | **Source d'énergie créative** — **faite** : pousse sans limite vers ses six voisins ; sans recette. | — |
 
 ## Épic I — Intégrations
 

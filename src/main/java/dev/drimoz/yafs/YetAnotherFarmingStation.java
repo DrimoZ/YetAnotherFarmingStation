@@ -11,6 +11,7 @@ import dev.drimoz.yafs.registry.YafsMenus;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
@@ -26,6 +27,8 @@ public class YetAnotherFarmingStation {
         YafsItems.ITEMS.register(modEventBus);
         YafsCreativeTabs.TABS.register(modEventBus);
         YafsMenus.MENUS.register(modEventBus);
+
+        modContainer.registerConfig(ModConfig.Type.SERVER, YafsConfig.SPEC);
 
         modEventBus.addListener(MultiblockPartBlockEntity::registerCapabilities);
         modEventBus.addListener(CropData::onRegisterPayloads);

@@ -40,6 +40,14 @@ public class ModuleItem extends Item {
             if (module.temperatureShift() != 0) tooltip.add(Component.translatable("yafs.module.temperature_shift", String.format("%+.0f", module.temperatureShift())));
             if (module.rainCollection() > 0) tooltip.add(Component.translatable("yafs.module.rain_collection", module.rainCollection()));
             if (module.energyPerTick() > 0) tooltip.add(Component.translatable("yafs.module.energy_per_tick", module.energyPerTick()));
+            if (module.speedMultiplier() > 1D) tooltip.add(Component.translatable("yafs.module.speed", times(module.speedMultiplier())));
+            if (module.density() > 1) tooltip.add(Component.translatable("yafs.module.density", module.density()));
+            if (module.energyMultiplier() > 1D) tooltip.add(Component.translatable("yafs.module.energy_cost", times(module.energyMultiplier())));
+            if (module.waterMultiplier() > 1D) tooltip.add(Component.translatable("yafs.module.water_cost", times(module.waterMultiplier())));
         });
+    }
+
+    private static String times(double value) {
+        return value == Math.rint(value) ? String.valueOf((long) value) : String.format("%.1f", value);
     }
 }

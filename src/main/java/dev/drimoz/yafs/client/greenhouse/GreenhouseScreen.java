@@ -16,6 +16,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,9 +31,12 @@ import java.util.Locale;
  */
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
-    private static final int ENV_TAB_WIDTH = 116;
+    private static final int ENV_TAB_WIDTH = 132;
     private static final int ENV_TAB_X = -ENV_TAB_WIDTH - GuiMetrics.TAB_GAP;
-    private static final int ENV_LINES = 6;
+    private static final int ENV_LINES = 8;
+
+    /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
+    private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
 
     /** Le détail couvre la grille et la sortie, colonnes 1 à 8. */
     private static final int DETAIL_LEFT = GuiMetrics.column(1);
@@ -69,8 +74,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
         GuiSprites.panel(graphics, left, top, this.imageWidth, this.imageHeight);
         GuiSprites.statusLight(graphics, theme(this.menu.worstStatus()), left + GuiMetrics.LED_X, top + GuiMetrics.LED_Y);
+        // Colonne 0 : l'énergie, en rouge, comme sur tous les écrans de la charte. L'eau a sa jauge à elle.
         GuiSprites.gauge(graphics, left + GuiMetrics.GAUGE_X, top + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight(),
-                this.menu.water() / (float) GreenhouseBlockEntity.TANK_CAPACITY);
+                this.menu.energy() / (float) GreenhouseBlockEntity.ENERGY_CAPACITY);
+        GuiSprites.fluidGauge(graphics, left + WATER_X, top + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight(),
+                new FluidStack(Fluids.WATER, Math.max(0, this.menu.water())), GreenhouseBlockEntity.TANK_CAPACITY);
 
         if (this.menu.selected() < 0) {
             for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
@@ -164,14 +172,19 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.light", this.menu.light()), lineX, lineY, value);
         GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.temperature", celsius(this.menu.temperature())), lineX, lineY + GuiTheme.LINE, value);
         GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.water", this.menu.water()), lineX, lineY + 2 * GuiTheme.LINE, value);
+        GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.energy", this.menu.energy()), lineX, lineY + 3 * GuiTheme.LINE, value);
 
         int slowest = -1;
         double harvests = 0D;
+        double fastest = 0D;
         for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
             if (this.menu.limiting(plot) == null) continue;
-            harvests += this.menu.efficiency(plot) * TICKS_PER_MINUTE / GreenhouseBlockEntity.BASE_TICKS;
+            harvests += this.menu.efficiency(plot) * this.menu.speed(plot) * TICKS_PER_MINUTE / GreenhouseBlockEntity.BASE_TICKS;
+            fastest = Math.max(fastest, this.menu.speed(plot));
             if (slowest < 0 || this.menu.efficiency(plot) < this.menu.efficiency(slowest)) slowest = plot;
         }
+        GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.speed", String.format(Locale.ROOT, "%.1f", fastest)),
+                lineX, lineY + 4 * GuiTheme.LINE, fastest > 1D ? GuiTheme.Status.WORKING.tabColour : value);
 
         Component limit;
         int colour;
@@ -187,11 +200,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                     Math.round(this.menu.efficiency(slowest) * 100));
             colour = GuiTheme.Status.BLOCKED.tabColour;
         }
-        GuiTheme.tabValue(graphics, this.font, limit, lineX, lineY + 3 * GuiTheme.LINE, colour);
+        GuiTheme.tabValue(graphics, this.font, limit, lineX, lineY + 5 * GuiTheme.LINE, colour);
         GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.harvests", String.format(Locale.ROOT, "%.2f", harvests)),
-                lineX, lineY + 4 * GuiTheme.LINE, value);
+                lineX, lineY + 6 * GuiTheme.LINE, value);
         GuiTheme.tabValue(graphics, this.font, Component.translatable("yafs.gui.env.drinks", Math.round(harvests * GreenhouseBlockEntity.WATER_PER_CYCLE)),
-                lineX, lineY + 5 * GuiTheme.LINE, value);
+                lineX, lineY + 7 * GuiTheme.LINE, value);
     }
 
     // Clics
@@ -239,6 +252,10 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
     private void renderOwnTooltips(GuiGraphics graphics, int mouseX, int mouseY) {
         if (within(mouseX, mouseY, this.leftPos + GuiMetrics.GAUGE_X, this.topPos + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
+            graphics.renderTooltip(this.font, Component.translatable("yafs.gui.energy", this.menu.energy(), GreenhouseBlockEntity.ENERGY_CAPACITY), mouseX, mouseY);
+            return;
+        }
+        if (this.menu.selected() < 0 && within(mouseX, mouseY, this.leftPos + WATER_X, this.topPos + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
             graphics.renderTooltip(this.font, Component.translatable("yafs.gui.water", this.menu.water(), GreenhouseBlockEntity.TANK_CAPACITY), mouseX, mouseY);
             return;
         }

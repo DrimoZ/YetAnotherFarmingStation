@@ -1,6 +1,8 @@
 package dev.drimoz.yafs.registry;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
+import dev.drimoz.yafs.content.debug.CreativeEnergySourceBlock;
+import dev.drimoz.yafs.content.debug.CreativeEnergySourceBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseTier;
@@ -45,6 +47,14 @@ public final class YafsBlocks {
             BLOCK_ENTITIES.register("greenhouse",
                     () -> BlockEntityType.Builder.of(GreenhouseBlockEntity::new,
                             GREENHOUSE_T1.get(), GREENHOUSE_T2.get(), GREENHOUSE_T3.get()).build(null));
+
+    public static final DeferredBlock<CreativeEnergySourceBlock> CREATIVE_ENERGY_SOURCE = BLOCKS.register("creative_energy_source",
+            () -> new CreativeEnergySourceBlock(BlockBehaviour.Properties.of().strength(-1.0F, 3_600_000.0F).noLootTable()));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CreativeEnergySourceBlockEntity>> CREATIVE_ENERGY_SOURCE_ENTITY =
+            BLOCK_ENTITIES.register("creative_energy_source",
+                    () -> BlockEntityType.Builder.of(CreativeEnergySourceBlockEntity::new, CREATIVE_ENERGY_SOURCE.get()).build(null));
 
     private static DeferredBlock<GreenhouseBlock> greenhouse(String name, GreenhouseTier tier) {
         return BLOCKS.register(name, () -> new GreenhouseBlock(tier, BlockBehaviour.Properties.of()

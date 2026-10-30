@@ -22,9 +22,14 @@ import net.minecraft.resources.ResourceLocation;
  * @param temperatureShift  degrés ajoutés à la température du lieu (négatif pour refroidir)
  * @param rainCollection    mB recueillis par pas de croissance quand il pleut sur la serre
  * @param energyPerTick     FE consommés par tick ; sans énergie, le module ne fait rien
+ * @param speedMultiplier   vitesse d'une parcelle alimentée, multipliée ; sans énergie, rien
+ * @param energyMultiplier  coût en énergie de chaque parcelle alimentée, multiplié
+ * @param waterMultiplier   eau bue par une parcelle alimentée, multipliée
+ * @param density           plants par parcelle ; le plus haut des modules, borné par le palier
  * @param tint              la teinte de l'item, en RGB
  */
-public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick, int tint) {
+public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
+                               double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int tint) {
 
     public static final ResourceKey<Registry<ModuleDefinition>> REGISTRY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "module"));
@@ -34,6 +39,10 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
             Codec.doubleRange(-60D, 60D).optionalFieldOf("temperature_shift", 0D).forGetter(ModuleDefinition::temperatureShift),
             Codec.intRange(0, 1_000).optionalFieldOf("rain_collection", 0).forGetter(ModuleDefinition::rainCollection),
             Codec.intRange(0, 10_000).optionalFieldOf("energy_per_tick", 0).forGetter(ModuleDefinition::energyPerTick),
+            Codec.doubleRange(1D, 64D).optionalFieldOf("speed_multiplier", 1D).forGetter(ModuleDefinition::speedMultiplier),
+            Codec.doubleRange(1D, 1_000D).optionalFieldOf("energy_multiplier", 1D).forGetter(ModuleDefinition::energyMultiplier),
+            Codec.doubleRange(1D, 64D).optionalFieldOf("water_multiplier", 1D).forGetter(ModuleDefinition::waterMultiplier),
+            Codec.intRange(1, 16).optionalFieldOf("density", 1).forGetter(ModuleDefinition::density),
             Codec.INT.optionalFieldOf("tint", 0xFFFFFF).forGetter(ModuleDefinition::tint)
     ).apply(instance, ModuleDefinition::new));
 }
