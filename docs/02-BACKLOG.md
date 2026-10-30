@@ -68,7 +68,7 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-040 | P0 | M | **Prototype de rendu des plantes** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
+| 🟡 YAF-040 | P0 | M | **Prototype de rendu des plantes** — **fait, reste à le voir en jeu** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
 | YAF-041 | P1 | S | **Budget de performance** : mesure de 50 serres P3 pleines, niveau de détail selon la distance. Budget versionné dans `docs/`. | chiffres consignés, budget tenu |
 
 ## Épic F — Ports

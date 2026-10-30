@@ -5,6 +5,13 @@ import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockShape;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -44,6 +51,30 @@ public class GreenhouseBlock extends MultiblockBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         return level.isClientSide ? null
                 : createTickerHelper(type, YafsBlocks.GREENHOUSE_ENTITY.get(), (l, pos, s, greenhouse) -> greenhouse.serverTick());
+    }
+
+    /**
+     * Clic avec une graine ou un bloc : posé dans la première parcelle qui l'attend. Les parties
+     * renvoient leurs clics ici, donc n'importe quel bloc de la serre convient.
+     */
+    // ponytail: interaction provisoire pour voir pousser en jeu, remplacée par l'écran (YAF-031, YAF-032).
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (!(stack.getItem() instanceof BlockItem item) || stack.is(asItem())
+                || !(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (level.isClientSide) return ItemInteractionResult.SUCCESS;
+
+        int slot = item.getBlock() instanceof CropBlock ? GreenhouseBlockEntity.CROP : GreenhouseBlockEntity.SUBSTRATE;
+        for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
+            if (greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + slot).isEmpty()) {
+                greenhouse.setPlotItem(plot, slot, stack.copyWithCount(1));
+                stack.consume(1, player);
+                return ItemInteractionResult.CONSUME;
+            }
+        }
+        return ItemInteractionResult.FAIL;
     }
 
     /** Le contenu tombe avant que le block entity ne disparaisse ; le loot, lui, ne porte que l'item. */

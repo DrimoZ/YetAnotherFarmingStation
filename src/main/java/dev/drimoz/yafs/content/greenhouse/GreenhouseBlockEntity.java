@@ -12,6 +12,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
@@ -62,12 +65,20 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** Le lieu change rarement : on le relève toutes les 5 secondes, pas à chaque pas. */
     public static final int SAMPLE_INTERVAL = 100;
 
+    /**
+     * Le client n'est prévenu qu'à chaque huitième de croissance, pas à chaque pas : le blé vanilla
+     * a 8 stades, et aucune culture n'en montre beaucoup plus.
+     */
+    public static final int VISIBLE_STAGES = 8;
+
     private static final Codec<List<PlotGrowth>> GROWTH_CODEC = PlotGrowth.CODEC.listOf();
 
+    /** Le client voit ce que contiennent les parcelles : c'est ce qu'il dessine. */
     private final ItemStackHandler plots = new ItemStackHandler(PLOTS * SLOTS_PER_PLOT) {
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
+            syncToClient();
         }
     };
 
@@ -162,10 +173,32 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
+        boolean visibleChange = false;
         for (int plot = 0; plot < PLOTS; plot++) {
+            int before = visibleStage(this.growth[plot]);
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
+            visibleChange |= visibleStage(this.growth[plot]) != before;
         }
         setChanged();
+        if (visibleChange) syncToClient();
+    }
+
+    private static int visibleStage(PlotGrowth growth) {
+        return (int) (growth.progress() * (VISIBLE_STAGES - 1));
+    }
+
+    private void syncToClient() {
+        if (this.level != null && !this.level.isClientSide) {
+            this.level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** L'état de bloc à dessiner pour une culture à ce stade : l'âge proportionnel pour une {@link CropBlock}. */
+    public static BlockState displayedState(Block crop, PlotGrowth growth) {
+        if (crop instanceof CropBlock cropBlock) {
+            return cropBlock.getStateForAge((int) (growth.progress() * cropBlock.getMaxAge()));
+        }
+        return crop.defaultBlockState();
     }
 
     private PlotStatus growPlot(ServerLevel level, int plot, int elapsed) {
@@ -237,11 +270,26 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
     }
 
+    /** Au client : les parcelles et leur croissance, pas la sortie, qu'il ne dessine pas. */
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.put("plots", this.plots.serializeNBT(registries));
+        tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
+        return tag;
+    }
+
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         this.plots.deserializeNBT(registries, tag.getCompound("plots"));
-        this.output.deserializeNBT(registries, tag.getCompound("output"));
+        // Absente du paquet de synchronisation : le client garde sa sortie vide plutôt que de la vider.
+        if (tag.contains("output")) this.output.deserializeNBT(registries, tag.getCompound("output"));
 
         // Une croissance illisible repart de zéro : on perd au pire une récolte, jamais un item.
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());
