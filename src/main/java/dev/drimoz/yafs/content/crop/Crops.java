@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Les cultures reconnues sans configuration (YAF-013), voir {@code docs/01-DESIGN.md} §5.1.
@@ -111,7 +112,7 @@ public final class Crops {
         Map<Item, Crop> found = new HashMap<>();
         for (Item item : BuiltInRegistries.ITEM) {
             if (!(item instanceof BlockItem blockItem) || !(blockItem.getBlock() instanceof BushBlock bush)) continue;
-            // ponytail: tiges et plantes de deux blocs sont des cas exotiques (YAF-015).
+            // Tiges et plantes de deux blocs : la détection se tromperait de récolte. Elles passent par un JSON livré (YAF-015).
             if (bush instanceof StemBlock || bush instanceof DoublePlantBlock) continue;
 
             IntegerProperty age = ageOf(bush);
@@ -125,11 +126,11 @@ public final class Crops {
             // Ce qui compte comme un autre sol : la terre comme terre labourée, par exemple.
             for (SubstrateDefinition definition : CropData.substrates()) {
                 if (accepts(bush, plant, definition.countsAs().defaultBlockState())) {
-                    definition.items().forEach(holder -> substrates.add(holder.value()));
+                    definition.items().stream().flatMap(ItemMatch::items).forEach(substrates::add);
                 }
             }
             if (!substrates.isEmpty()) {
-                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), Requirements.TOLERANT, null));
+                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), Requirements.TOLERANT, null, null));
             }
         }
 
@@ -146,11 +147,12 @@ public final class Crops {
     /** Chaque champ présent remplace celui de la détection. */
     private static Crop apply(CropOverride override, Crop crop) {
         Set<Item> substrates = override.substrates()
-                .map(set -> set.stream().map(holder -> holder.value()).collect(java.util.stream.Collectors.toUnmodifiableSet()))
+                .map(matches -> matches.stream().flatMap(ItemMatch::items).collect(Collectors.toUnmodifiableSet()))
                 .orElse(crop.substrates());
         return new Crop(crop.seed(), crop.block(), crop.age(), substrates,
                 override.requirements().orElse(crop.requirements()),
-                override.catalyst().orElse(crop.catalyst()));
+                override.catalyst().orElse(crop.catalyst()),
+                override.harvest().orElse(crop.harvest()));
     }
 
     /**
@@ -165,7 +167,7 @@ public final class Crops {
                     BuiltInRegistries.ITEM.getKey(override.seed()));
             return null;
         }
-        return new Crop(override.seed(), ((BlockItem) override.seed()).getBlock(), age, Set.of(), Requirements.TOLERANT, null);
+        return new Crop(override.seed(), ((BlockItem) override.seed()).getBlock(), age, Set.of(), Requirements.TOLERANT, null, null);
     }
 
     @Nullable

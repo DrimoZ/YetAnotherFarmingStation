@@ -187,6 +187,54 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
+    // Tests (Cas exotiques, YAF-015) : chacun vient d'un JSON livré dans data/yafs/yafs/crop.
+
+    @GameTest(template = PLATFORM)
+    public static void sugarCaneGrowsOnSand(GameTestHelper helper) {
+        harvests(helper, Items.SUGAR_CANE, Items.SAND, Items.SUGAR_CANE);
+    }
+
+    @GameTest(template = PLATFORM)
+    public static void cactusGrowsOnSand(GameTestHelper helper) {
+        harvests(helper, Items.CACTUS, Items.SAND, Items.CACTUS);
+    }
+
+    /** La tige ne lâche que des graines : c'est le melon qu'on récolte. */
+    @GameTest(template = PLATFORM)
+    public static void aMelonStemYieldsMelonSlices(GameTestHelper helper) {
+        harvests(helper, Items.MELON_SEEDS, Items.DIRT, Items.MELON_SLICE);
+    }
+
+    @GameTest(template = PLATFORM)
+    public static void aPumpkinStemYieldsPumpkins(GameTestHelper helper) {
+        harvests(helper, Items.PUMPKIN_SEEDS, Items.DIRT, Items.PUMPKIN);
+    }
+
+    /** Une culture de deux blocs : on récolte la plante entière, en une fois. */
+    @GameTest(template = PLATFORM)
+    public static void aPitcherPodYieldsAPitcherPlant(GameTestHelper helper) {
+        harvests(helper, Items.PITCHER_POD, Items.DIRT, Items.PITCHER_PLANT);
+    }
+
+    @GameTest(template = PLATFORM)
+    public static void cocoaGrowsOnJungleLogs(GameTestHelper helper) {
+        harvests(helper, Items.COCOA_BEANS, Items.JUNGLE_LOG, Items.COCOA_BEANS);
+    }
+
+    /** À 30 °C, plein jour : dans la plage de chaque cas exotique livré. */
+    private static void harvests(GameTestHelper helper, Item seed, Item substrate, Item expected) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.setEnvironment(new Conditions(15, 30D, 1D));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(seed));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(substrate));
+
+        greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
+
+        helper.assertTrue(greenhouse.status(0) == PlotStatus.WORKING, seed + " : statut " + greenhouse.status(0));
+        helper.assertTrue(count(greenhouse.output(), expected) > 0, seed + " n'a pas donné de " + expected);
+        helper.succeed();
+    }
+
     // Tests (Écran)
 
     /** Le menu lit la croissance et le statut côté serveur, et Maj-clic vide la sortie dans l'inventaire. */

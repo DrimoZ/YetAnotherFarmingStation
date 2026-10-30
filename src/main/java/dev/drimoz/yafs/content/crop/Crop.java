@@ -17,17 +17,23 @@ import java.util.Set;
  * @param substrates   les items de substrat acceptés, tels que la détection les a trouvés
  * @param requirements ce que la culture attend de l'environnement
  * @param catalyst     le bloc à poser sous le substrat, {@code null} si la culture n'en veut pas
+ * @param harvest      le bloc dont la table de loot donne la récolte, {@code null} pour la culture mûre
  */
 public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substrates, Requirements requirements,
-                   @Nullable Item catalyst) {
+                   @Nullable Item catalyst, @Nullable Block harvest) {
 
     public int maxAge() {
         return this.age.getPossibleValues().stream().mapToInt(Integer::intValue).max().orElse(0);
     }
 
-    /** L'état dont la table de loot donne la récolte. */
+    /** La culture à son dernier âge. */
     public BlockState mature() {
         return this.block.defaultBlockState().setValue(this.age, maxAge());
+    }
+
+    /** L'état dont la table de loot donne la récolte : le fruit d'une tige, sinon la culture mûre. */
+    public BlockState harvestState() {
+        return this.harvest != null ? this.harvest.defaultBlockState() : mature();
     }
 
     /** L'état à dessiner pour une progression de 0 à 1. */

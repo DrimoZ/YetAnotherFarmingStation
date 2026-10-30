@@ -286,7 +286,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
 
-        if (!harvest(level, known.mature(), current.density())) return PlotStatus.BLOCKED;
+        if (!harvest(level, known.harvestState(), current.density())) return PlotStatus.BLOCKED;
 
         this.growth[plot] = current.harvested();
         return PlotStatus.WORKING;

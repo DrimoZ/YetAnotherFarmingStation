@@ -8,10 +8,9 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import dev.drimoz.yafs.content.crop.CropData;
 import dev.drimoz.yafs.content.crop.CropOverride;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.core.Efficiency.Requirements;
-import net.minecraft.core.HolderSet;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.RegistryOps;
@@ -58,10 +57,10 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    /** Ce qui n'est pas une culture n'est pas reconnu : pousses d'arbre, champignons, graines de tige. */
+    /** Ce qui n'est pas une culture n'est pas reconnu : pousses d'arbre, champignons, blocs de sol. */
     @GameTest(template = PLATFORM)
     public static void nonCropsAreNotDetected(GameTestHelper helper) {
-        for (Item item : List.of(Items.OAK_SAPLING, Items.RED_MUSHROOM, Items.MELON_SEEDS, Items.DIRT)) {
+        for (Item item : List.of(Items.OAK_SAPLING, Items.RED_MUSHROOM, Items.DIRT)) {
             helper.assertTrue(Crops.of(item) == null, item + " reconnu comme culture");
         }
         helper.succeed();
@@ -100,8 +99,8 @@ public class CropDetectionGameTests {
         List<SubstrateDefinition> substrates = CropData.substrates();
         try {
             List<CropOverride> changed = new ArrayList<>(shipped);
-            changed.add(new CropOverride(Items.CARROT, Optional.of(HolderSet.direct(BuiltInRegistries.ITEM.wrapAsHolder(Items.SAND))),
-                    Optional.of(Items.GOLD_BLOCK), Optional.empty()));
+            changed.add(new CropOverride(Items.CARROT, Optional.of(List.of(new ItemMatch(Items.SAND, null))),
+                    Optional.of(Items.GOLD_BLOCK), Optional.empty(), Optional.empty()));
             CropData.set(changed, substrates);
 
             Crop carrot = known(helper, Items.CARROT);

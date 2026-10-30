@@ -2,12 +2,10 @@ package dev.drimoz.yafs.content.crop;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.HolderSet;
-import net.minecraft.core.RegistryCodecs;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+
+import java.util.List;
 
 /**
  * Une entrée {@code data/<ns>/yafs/substrate/*.json} : des items qui, dans une parcelle, comptent
@@ -17,10 +15,10 @@ import net.minecraft.world.level.block.Block;
  * { "items": ["minecraft:dirt", "minecraft:grass_block"], "counts_as": "minecraft:farmland" }
  * }</pre>
  */
-public record SubstrateDefinition(HolderSet<Item> items, Block countsAs) {
+public record SubstrateDefinition(List<ItemMatch> items, Block countsAs) {
 
     public static final Codec<SubstrateDefinition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            RegistryCodecs.homogeneousList(Registries.ITEM).fieldOf("items").forGetter(SubstrateDefinition::items),
+            ItemMatch.CODEC.listOf().fieldOf("items").forGetter(SubstrateDefinition::items),
             BuiltInRegistries.BLOCK.byNameCodec().fieldOf("counts_as").forGetter(SubstrateDefinition::countsAs)
     ).apply(instance, SubstrateDefinition::new));
 }

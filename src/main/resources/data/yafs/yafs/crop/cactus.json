@@ -1,0 +1,1 @@
+{ "seed": "minecraft:cactus", "substrates": ["#minecraft:sand"], "requirements": { "min_light": 9, "min_temperature": 25, "max_temperature": 50 } }

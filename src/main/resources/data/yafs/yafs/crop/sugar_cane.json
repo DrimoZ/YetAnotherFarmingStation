@@ -1,0 +1,1 @@
+{ "seed": "minecraft:sugar_cane", "substrates": ["#minecraft:dirt", "#minecraft:sand"], "requirements": { "min_light": 9, "min_temperature": 20, "max_temperature": 40 } }
