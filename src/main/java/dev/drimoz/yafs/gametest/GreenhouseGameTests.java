@@ -6,6 +6,8 @@ import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseMenu;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseTier;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
+import dev.drimoz.yafs.content.greenhouse.PortMode;
+import dev.drimoz.yafs.content.multiblock.MultiblockPartBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.core.Climate;
 import dev.drimoz.yafs.core.Efficiency;
@@ -336,17 +338,18 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Une croissance complète boit WATER_PER_CYCLE mB, et la réserve se remplit par n'importe quel bloc. */
+    /** Une croissance complète boit WATER_PER_CYCLE mB, et la réserve se remplit par un port d'eau. */
     @GameTest(template = PLATFORM)
-    public static void growingDrinksTheReserveFilledThroughAnyBlock(GameTestHelper helper) {
+    public static void growingDrinksTheReserveFilledThroughAPort(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
         greenhouse.water().setFluid(FluidStack.EMPTY);
 
-        IFluidHandler part = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK,
-                helper.absolutePos(MASTER.offset(1, 2, 1)), Direction.UP);
-        helper.assertTrue(part != null, "Une partie ne relaie pas la réserve");
+        BlockPos port = MASTER.offset(1, 2, 1);
+        helper.setBlock(port, helper.getBlockState(port).setValue(MultiblockPartBlock.PORT, PortMode.FLUID_INPUT));
+        IFluidHandler part = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, helper.absolutePos(port), Direction.UP);
+        helper.assertTrue(part != null, "Le port d'eau ne relaie pas la réserve");
         part.fill(new FluidStack(Fluids.WATER, 1_000), IFluidHandler.FluidAction.EXECUTE);
         helper.assertTrue(greenhouse.water().getFluidAmount() == 1_000, "Réserve " + greenhouse.water().getFluidAmount());
 

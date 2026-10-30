@@ -11,5 +11,14 @@
   "yafs.gui.status.off": "Éteinte",
   "yafs.gui.water": "Eau : %s / %s mB",
   "block.yafs.greenhouse_t2": "Serre (palier II)",
-  "block.yafs.greenhouse_t3": "Serre (palier III)"
+  "block.yafs.greenhouse_t3": "Serre (palier III)",
+  "item.yafs.port": "Port de serre",
+  "yafs.port.limit": "Cette serre a déjà ses %s ports",
+  "yafs.port.mode.none": "Mur : rien ne passe",
+  "yafs.port.mode.item_input": "Port : entrée d'items",
+  "yafs.port.mode.output_all": "Port : sortie, tout",
+  "yafs.port.mode.output_harvest": "Port : sortie, récolte seule",
+  "yafs.port.mode.output_seeds": "Port : sortie, graines en trop seules",
+  "yafs.port.mode.fluid_input": "Port : entrée d'eau",
+  "yafs.port.mode.energy_input": "Port : entrée d'énergie"
 }

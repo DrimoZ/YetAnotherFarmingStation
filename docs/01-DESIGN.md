@@ -265,8 +265,12 @@ passer**, ce qui permet de savoir d'un coup d'œil où brancher quoi.
 | Sortie de fluide | réservé aux résidus fluides (plus tard) |
 | Entrée d'énergie | tampon FE des modules |
 
-Chaque port a **un seul mode**, réglable dans l'interface ou avec une clé. Les mods de logistique
-gèrent déjà très bien les entrées et sorties séparées.
+Chaque port a **un seul mode** ; une sortie porte son filtre dans son mode (sortie : tout, récolte
+seule, graines seules). On change de mode en réutilisant l'item Port sur le port, et on le retire
+accroupi. Les mods de logistique gèrent déjà très bien les entrées et sorties séparées.
+
+Un seau, lui, marche sur n'importe quel bloc : c'est le joueur, pas un tuyau. Monter de palier
+rend les ports au joueur, puisque le mur a bougé.
 
 Le port délègue au maître le `Capability` / `BlockCapabilityCache` tel quel, sans l'envelopper :
 inserters de FactoryIO, tuyaux et mods tiers voient un inventaire ordinaire.

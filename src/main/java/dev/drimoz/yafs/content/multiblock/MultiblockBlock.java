@@ -15,6 +15,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.neoforge.capabilities.BlockCapability;
 
 import javax.annotation.Nullable;
 
@@ -103,6 +105,14 @@ public abstract class MultiblockBlock extends BaseEntityBlock {
                 partEntity.setMaster(master);
             }
         }
+    }
+
+    // Interface (Capabilities)
+
+    /** Ce que la partie {@code part} expose ; par défaut, ce qu'expose le maître lui-même. */
+    @Nullable
+    public <T> T partCapability(BlockCapability<T, Direction> capability, Level level, BlockEntity master, BlockState part, @Nullable Direction side) {
+        return level.getCapability(capability, master.getBlockPos(), side);
     }
 
     // Interface (Agrandissement)

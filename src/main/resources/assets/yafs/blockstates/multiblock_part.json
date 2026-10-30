@@ -1,5 +1,11 @@
 {
   "variants": {
-    "": { "model": "minecraft:block/air" }
+    "port=none": { "model": "minecraft:block/air" },
+    "port=item_input": { "model": "yafs:block/port_item_input" },
+    "port=output_all": { "model": "yafs:block/port_output_all" },
+    "port=output_harvest": { "model": "yafs:block/port_output_harvest" },
+    "port=output_seeds": { "model": "yafs:block/port_output_seeds" },
+    "port=fluid_input": { "model": "yafs:block/port_fluid_input" },
+    "port=energy_input": { "model": "yafs:block/port_energy_input" }
   }
 }

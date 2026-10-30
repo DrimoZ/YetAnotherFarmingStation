@@ -11,5 +11,14 @@
   "yafs.gui.status.off": "Switched off",
   "yafs.gui.water": "Water: %s / %s mB",
   "block.yafs.greenhouse_t2": "Greenhouse (Tier II)",
-  "block.yafs.greenhouse_t3": "Greenhouse (Tier III)"
+  "block.yafs.greenhouse_t3": "Greenhouse (Tier III)",
+  "item.yafs.port": "Greenhouse Port",
+  "yafs.port.limit": "This greenhouse already has its %s ports",
+  "yafs.port.mode.none": "Wall: nothing goes through",
+  "yafs.port.mode.item_input": "Port: item input",
+  "yafs.port.mode.output_all": "Port: output, everything",
+  "yafs.port.mode.output_harvest": "Port: output, harvest only",
+  "yafs.port.mode.output_seeds": "Port: output, spare seeds only",
+  "yafs.port.mode.fluid_input": "Port: water input",
+  "yafs.port.mode.energy_input": "Port: energy input"
 }

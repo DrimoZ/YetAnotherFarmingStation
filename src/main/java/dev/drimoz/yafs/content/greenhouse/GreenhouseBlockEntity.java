@@ -20,13 +20,16 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import net.neoforged.neoforge.energy.EnergyStorage;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -100,6 +103,24 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
     };
 
+    /** L'énergie des modules (YAF-061) ; elle n'entre que par un port d'énergie. */
+    public static final int ENERGY_CAPACITY = 10_000;
+    private final EnergyStorage energy = new EnergyStorage(ENERGY_CAPACITY, 1_000, 0) {
+        @Override
+        public int receiveEnergy(int toReceive, boolean simulate) {
+            int received = super.receiveEnergy(toReceive, simulate);
+            if (received > 0 && !simulate) setChanged();
+            return received;
+        }
+    };
+
+    // Ce que voient les ports (YAF-051). Des objets fixes : les caches de capability des voisins les gardent.
+    private final IItemHandler inputPort = new InputPort();
+    private final IItemHandler harvestPort = new OutputPort(PortMode.OUTPUT_HARVEST);
+    private final IItemHandler seedsPort = new OutputPort(PortMode.OUTPUT_SEEDS);
+    private final IItemHandler allPort = new OutputPort(PortMode.OUTPUT_ALL);
+    private final IFluidHandler waterPort = new WaterPort();
+
     /** L'eau bue, en fractions de mB : un pas de croissance en boit moins d'un. */
     private double thirst;
 
@@ -158,6 +179,24 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     public FluidTank water() {
         return this.water;
+    }
+
+    public EnergyStorage energy() {
+        return this.energy;
+    }
+
+    /** Ce qu'expose un port dans ce mode, pour cette capability ; {@code null} si rien. */
+    @Nullable
+    public Object port(PortMode mode, BlockCapability<?, ?> capability) {
+        return switch (mode) {
+            case ITEM_INPUT -> capability == Capabilities.ItemHandler.BLOCK ? this.inputPort : null;
+            case OUTPUT_ALL -> capability == Capabilities.ItemHandler.BLOCK ? this.allPort : null;
+            case OUTPUT_HARVEST -> capability == Capabilities.ItemHandler.BLOCK ? this.harvestPort : null;
+            case OUTPUT_SEEDS -> capability == Capabilities.ItemHandler.BLOCK ? this.seedsPort : null;
+            case FLUID_INPUT -> capability == Capabilities.FluidHandler.BLOCK ? this.waterPort : null;
+            case ENERGY_INPUT -> capability == Capabilities.EnergyStorage.BLOCK ? this.energy : null;
+            case NONE -> null;
+        };
     }
 
     public PlotGrowth growth(int plot) {
@@ -340,11 +379,154 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return true;
     }
 
-    // Capabilities
+    // Ports
 
-    // ponytail: la réserve est ouverte sur toutes les faces, de chaque bloc, jusqu'aux ports (YAF-050).
-    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.water);
+    /**
+     * Une entrée d'items : un seul emplacement apparent, toujours vide, et chaque item reçu va à la
+     * première parcelle qui l'attend, un par parcelle. Rien ne ressort par là.
+     */
+    private final class InputPort implements IItemHandler {
+
+        @Override
+        public int getSlots() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            int target = targetSlot(stack);
+            if (target < 0) return stack;
+
+            if (!simulate) GreenhouseBlockEntity.this.plots.setStackInSlot(target, stack.copyWithCount(1));
+            return stack.copyWithCount(stack.getCount() - 1);
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 1;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return targetSlot(stack) >= 0;
+        }
+
+        /** L'emplacement de parcelle libre qui attend cet item, ou -1. */
+        private int targetSlot(ItemStack stack) {
+            if (stack.isEmpty()) return -1;
+
+            Item item = stack.getItem();
+            int kind;
+            if (Crops.of(item) != null) kind = CROP;
+            else if (Crops.all().values().stream().anyMatch(crop -> crop.accepts(item))) kind = SUBSTRATE;
+            else if (Crops.all().values().stream().anyMatch(crop -> crop.catalyst() == item)) kind = CATALYST;
+            else return -1;
+
+            for (int plot = 0; plot < plotCount(); plot++) {
+                int slot = plot * SLOTS_PER_PLOT + kind;
+                if (GreenhouseBlockEntity.this.plots.getStackInSlot(slot).isEmpty()) return slot;
+            }
+            return -1;
+        }
+    }
+
+    /** Une sortie d'items, filtrée : ce qui ne passe pas le filtre est invisible par ce port. */
+    private final class OutputPort implements IItemHandler {
+
+        private final PortMode mode;
+
+        OutputPort(PortMode mode) {
+            this.mode = mode;
+        }
+
+        private boolean passes(ItemStack stack) {
+            return switch (this.mode) {
+                case OUTPUT_SEEDS -> Crops.of(stack.getItem()) != null;
+                case OUTPUT_HARVEST -> Crops.of(stack.getItem()) == null;
+                default -> true;
+            };
+        }
+
+        @Override
+        public int getSlots() {
+            return OUTPUT_SLOTS;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            ItemStack stack = GreenhouseBlockEntity.this.output.getStackInSlot(slot);
+            return passes(stack) ? stack : ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            if (!passes(GreenhouseBlockEntity.this.output.getStackInSlot(slot))) return ItemStack.EMPTY;
+            return GreenhouseBlockEntity.this.output.extractItem(slot, amount, simulate);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return GreenhouseBlockEntity.this.output.getSlotLimit(slot);
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return false;
+        }
+    }
+
+    /** Une entrée de fluide : on remplit la réserve, on ne la vide pas par là. */
+    private final class WaterPort implements IFluidHandler {
+
+        @Override
+        public int getTanks() {
+            return 1;
+        }
+
+        @Override
+        public FluidStack getFluidInTank(int tank) {
+            return GreenhouseBlockEntity.this.water.getFluid();
+        }
+
+        @Override
+        public int getTankCapacity(int tank) {
+            return TANK_CAPACITY;
+        }
+
+        @Override
+        public boolean isFluidValid(int tank, FluidStack stack) {
+            return GreenhouseBlockEntity.this.water.isFluidValid(stack);
+        }
+
+        @Override
+        public int fill(FluidStack resource, FluidAction action) {
+            return GreenhouseBlockEntity.this.water.fill(resource, action);
+        }
+
+        @Override
+        public FluidStack drain(FluidStack resource, FluidAction action) {
+            return FluidStack.EMPTY;
+        }
+
+        @Override
+        public FluidStack drain(int maxDrain, FluidAction action) {
+            return FluidStack.EMPTY;
+        }
     }
 
     // Casse
@@ -366,6 +548,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("plots", this.plots.serializeNBT(registries));
         tag.put("output", this.output.serializeNBT(registries));
         tag.put("water", this.water.writeToNBT(registries, new CompoundTag()));
+        tag.put("energy", this.energy.serializeNBT(registries));
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
     }
 
@@ -390,6 +573,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         // Absente du paquet de synchronisation : le client garde sa sortie vide plutôt que de la vider.
         if (tag.contains("output")) this.output.deserializeNBT(registries, tag.getCompound("output"));
         if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
+        if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
 
         // Une croissance illisible repart de zéro : on perd au pire une récolte, jamais un item.
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());

@@ -76,8 +76,9 @@ public class MultiblockPartBlockEntity extends BlockEntity {
     // Capabilities
 
     /**
-     * Les caches des voisins sont indexés sur la position de la partie : quand le maître change
-     * ce qu'il expose, il devra invalider chaque partie aussi. YAF-050 (ports) s'en charge.
+     * Ce qu'une partie expose, c'est son maître qui le décide ({@link MultiblockBlock#partCapability}) :
+     * une serre n'ouvre que ses ports. Les handlers du maître ne changent pas d'objet ; quand le
+     * port d'une partie change, celui qui le change invalide la position.
      */
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
         for (BlockCapability<?, Direction> capability : RELAYED) {
@@ -88,7 +89,9 @@ public class MultiblockPartBlockEntity extends BlockEntity {
     private static <T> void relay(RegisterCapabilitiesEvent event, BlockCapability<T, Direction> capability) {
         event.registerBlockEntity(capability, YafsBlocks.MULTIBLOCK_PART_ENTITY.get(), (part, side) -> {
             Level level = part.getLevel();
-            return level != null && part.master() != null ? level.getCapability(capability, part.masterPos(), side) : null;
+            BlockEntity master = part.master();
+            if (level == null || master == null) return null;
+            return ((MultiblockBlock) master.getBlockState().getBlock()).partCapability(capability, level, master, part.getBlockState(), side);
         });
     }
 

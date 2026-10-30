@@ -75,9 +75,9 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-050 | P1 | M | **Item Port** : transforme une partie de mur en port, plafond par palier ; seuls les ports exposent des capabilities. | GameTest : un hopper sous une partie normale ne tire rien, sous un port il tire |
-| YAF-051 | P1 | M | **Modes de port** : entrée/sortie d'items, entrée de fluide, entrée d'énergie ; filtre de sortie (récolte / graines / résidus / tout). | GameTests par mode |
-| YAF-052 | P2 | XS | Changer le mode d'un port à la clé. | — |
+| ~~YAF-050~~ | ✅ | M | **Item Port** — **fait** (le port est dans l'état du bloc, visible sans synchronisation ; ports rendus à la casse et à la montée de palier) : transforme une partie de mur en port, plafond par palier ; seuls les ports exposent des capabilities. | GameTest : un hopper sous une partie normale ne tire rien, sous un port il tire |
+| ~~YAF-051~~ | ✅ | M | **Modes de port** — **fait** (le filtre de sortie est un mode : sortie tout / récolte / graines ; une réserve d'énergie de 10 000 FE attend les modules ; pas de sortie de fluide tant qu'il n'y a pas de résidu fluide) : entrée/sortie d'items, entrée de fluide, entrée d'énergie ; filtre de sortie (récolte / graines / résidus / tout). | GameTests par mode |
+| YAF-052 | P2 | XS | Changer le mode d'un port à la clé. Pour l'instant, on le change en réutilisant l'item Port : la clé ne vaut la peine que si un configurateur sert ailleurs. | — |
 
 ## Épic G — Modules
 
