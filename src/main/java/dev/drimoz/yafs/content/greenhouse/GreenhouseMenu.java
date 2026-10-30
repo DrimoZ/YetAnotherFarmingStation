@@ -1,6 +1,9 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import dev.drimoz.yafs.content.module.ModuleItem;
+import dev.drimoz.yafs.content.crop.Crop;
+import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsMenus;
 import dev.drimoz.yafs.shared.GuiMetrics;
@@ -15,8 +18,13 @@ import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
+
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Le menu d'une serre : la sortie en vrais slots, la croissance et le statut de chaque parcelle en
@@ -38,7 +46,18 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
-    public static final int DATA_PER_PLOT = 2;
+    /** Par parcelle : croissance, statut, facteur limitant (-1 : aucun), efficacité en %. */
+    public static final int DATA_PER_PLOT = 4;
+    /** Après les parcelles : la réserve d'eau en mB, la lumière, la température en dixièmes de degré. */
+    public static final int WATER = 0;
+    public static final int LIGHT = 1;
+    public static final int TEMPERATURE = 2;
+    private static final int SHARED_DATA = 3;
+
+    /** Bouton de menu qui ferme le détail ; 0 à n-1 ouvrent la parcelle de ce rang. */
+    public static final int CLOSE_DETAIL = 255;
+    /** Le détail d'une parcelle (YAF-032) : ses trois emplacements, sur une ligne, sous un bandeau. */
+    public static final int DETAIL_SLOTS_Y = GuiMetrics.CONTENT_TOP + 11;
 
     private static final int OUTPUT_SLOTS = GreenhouseBlockEntity.OUTPUT_SLOTS;
     private static final int PLAYER_SLOTS = 36;
@@ -47,13 +66,17 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     private final BlockPos pos;
     private final ContainerLevelAccess access;
     private final ContainerData data;
-    /** Sortie puis modules ; l'inventaire du joueur vient après. */
+    /** Sortie, modules, détail de parcelle ; l'inventaire du joueur vient après. */
     private final int containerSlots;
+    private final int detailStart;
+
+    /** La parcelle dont le détail est ouvert, -1 pour aucune. Tenue des deux côtés : le serveur l'apprend par bouton de menu. */
+    private int selected = -1;
 
     /** Côté serveur. */
     public GreenhouseMenu(int id, Inventory inventory, GreenhouseBlockEntity greenhouse) {
-        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.modules(), greenhouse.menuData(),
-                ContainerLevelAccess.create(greenhouse.getLevel(), greenhouse.getBlockPos()));
+        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.modules(), greenhouse.plots(),
+                greenhouse.menuData(), ContainerLevelAccess.create(greenhouse.getLevel(), greenhouse.getBlockPos()));
     }
 
     /** Côté client : position et palier suffisent, le reste arrive par la synchronisation du menu. */
@@ -63,6 +86,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, GreenhouseTier tier) {
         this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), clientModules(tier),
+                new ItemStackHandler(tier.plots() * GreenhouseBlockEntity.SLOTS_PER_PLOT),
                 new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
     }
 
@@ -82,7 +106,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     private GreenhouseMenu(int id, Inventory inventory, GreenhouseTier tier, BlockPos pos, IItemHandler output, IItemHandler modules,
-                           ContainerData data, ContainerLevelAccess access) {
+                           ItemStackHandler plots, ContainerData data, ContainerLevelAccess access) {
         super(YafsMenus.GREENHOUSE.get(), id);
 
         this.tier = tier;
@@ -98,6 +122,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 public boolean mayPlace(ItemStack stack) {
                     return false;
                 }
+
+                /** Cachée sous le détail d'une parcelle. */
+                @Override
+                public boolean isActive() {
+                    return GreenhouseMenu.this.selected < 0;
+                }
             });
         }
 
@@ -106,7 +136,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
             int y = GuiMetrics.TAB_TOP + GuiMetrics.TAB_HEADER + (slot / MODULE_COLUMNS) * GuiMetrics.SLOT + 1;
             addSlot(new SlotItemHandler(modules, slot, x, y));
         }
-        this.containerSlots = OUTPUT_SLOTS + modules.getSlots();
+        this.detailStart = OUTPUT_SLOTS + modules.getSlots();
+        IItemHandlerModifiable detail = new SelectedPlot(plots);
+        for (int slot = 0; slot < GreenhouseBlockEntity.SLOTS_PER_PLOT; slot++) {
+            addSlot(new PlotSlot(detail, slot, GuiMetrics.column(1 + slot) + 1, DETAIL_SLOTS_Y));
+        }
+        this.containerSlots = this.detailStart + GreenhouseBlockEntity.SLOTS_PER_PLOT;
 
         int inventoryY = GuiMetrics.inventoryY(contentBottom());
         for (int row = 0; row < 3; row++) {
@@ -121,13 +156,139 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         addDataSlots(data);
     }
 
-    /** Après les parcelles : la réserve d'eau, en mB. */
+    /** Le premier index après les parcelles : la réserve d'eau, puis lumière et température. */
     public static int waterData(GreenhouseTier tier) {
         return tier.plots() * DATA_PER_PLOT;
     }
 
     public static int dataSize(GreenhouseTier tier) {
-        return waterData(tier) + 1;
+        return waterData(tier) + SHARED_DATA;
+    }
+
+    public int light() {
+        return this.data.get(waterData(this.tier) + LIGHT);
+    }
+
+    public double temperature() {
+        return this.data.get(waterData(this.tier) + TEMPERATURE) / 10D;
+    }
+
+    /** Le facteur qui limite cette parcelle, {@code null} si elle ne pousse pas. */
+    @Nullable
+    public Efficiency.Factor limiting(int plot) {
+        int ordinal = this.data.get(plot * DATA_PER_PLOT + 2);
+        Efficiency.Factor[] factors = Efficiency.Factor.values();
+        return ordinal >= 0 && ordinal < factors.length ? factors[ordinal] : null;
+    }
+
+    /** L'efficacité de cette parcelle, de 0 à 1. */
+    public double efficiency(int plot) {
+        return this.data.get(plot * DATA_PER_PLOT + 3) / 100D;
+    }
+
+    // Détail d'une parcelle (YAF-032)
+
+    public int selected() {
+        return this.selected;
+    }
+
+    /** L'emplacement {@code slot} (culture, substrat, catalyseur) du détail ouvert. */
+    public Slot detailSlot(int slot) {
+        return this.slots.get(this.detailStart + slot);
+    }
+
+    /** Le client ouvre ou ferme localement, et prévient le serveur par {@link #clickMenuButton}. */
+    public void select(int plot) {
+        this.selected = plot >= 0 && plot < this.tier.plots() ? plot : -1;
+    }
+
+    /** Validé ici : un rang hors de la serre ferme le détail, il n'ouvre rien d'autre. */
+    @Override
+    public boolean clickMenuButton(Player player, int id) {
+        select(id == CLOSE_DETAIL ? -1 : id);
+        return true;
+    }
+
+    /** Les trois emplacements de la parcelle ouverte, vus comme un petit inventaire. */
+    private final class SelectedPlot implements IItemHandlerModifiable {
+
+        private final ItemStackHandler plots;
+
+        SelectedPlot(ItemStackHandler plots) {
+            this.plots = plots;
+        }
+
+        private int index(int slot) {
+            return GreenhouseMenu.this.selected * GreenhouseBlockEntity.SLOTS_PER_PLOT + slot;
+        }
+
+        @Override
+        public int getSlots() {
+            return GreenhouseBlockEntity.SLOTS_PER_PLOT;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return GreenhouseMenu.this.selected < 0 ? ItemStack.EMPTY : this.plots.getStackInSlot(index(slot));
+        }
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
+            if (GreenhouseMenu.this.selected >= 0) this.plots.setStackInSlot(index(slot), stack);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return GreenhouseMenu.this.selected < 0 ? stack : this.plots.insertItem(index(slot), stack, simulate);
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return GreenhouseMenu.this.selected < 0 ? ItemStack.EMPTY : this.plots.extractItem(index(slot), amount, simulate);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 1;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return GreenhouseMenu.this.selected >= 0 && accepts(slot, stack);
+        }
+
+        /**
+         * Le même jugement des deux côtés, puisque le client refait la détection : une graine
+         * reconnue, un substrat que la culture semée accepte (ou qu'une culture accepte, s'il n'y
+         * en a pas encore), le catalyseur qu'elle demande.
+         */
+        private boolean accepts(int slot, ItemStack stack) {
+            Crop sown = Crops.of(getStackInSlot(GreenhouseBlockEntity.CROP).getItem());
+            return switch (slot) {
+                case GreenhouseBlockEntity.CROP -> Crops.of(stack.getItem()) != null;
+                case GreenhouseBlockEntity.SUBSTRATE -> sown != null ? sown.accepts(stack.getItem())
+                        : Crops.all().values().stream().anyMatch(crop -> crop.accepts(stack.getItem()));
+                default -> sown != null ? sown.catalyst() == stack.getItem()
+                        : Crops.all().values().stream().anyMatch(crop -> crop.catalyst() == stack.getItem());
+            };
+        }
+    }
+
+    private final class PlotSlot extends SlotItemHandler {
+
+        PlotSlot(IItemHandlerModifiable handler, int slot, int x, int y) {
+            super(handler, slot, x, y);
+        }
+
+        @Override
+        public boolean isActive() {
+            return GreenhouseMenu.this.selected >= 0;
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
     }
 
     public GreenhouseTier tier() {
@@ -163,15 +324,13 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     /** La serre prend le statut le plus grave de ses parcelles. */
     public PlotStatus worstStatus() {
-        PlotStatus worst = PlotStatus.OFF;
-        for (int plot = 0; plot < this.tier.plots(); plot++) {
-            if (status(plot).compareTo(worst) > 0) worst = status(plot);
-        }
-        return worst;
+        List<PlotStatus> statuses = new ArrayList<>();
+        for (int plot = 0; plot < this.tier.plots(); plot++) statuses.add(status(plot));
+        return PlotStatus.worst(statuses);
     }
 
     public int moduleSlots() {
-        return this.containerSlots - OUTPUT_SLOTS;
+        return this.detailStart - OUTPUT_SLOTS;
     }
 
     /** Maj-clic : sortie et modules vers l'inventaire ; un module de l'inventaire vers les modules. */
@@ -184,7 +343,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         ItemStack original = stack.copy();
         boolean moved = index < this.containerSlots
                 ? moveItemStackTo(stack, this.containerSlots, this.containerSlots + PLAYER_SLOTS, true)
-                : ModuleItem.kind(stack) != null && moveItemStackTo(stack, OUTPUT_SLOTS, this.containerSlots, false);
+                : ModuleItem.kind(stack) != null && moveItemStackTo(stack, OUTPUT_SLOTS, this.detailStart, false);
         if (!moved) return ItemStack.EMPTY;
 
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);

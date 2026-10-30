@@ -150,6 +150,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     private final PlotGrowth[] growth;
     private final PlotStatus[] status;
+    /** Le dernier verdict d'efficacité de chaque parcelle qui pousse ; {@code null} sinon. */
+    private final Efficiency.Verdict[] verdicts;
 
     /** Le palier suivant prend la place : rien ne doit tomber (YAF-006). */
     private boolean upgrading;
@@ -200,6 +202,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         };
         this.growth = new PlotGrowth[this.tier.plots()];
         this.status = new PlotStatus[this.tier.plots()];
+        this.verdicts = new Efficiency.Verdict[this.tier.plots()];
         Arrays.fill(this.growth, PlotGrowth.SOWN);
         Arrays.fill(this.status, PlotStatus.WAITING);
     }
@@ -220,7 +223,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.upgrading;
     }
 
-    public IItemHandler plots() {
+    public ItemStackHandler plots() {
         return this.plots;
     }
 
@@ -262,6 +265,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.status[plot];
     }
 
+    @Nullable
+    public Efficiency.Verdict verdict(int plot) {
+        return this.verdicts[plot];
+    }
+
     /** L'environnement de base, tel que relevé au dernier passage ; {@code null} avant le premier. */
     public Conditions environment() {
         return this.environment;
@@ -294,12 +302,25 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return new ContainerData() {
             @Override
             public int get(int index) {
-                if (index == GreenhouseMenu.waterData(GreenhouseBlockEntity.this.tier)) return GreenhouseBlockEntity.this.water.getFluidAmount();
+                int shared = index - GreenhouseMenu.waterData(GreenhouseBlockEntity.this.tier);
+                if (shared >= 0) {
+                    Conditions environment = effectiveEnvironment();
+                    return switch (shared) {
+                        case GreenhouseMenu.WATER -> GreenhouseBlockEntity.this.water.getFluidAmount();
+                        case GreenhouseMenu.LIGHT -> environment == null ? 0 : environment.light();
+                        case GreenhouseMenu.TEMPERATURE -> environment == null ? 0 : (int) Math.round(environment.temperature() * 10);
+                        default -> 0;
+                    };
+                }
 
                 int plot = index / GreenhouseMenu.DATA_PER_PLOT;
-                return index % GreenhouseMenu.DATA_PER_PLOT == 0
-                        ? Math.round(GreenhouseBlockEntity.this.growth[plot].progress() * GreenhouseMenu.PROGRESS_SCALE)
-                        : GreenhouseBlockEntity.this.status[plot].ordinal();
+                Efficiency.Verdict verdict = GreenhouseBlockEntity.this.verdicts[plot];
+                return switch (index % GreenhouseMenu.DATA_PER_PLOT) {
+                    case 0 -> Math.round(GreenhouseBlockEntity.this.growth[plot].progress() * GreenhouseMenu.PROGRESS_SCALE);
+                    case 1 -> GreenhouseBlockEntity.this.status[plot].ordinal();
+                    case 2 -> verdict == null ? -1 : verdict.limiting().ordinal();
+                    default -> verdict == null ? 0 : (int) Math.round(verdict.value() * 100);
+                };
             }
 
             @Override
@@ -348,6 +369,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
+        // Un signal sur n'importe quel bloc du volume éteint la serre : rien ne pousse, rien ne tourne.
+        if (((GreenhouseBlock) getBlockState().getBlock()).bestSignal(serverLevel, this.worldPosition) > 0) {
+            Arrays.fill(this.status, PlotStatus.OFF);
+            Arrays.fill(this.verdicts, null);
+            return;
+        }
+
         runModules(elapsed);
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
@@ -358,6 +386,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         boolean visibleChange = false;
         for (int plot = 0; plot < this.growth.length; plot++) {
             PlotGrowth before = this.growth[plot];
+            this.verdicts[plot] = null;
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
             visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
             drink(before, this.growth[plot]);
@@ -437,8 +466,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (known == null || !known.accepts(substrate.getItem()) || !known.catalysedBy(catalyst.getItem())) return PlotStatus.PROBLEM;
         if (this.environment.water() <= 0D && !this.growth[plot].isMature()) return PlotStatus.PROBLEM;
 
-        double efficiency = Efficiency.evaluate(known.requirements(), this.effective).value();
-        PlotGrowth current = this.growth[plot].advance(efficiency * elapsed / BASE_TICKS);
+        Efficiency.Verdict verdict = Efficiency.evaluate(known.requirements(), this.effective);
+        this.verdicts[plot] = verdict;
+        PlotGrowth current = this.growth[plot].advance(verdict.value() * elapsed / BASE_TICKS);
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
 

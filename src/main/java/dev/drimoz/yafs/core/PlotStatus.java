@@ -14,5 +14,14 @@ public enum PlotStatus {
     /** Mûre, mais la sortie est pleine : rien n'est perdu, elle attend. */
     BLOCKED,
     /** Ne poussera pas sans intervention : culture inconnue, substrat incompatible, eau à zéro. */
-    PROBLEM
+    PROBLEM;
+
+    /** Le statut d'une serre : le plus grave de ses parcelles ; {@link #OFF} si elle n'en a aucune. */
+    public static PlotStatus worst(Iterable<PlotStatus> statuses) {
+        PlotStatus worst = OFF;
+        for (PlotStatus status : statuses) {
+            if (status.compareTo(worst) > 0) worst = status;
+        }
+        return worst;
+    }
 }
