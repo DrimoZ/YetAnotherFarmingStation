@@ -1,0 +1,143 @@
+plugins {
+    id 'java-library'
+    // ModDevGradle 2.x. Same version as Portable Beacons' 26.x branches: it still builds 1.21.1,
+    // and it is the one that runs on Gradle 9.
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = "${mod_version}+${minecraft_version}"
+group = mod_group_id
+base { archivesName = mod_id }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        // Human-readable parameter names. Purely a dev-time nicety.
+        minecraftVersion = '1.21.1'
+        mappingsVersion = '2024.11.17'
+    }
+
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        server {
+            server()
+            gameDirectory = project.file('run')
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        // Runs every @GameTest headlessly and exits non-zero if any fails. Its own directory, so
+        // the dev-only mods copied into run/mods stay out of it (Portable Beacons learnt that one).
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            gameDirectory = project.file('run-gametest')
+        }
+        data {
+            // Own directory too: datagen needs no mods, and a stray one in run/mods can stop it.
+            gameDirectory = project.file('run-data')
+            data()
+            programArguments.addAll '--mod', mod_id, '--all',
+                    '--output', file('src/generated/resources/').absolutePath,
+                    '--existing', file('src/main/resources/').absolutePath
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+
+    // Puts Minecraft on the test classpath, for core/ tests that touch types like ResourceKey.
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'BlameJared (JEI)'
+        url = 'https://maven.blamejared.com'
+    }
+}
+
+configurations {
+    // Mods to drop into the dev run folder. See copyDevMods below.
+    devMods
+}
+
+dependencies {
+    // Soft dependency: compiled against, never required.
+    compileOnly "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
+    // Through the run folder, not the run classpath: FML only registers mods it finds in mods/.
+    devMods "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
+
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Gradle 9 stopped putting the launcher on the test runtime classpath itself.
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// A Sync rather than a Copy, so run/mods holds exactly this build's dev mods and nothing left over.
+var copyDevMods = tasks.register('copyDevMods', Sync) {
+    from configurations.devMods
+    into file('run/mods')
+}
+
+tasks.matching { it.name in ['runClient', 'runServer'] }.configureEach {
+    dependsOn copyDevMods
+}
+
+// Expand gradle.properties into neoforge.mods.toml so versions live in one place.
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into "${layout.buildDirectory.get()}/generated/sources/modMetadata"
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+// Generated resources are committed, so a clone builds without running datagen first.
+sourceSets.main.resources.srcDir 'src/generated/resources'
+neoForge.ideSyncTask generateModMetadata
+
+// Both licences travel with the jar.
+tasks.named('jar', Jar) {
+    from(file('LICENSE')) { into 'META-INF' }
+    from(file('LICENSE-ASSETS')) { into 'META-INF' }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs << '-Xlint:deprecation'
+}
