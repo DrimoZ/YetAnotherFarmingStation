@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "IXI",
+    "RCR",
+    "IXI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "X": { "item": "minecraft:magma_block" },
+    "R": { "item": "minecraft:redstone" },
+    "C": { "item": "minecraft:furnace" }
+  },
+  "result": { "id": "yafs:module", "components": { "yafs:module": "yafs:heater" } }
+}

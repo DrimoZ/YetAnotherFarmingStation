@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GDG",
+    "MBM",
+    "GDG"
+  ],
+  "key": {
+    "G": { "item": "minecraft:glass" },
+    "D": { "item": "minecraft:diamond" },
+    "M": { "item": "minecraft:glistering_melon_slice" },
+    "B": { "item": "minecraft:gold_block" }
+  },
+  "result": { "id": "yafs:greenhouse_t3" }
+}

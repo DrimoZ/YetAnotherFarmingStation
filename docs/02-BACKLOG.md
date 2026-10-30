@@ -94,7 +94,7 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-070 | P1 | S | Recettes datagen : paliers, port, modules. P3 demande un item issu d'une culture. | `RecipeGameTests` : tout se fabrique en survie |
+| ~~YAF-070~~ | ✅ | S | Recettes : paliers, port, modules — **fait**, en JSON écrits à la main plutôt qu'en datagen (huit recettes ne valent pas l'outillage). P3 demande du melon scintillant. | `RecipeGameTests` : tout se fabrique en survie |
 | YAF-071 | P2 | XS | Config serveur : vitesse globale, résidus on/off, plafond de densité. | — |
 
 ## Épic I — Intégrations
