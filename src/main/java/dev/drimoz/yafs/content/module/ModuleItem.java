@@ -1,5 +1,6 @@
 package dev.drimoz.yafs.content.module;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -13,9 +14,12 @@ import java.util.List;
 /**
  * Un module de serre : un item par module, comme un bloc par palier. Ce qu'il fait vient de la
  * {@link ModuleDefinition} de même identifiant ({@code yafs:heater} → {@code data/yafs/yafs/module/heater.json}),
- * qu'un datapack peut retoucher.
+ * qu'un datapack peut retoucher. Empilés dans un emplacement, ils combinent leurs effets.
  */
 public class ModuleItem extends Item {
+
+    /** Combien d'un même module un emplacement accepte. */
+    public static final int MAX_PER_SLOT = 8;
 
     public ModuleItem(Properties properties) {
         super(properties.stacksTo(16));
@@ -29,22 +33,37 @@ public class ModuleItem extends Item {
                 : null;
     }
 
+    /** Ce que fait un module, gains en vert, coûts en or ; puis où il se pose. */
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        ResourceKey<ModuleDefinition> kind = kind(stack);
-        if (kind == null || context.registries() == null) return;
+        tooltip.add(Component.translatable("yafs.tooltip.module").withStyle(ChatFormatting.BLUE));
 
-        context.registries().lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind)).ifPresent(holder -> {
-            ModuleDefinition module = holder.value();
-            if (module.lightFloor() > 0) tooltip.add(Component.translatable("yafs.module.light_floor", module.lightFloor()));
-            if (module.temperatureShift() != 0) tooltip.add(Component.translatable("yafs.module.temperature_shift", String.format("%+.0f", module.temperatureShift())));
-            if (module.rainCollection() > 0) tooltip.add(Component.translatable("yafs.module.rain_collection", module.rainCollection()));
-            if (module.energyPerTick() > 0) tooltip.add(Component.translatable("yafs.module.energy_per_tick", module.energyPerTick()));
-            if (module.speedMultiplier() > 1D) tooltip.add(Component.translatable("yafs.module.speed", times(module.speedMultiplier())));
-            if (module.density() > 1) tooltip.add(Component.translatable("yafs.module.density", module.density()));
-            if (module.energyMultiplier() > 1D) tooltip.add(Component.translatable("yafs.module.energy_cost", times(module.energyMultiplier())));
-            if (module.waterMultiplier() > 1D) tooltip.add(Component.translatable("yafs.module.water_cost", times(module.waterMultiplier())));
-        });
+        ResourceKey<ModuleDefinition> kind = kind(stack);
+        if (kind != null && context.registries() != null) {
+            context.registries().lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind)).ifPresent(holder -> {
+                ModuleDefinition module = holder.value();
+                if (module.speedMultiplier() > 1D) gain(tooltip, "yafs.module.speed", times(module.speedMultiplier()));
+                if (module.density() > 1) gain(tooltip, "yafs.module.density", module.density());
+                if (module.lightFloor() > 0) gain(tooltip, "yafs.module.light_floor", module.lightFloor());
+                if (module.temperatureShift() != 0) gain(tooltip, "yafs.module.temperature_shift", String.format("%+.0f", module.temperatureShift()));
+                if (module.rainCollection() > 0) gain(tooltip, "yafs.module.rain_collection", module.rainCollection());
+                if (module.energyMultiplier() > 1D) cost(tooltip, "yafs.module.energy_cost", times(module.energyMultiplier()));
+                if (module.waterMultiplier() > 1D) cost(tooltip, "yafs.module.water_cost", times(module.waterMultiplier()));
+                if (module.energyPerTick() > 0) cost(tooltip, "yafs.module.energy_per_tick", module.energyPerTick());
+                if (module.speedMultiplier() > 1D || module.energyPerTick() > 0) {
+                    tooltip.add(Component.translatable("yafs.tooltip.module.needs_energy").withStyle(ChatFormatting.DARK_GRAY));
+                }
+            });
+        }
+        tooltip.add(Component.translatable("yafs.tooltip.module.stack", MAX_PER_SLOT).withStyle(ChatFormatting.DARK_GRAY));
+    }
+
+    private static void gain(List<Component> tooltip, String key, Object value) {
+        tooltip.add(Component.literal(" + ").append(Component.translatable(key, value)).withStyle(ChatFormatting.GREEN));
+    }
+
+    private static void cost(List<Component> tooltip, String key, Object value) {
+        tooltip.add(Component.literal(" − ").append(Component.translatable(key, value)).withStyle(ChatFormatting.GOLD));
     }
 
     private static String times(double value) {

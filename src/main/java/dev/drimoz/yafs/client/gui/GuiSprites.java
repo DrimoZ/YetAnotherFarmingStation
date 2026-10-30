@@ -242,6 +242,15 @@ public final class GuiSprites {
         LOCK, MINUS, PLUS, HAND
     }
 
+    /** Icône estompée : un rappel de ce qui va là, pas un contenu. */
+    public static void faintIcon(GuiGraphics graphics, Icon icon, int x, int y) {
+        RenderSystem.enableBlend();
+        graphics.setColor(1f, 1f, 1f, 0.3f);
+        icon(graphics, icon, x, y);
+        graphics.setColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+    }
+
     public static void icon(GuiGraphics graphics, Icon icon, int x, int y) {
         graphics.blit(SHEET, x, y, icon.ordinal() * ICON_SIZE, 64, ICON_SIZE, ICON_SIZE);
     }

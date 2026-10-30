@@ -11,6 +11,7 @@ import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
 import dev.drimoz.yafs.core.PlotGrowth;
 import dev.drimoz.yafs.core.PlotStatus;
+import dev.drimoz.yafs.core.RedstoneCondition;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -137,7 +138,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
     }
 
-    /** Un module par emplacement, un seul de chaque sorte. */
+    /** Une sorte de module par emplacement, empilable jusqu'à {@link ModuleItem#MAX_PER_SLOT} : les effets se combinent. */
     private final ItemStackHandler modules;
 
     // Ce que voient les ports (YAF-051). Des objets fixes : les caches de capability des voisins les gardent.
@@ -159,6 +160,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** Le palier suivant prend la place : rien ne doit tomber (YAF-006). */
     private boolean upgrading;
+
+    /** L'interrupteur l'emporte sur tout ; la condition redstone décide ensuite (onglet Contrôle). */
+    private boolean switchedOn = true;
+    private RedstoneCondition condition = RedstoneCondition.DEFAULT;
 
     private int ticks;
 
@@ -196,7 +201,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             @Override
             public int getSlotLimit(int slot) {
-                return 1;
+                return ModuleItem.MAX_PER_SLOT;
             }
 
             @Override
@@ -251,6 +256,33 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     public ItemStackHandler modules() {
         return this.modules;
+    }
+
+    public boolean isSwitchedOn() {
+        return this.switchedOn;
+    }
+
+    public RedstoneCondition condition() {
+        return this.condition;
+    }
+
+    public void setSwitchedOn(boolean on) {
+        this.switchedOn = on;
+        setChanged();
+    }
+
+    public void setCondition(RedstoneCondition condition) {
+        this.condition = condition;
+        setChanged();
+    }
+
+    /** Le plus fort signal reçu par l'un des blocs du volume. */
+    public int signal() {
+        return this.level == null ? 0 : ((GreenhouseBlock) getBlockState().getBlock()).bestSignal(this.level, this.worldPosition);
+    }
+
+    public boolean isRunning() {
+        return this.switchedOn && this.condition.allows(signal());
     }
 
     /** Ce qu'expose un port dans ce mode, pour cette capability ; {@code null} si rien. */
@@ -322,6 +354,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         // Un DataSlot ne porte que 16 bits : l'énergie passe en deux moitiés.
                         case GreenhouseMenu.ENERGY_HIGH -> GreenhouseBlockEntity.this.energy.getEnergyStored() >>> 16;
                         case GreenhouseMenu.ENERGY_LOW -> GreenhouseBlockEntity.this.energy.getEnergyStored() & 0xFFFF;
+                        case GreenhouseMenu.SWITCHED_ON -> GreenhouseBlockEntity.this.switchedOn ? 1 : 0;
+                        case GreenhouseMenu.REDSTONE_MODE -> GreenhouseBlockEntity.this.condition.mode().ordinal();
+                        case GreenhouseMenu.REDSTONE_THRESHOLD -> GreenhouseBlockEntity.this.condition.threshold();
+                        case GreenhouseMenu.SIGNAL -> signal();
                         default -> 0;
                     };
                 }
@@ -384,8 +420,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
-        // Un signal sur n'importe quel bloc du volume éteint la serre : rien ne pousse, rien ne tourne.
-        if (((GreenhouseBlock) getBlockState().getBlock()).bestSignal(serverLevel, this.worldPosition) > 0) {
+        // Éteinte à l'interrupteur, ou par la redstone selon la condition : rien ne pousse, rien ne tourne.
+        if (!isRunning()) {
             Arrays.fill(this.status, PlotStatus.OFF);
             Arrays.fill(this.verdicts, null);
             return;
@@ -411,8 +447,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /**
-     * Chaque module tourne s'il a son énergie pour le pas entier, sinon il ne fait rien. Tous les
-     * effets se cumulent, sauf la lumière, dont on garde le plancher le plus haut.
+     * Chaque pile de modules tourne si elle a son énergie pour le pas entier, sinon elle ne fait
+     * rien. Empilés, les modules combinent leurs effets : les multiplicateurs se multiplient (deux
+     * Accélérateurs I, vitesse ×4 et énergie ×16), les décalages et la pluie s'ajoutent ; lumière
+     * et densité gardent la plus haute valeur, les empiler n'aurait pas de sens.
      */
     private void runModules(int elapsed) {
         this.lightFloor = 0;
@@ -427,18 +465,20 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (registry == null) return;
 
         for (int slot = 0; slot < this.modules.getSlots(); slot++) {
-            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(this.modules.getStackInSlot(slot));
+            ItemStack stack = this.modules.getStackInSlot(slot);
+            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
             ModuleDefinition module = kind != null ? registry.get(kind) : null;
-            if (module == null || !this.energy.spend(module.energyPerTick() * elapsed)) continue;
+            int count = stack.getCount();
+            if (module == null || !this.energy.spend((long) module.energyPerTick() * count * elapsed)) continue;
 
             this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
-            this.temperatureShift += module.temperatureShift();
-            this.speedMultiplier *= module.speedMultiplier();
-            this.energyMultiplier *= module.energyMultiplier();
-            this.waterMultiplier *= module.waterMultiplier();
+            this.temperatureShift += module.temperatureShift() * count;
+            this.speedMultiplier *= Math.pow(module.speedMultiplier(), count);
+            this.energyMultiplier *= Math.pow(module.energyMultiplier(), count);
+            this.waterMultiplier *= Math.pow(module.waterMultiplier(), count);
             this.density = Math.min(Math.max(this.density, module.density()), this.tier.maxDensity());
             if (this.raining && module.rainCollection() > 0) {
-                this.water.fill(new FluidStack(Fluids.WATER, module.rainCollection()), IFluidHandler.FluidAction.EXECUTE);
+                this.water.fill(new FluidStack(Fluids.WATER, module.rainCollection() * count), IFluidHandler.FluidAction.EXECUTE);
             }
         }
     }
@@ -713,6 +753,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("water", this.water.writeToNBT(registries, new CompoundTag()));
         tag.put("energy", this.energy.serializeNBT(registries));
         tag.put("modules", this.modules.serializeNBT(registries));
+        tag.putBoolean("switchedOn", this.switchedOn);
+        tag.putInt("redstoneMode", this.condition.mode().ordinal());
+        tag.putInt("redstoneThreshold", this.condition.threshold());
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
     }
 
@@ -739,6 +782,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
         if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
         if (tag.contains("modules")) copyInto(this.modules, registries, tag.getCompound("modules"));
+        if (tag.contains("switchedOn")) this.switchedOn = tag.getBoolean("switchedOn");
+        if (tag.contains("redstoneMode")) {
+            this.condition = new RedstoneCondition(RedstoneCondition.Mode.byOrdinal(tag.getInt("redstoneMode")), tag.getInt("redstoneThreshold"));
+        }
 
         // Une croissance illisible repart de zéro : on perd au pire une récolte, jamais un item.
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());

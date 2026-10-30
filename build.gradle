@@ -71,6 +71,11 @@ repositories {
         name = 'BlameJared (JEI)'
         url = 'https://maven.blamejared.com'
     }
+    // Les mods de test, pris tels que publiés sur Modrinth.
+    exclusiveContent {
+        forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
 }
 
 configurations {
@@ -83,6 +88,17 @@ dependencies {
     compileOnly "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
     // Through the run folder, not the run classpath: FML only registers mods it finds in mods/.
     devMods "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
+    // De quoi essayer la serre au milieu d'autres mods : énergie et tuyaux (Mekanism), tuyaux
+    // simples (Pipez), survol (Jade), chunks chargés (Chunk Loaders), cuisine (Cooking for
+    // Blockheads). Pour run/ seulement : aucun n'est une dépendance du mod.
+    devMods "maven.modrinth:mekanism:${mekanism_version}"
+    devMods "maven.modrinth:pipez:${pipez_version}"
+    devMods "maven.modrinth:jade:${jade_version}"
+    devMods "maven.modrinth:cooking-for-blockheads:${cooking_for_blockheads_version}"
+    devMods "maven.modrinth:balm:${balm_version}"
+    devMods "maven.modrinth:chunk-loaders:${chunk_loaders_version}"
+    devMods "maven.modrinth:supermartijn642s-core-lib:${supermartijn642_core_lib_version}"
+    devMods "maven.modrinth:supermartijn642s-config-lib:${supermartijn642_config_lib_version}"
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'

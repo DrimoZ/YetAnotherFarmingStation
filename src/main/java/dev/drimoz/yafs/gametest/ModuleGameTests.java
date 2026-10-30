@@ -4,6 +4,7 @@ import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
+import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
 import dev.drimoz.yafs.registry.YafsBlocks;
@@ -154,6 +155,27 @@ public class ModuleGameTests {
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
         double drunk = speed * step * GreenhouseBlockEntity.WATER_PER_CYCLE * 2 * 4;
         helper.assertTrue(Math.abs(water - greenhouse.water().getFluidAmount() - drunk) <= 1, "Eau bue " + (water - greenhouse.water().getFluidAmount()));
+        helper.succeed();
+    }
+
+    /** Empilés, les modules se combinent : deux Accélérateurs I, vitesse ×4 et énergie ×16. */
+    @GameTest(template = PLATFORM)
+    public static void stackedModulesCombine(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        plantWheat(greenhouse, 0);
+        ItemStack two = module("accelerator_1");
+        two.setCount(2);
+        greenhouse.modules().setStackInSlot(0, two);
+        greenhouse.energy().receiveEnergy(100_000, false);
+
+        greenhouse.grow(GreenhouseBlockEntity.STEP);
+
+        float step = (float) GreenhouseBlockEntity.STEP / GreenhouseBlockEntity.BASE_TICKS;
+        double speed = YafsConfig.ENERGIZED_SPEED.get() * 4;
+        helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - speed * step) < 1e-5, "Progression " + greenhouse.growth(0).progress());
+        int spent = YafsConfig.ENERGY_PER_PLOT.get() * GreenhouseBlockEntity.STEP * 16;
+        helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
+        helper.assertTrue(greenhouse.modules().getSlotLimit(0) == ModuleItem.MAX_PER_SLOT, "Limite " + greenhouse.modules().getSlotLimit(0));
         helper.succeed();
     }
 

@@ -5,6 +5,7 @@ import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.PlotStatus;
+import dev.drimoz.yafs.core.RedstoneCondition;
 import dev.drimoz.yafs.registry.YafsMenus;
 import dev.drimoz.yafs.shared.GuiMetrics;
 import net.minecraft.core.BlockPos;
@@ -39,10 +40,14 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int OUTPUT_COLUMN = 6;
     public static final int OUTPUT_SIDE = 3;
 
-    /** L'onglet bleu des modules, collé à droite de la fenêtre : deux colonnes de slots. */
-    public static final int MODULE_TAB_X = GuiMetrics.WIDTH + GuiMetrics.TAB_GAP;
-    public static final int MODULE_COLUMNS = 2;
-    public static final int MODULE_TAB_WIDTH = 2 * GuiMetrics.TAB_PADDING + MODULE_COLUMNS * GuiMetrics.SLOT;
+    /** Une ligne d'en-têtes (énergie, parcelles, eau, récolte) au-dessus des zones, puis la grille. */
+    public static final int HEADER_HEIGHT = 10;
+    public static final int GRID_TOP = GuiMetrics.CONTENT_TOP + HEADER_HEIGHT;
+
+    /** L'onglet bleu des modules, premier à droite de la fenêtre (SideTabs) : trois colonnes de slots, puis leur bilan. */
+    public static final int MODULE_TAB_X = GuiMetrics.WIDTH;
+    public static final int MODULE_COLUMNS = 3;
+    public static final int MODULE_TAB_WIDTH = 96;
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
@@ -54,7 +59,17 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int TEMPERATURE = 2;
     public static final int ENERGY_HIGH = 3;
     public static final int ENERGY_LOW = 4;
-    private static final int SHARED_DATA = 5;
+    public static final int SWITCHED_ON = 5;
+    public static final int REDSTONE_MODE = 6;
+    public static final int REDSTONE_THRESHOLD = 7;
+    public static final int SIGNAL = 8;
+    private static final int SHARED_DATA = 9;
+
+    /** Boutons de menu de l'onglet Contrôle, au-dessus des rangs de parcelle (0 à 15) et de CLOSE_DETAIL. */
+    public static final int SWITCH_OFF = 300;
+    public static final int SWITCH_ON = 301;
+    public static final int MODE_BASE = 310;
+    public static final int THRESHOLD_BASE = 320;
 
     /** Bouton de menu qui ferme le détail ; 0 à n-1 ouvrent la parcelle de ce rang. */
     public static final int CLOSE_DETAIL = 255;
@@ -97,7 +112,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return new ItemStackHandler(tier.moduleSlots()) {
             @Override
             public int getSlotLimit(int slot) {
-                return 1;
+                return ModuleItem.MAX_PER_SLOT;
             }
 
             @Override
@@ -118,7 +133,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
         for (int slot = 0; slot < OUTPUT_SLOTS; slot++) {
             int x = GuiMetrics.column(OUTPUT_COLUMN + slot % OUTPUT_SIDE) + 1;
-            int y = GuiMetrics.CONTENT_TOP + (slot / OUTPUT_SIDE) * GuiMetrics.SLOT + 1;
+            int y = GRID_TOP + (slot / OUTPUT_SIDE) * GuiMetrics.SLOT + 1;
             addSlot(new SlotItemHandler(output, slot, x, y) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
@@ -136,7 +151,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         for (int slot = 0; slot < modules.getSlots(); slot++) {
             int x = MODULE_TAB_X + GuiMetrics.TAB_PADDING + (slot % MODULE_COLUMNS) * GuiMetrics.SLOT + 1;
             int y = GuiMetrics.TAB_TOP + GuiMetrics.TAB_HEADER + (slot / MODULE_COLUMNS) * GuiMetrics.SLOT + 1;
-            addSlot(new SlotItemHandler(modules, slot, x, y));
+            addSlot(new SlotItemHandler(modules, slot, x, y) {
+                @Override
+                public boolean isActive() {
+                    return GreenhouseMenu.this.modulesVisible;
+                }
+            });
         }
         this.detailStart = OUTPUT_SLOTS + modules.getSlots();
         IItemHandlerModifiable detail = new SelectedPlot(plots);
@@ -208,16 +228,53 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.slots.get(this.detailStart + slot);
     }
 
+    public boolean switchedOn() {
+        return this.data.get(waterData(this.tier) + SWITCHED_ON) != 0;
+    }
+
+    public RedstoneCondition condition() {
+        return new RedstoneCondition(RedstoneCondition.Mode.byOrdinal(this.data.get(waterData(this.tier) + REDSTONE_MODE)),
+                this.data.get(waterData(this.tier) + REDSTONE_THRESHOLD));
+    }
+
+    public int signal() {
+        return this.data.get(waterData(this.tier) + SIGNAL);
+    }
+
     /** Le client ouvre ou ferme localement, et prévient le serveur par {@link #clickMenuButton}. */
     public void select(int plot) {
         this.selected = plot >= 0 && plot < this.tier.plots() ? plot : -1;
     }
 
-    /** Validé ici : un rang hors de la serre ferme le détail, il n'ouvre rien d'autre. */
+    /**
+     * Validé ici, côté serveur : les réglages de l'onglet Contrôle d'abord, bornés ; sinon un rang
+     * de parcelle, et un rang hors de la serre ferme le détail sans rien ouvrir d'autre.
+     */
     @Override
     public boolean clickMenuButton(Player player, int id) {
-        select(id == CLOSE_DETAIL ? -1 : id);
+        if (id == SWITCH_OFF || id == SWITCH_ON) {
+            withGreenhouse(player, greenhouse -> greenhouse.setSwitchedOn(id == SWITCH_ON));
+        } else if (id >= MODE_BASE && id < MODE_BASE + RedstoneCondition.Mode.values().length) {
+            withGreenhouse(player, greenhouse -> greenhouse.setCondition(greenhouse.condition().withMode(RedstoneCondition.Mode.byOrdinal(id - MODE_BASE))));
+        } else if (id >= THRESHOLD_BASE && id <= THRESHOLD_BASE + RedstoneCondition.MAX_SIGNAL) {
+            withGreenhouse(player, greenhouse -> greenhouse.setCondition(greenhouse.condition().withThreshold(id - THRESHOLD_BASE)));
+        } else {
+            select(id == CLOSE_DETAIL ? -1 : id);
+        }
         return true;
+    }
+
+    private void withGreenhouse(Player player, java.util.function.Consumer<GreenhouseBlockEntity> action) {
+        this.access.execute((level, pos) -> {
+            if (level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse) action.accept(greenhouse);
+        });
+    }
+
+    /** Les modules sont dans un onglet qui se replie : fermé, ses slots n'existent pas. Côté client seulement. */
+    private boolean modulesVisible = true;
+
+    public void setModulesVisible(boolean visible) {
+        this.modulesVisible = visible;
     }
 
     /** Les trois emplacements de la parcelle ouverte, vus comme un petit inventaire. */
@@ -312,7 +369,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     public int contentBottom() {
-        return GuiMetrics.CONTENT_TOP + contentRows() * GuiMetrics.SLOT;
+        return GRID_TOP + contentRows() * GuiMetrics.SLOT;
     }
 
     public BlockPos pos() {

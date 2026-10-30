@@ -59,16 +59,16 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-030~~ | ✅ | M | **Porter la charte GUI** — **fait** de FactoryIO (`GuiMetrics`, `GuiTheme`, `GuiSprites` et sa planche). | un écran vide de 176 px s'ouvre en `runClient` |
-| 🟡 YAF-031 | P0 | M | **Écran de la serre** — **fait, reste à le voir en jeu** : grille de parcelles (barre de croissance, liseré de statut), jauge d'eau colonne 0, voyant. Valeurs par `ContainerData`, boutons par `clickMenuButton`. | `runClient` et `runServer` : la croissance avance à l'écran |
-| 🟡 YAF-032 | P1 | M | **Détail d'une parcelle** en fenêtre superposée — **fait, à voir en jeu** (trois vrais slots du menu, branchés sur la parcelle choisie par bouton de menu) : emplacements Culture / Substrat / Catalyseur, exigences comparées à l'environnement. | poser et retirer une culture depuis l'écran ; substrat incompatible refusé par le serveur |
-| 🟡 YAF-033 | P1 | S | **Onglet Environnement** (jaune) — **fait, à voir en jeu** : 3 facteurs, « Limité par » (la parcelle la plus lente), récoltes/min plutôt qu'items/min (le nombre d'items d'une récolte est aléatoire), eau/min. | la ligne « Limité par » change quand on pose une lampe |
+| ~~YAF-031~~ | ✅ | M | **Écran de la serre** — **fait, vérifié sur captures (`GuiPreview`)** : énergie rouge en colonne 0, eau bleue en colonne 5, en-têtes Parcelles et Récolte, raisons explicites des problèmes ; grille de parcelles (barre de croissance, liseré de statut), jauge d'eau colonne 0, voyant. Valeurs par `ContainerData`, boutons par `clickMenuButton`. | `runClient` et `runServer` : la croissance avance à l'écran |
+| ~~YAF-032~~ | ✅ | M | **Détail d'une parcelle** en fenêtre superposée — **fait, vérifié sur captures** (trois vrais slots du menu, branchés sur la parcelle choisie par bouton de menu) : emplacements Culture / Substrat / Catalyseur, exigences comparées à l'environnement. | poser et retirer une culture depuis l'écran ; substrat incompatible refusé par le serveur |
+| ~~YAF-033~~ | ✅ | S | **Onglet Environnement** (jaune) — **fait, vérifié sur captures** ; onglets repliables (SideTabs de FactoryIO), onglet Contrôle (interrupteur, condition redstone) : 3 facteurs, « Limité par » (la parcelle la plus lente), récoltes/min plutôt qu'items/min (le nombre d'items d'une récolte est aléatoire), eau/min. | la ligne « Limité par » change quand on pose une lampe |
 | ~~YAF-034~~ | ✅ | S | **Statuts** — **fait** : les 5 états par parcelle, la serre prend le plus grave (`PlotStatus.worst`) ; un signal redstone sur le volume éteint tout (OFF). | JUnit sur la résolution du statut |
 
 ## Épic E — Rendu
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| 🟡 YAF-040 | P0 | M | **Prototype de rendu des plantes** — **fait, reste à le voir en jeu** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
+| ~~YAF-040~~ | ✅ | M | **Prototype de rendu des plantes** — **fait, vu sur les captures** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
 | YAF-041 | P1 | S | **Budget de performance** : mesure de 50 serres P3 pleines, niveau de détail selon la distance. Budget versionné dans `docs/`. | chiffres consignés, budget tenu |
 
 ## Épic F — Ports
@@ -83,7 +83,7 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| 🟡 YAF-060 | P1 | M | **Modules** : un item par module (et non plus un item à composant, décidé le 30/10/2026) + registre `yafs/module` ; emplacements dans l'onglet bleu, effet recalculé en direct. — **fait** (registre de datapack, rechargé au lancement du monde ; effets dans l'infobulle de l'item, l'effet sur la serre s'affichera avec l'onglet Environnement, YAF-033 ; onglet à voir en jeu) | un module retouché en datapack change d'effet |
+| ~~YAF-060~~ | ✅ | M | **Modules** (empilables jusqu'à 8 par case, effets combinés) : un item par module (et non plus un item à composant, décidé le 30/10/2026) + registre `yafs/module` ; emplacements dans l'onglet bleu, effet recalculé en direct. — **fait** (registre de datapack, rechargé au lancement du monde ; effets dans l'infobulle de l'item, l'effet sur la serre s'affichera avec l'onglet Environnement, YAF-033 ; onglet à voir en jeu) | un module retouché en datapack change d'effet |
 | ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
 | ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
 | ~~YAF-063~~ | ✅ | S | **Accélérateurs I, II, III** — **fait** : vitesse ×2/×4/×8, énergie ×4/×16/×64, eau ×2/×4/×8, tout se multiplie entre modules et avec le bonus d'énergie de base (×2 réglable). Inactifs sans énergie. | GameTest : vitesse et coûts multipliés, inactifs sans énergie |
