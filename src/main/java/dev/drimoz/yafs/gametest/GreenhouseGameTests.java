@@ -3,6 +3,7 @@ package dev.drimoz.yafs.gametest;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
+import dev.drimoz.yafs.content.greenhouse.GreenhouseMenu;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.core.Climate;
@@ -179,6 +180,30 @@ public class GreenhouseGameTests {
         greenhouse.output().setStackInSlot(1, ItemStack.EMPTY);
         greenhouse.grow(GreenhouseBlockEntity.STEP);
         helper.assertTrue(count(greenhouse.output(), Items.WHEAT) == 1, "La récolte n'a pas repris");
+        helper.succeed();
+    }
+
+    // Tests (Écran)
+
+    /** Le menu lit la croissance et le statut côté serveur, et Maj-clic vide la sortie dans l'inventaire. */
+    @GameTest(template = PLATFORM)
+    public static void theMenuShowsGrowthAndEmptiesTheOutput(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+        greenhouse.output().setStackInSlot(0, new ItemStack(Items.WHEAT, 3));
+        greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS / 4);
+
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        GreenhouseMenu menu = new GreenhouseMenu(0, player.getInventory(), greenhouse);
+
+        helper.assertTrue(Math.abs(menu.progress(0) - 0.25F) < 0.002F, "Croissance affichée " + menu.progress(0));
+        helper.assertTrue(menu.status(0) == PlotStatus.WORKING && menu.worstStatus() == PlotStatus.WORKING, "Statut " + menu.status(0));
+
+        menu.quickMoveStack(player, 0);
+        helper.assertTrue(greenhouse.output().getStackInSlot(0).isEmpty(), "La sortie n'a pas été vidée");
+        helper.assertTrue(player.getInventory().countItem(Items.WHEAT) == 3, "Le joueur n'a pas reçu les 3 blés");
+        helper.assertTrue(!menu.slots.get(0).mayPlace(new ItemStack(Items.WHEAT)), "On peut déposer dans la sortie");
         helper.succeed();
     }
 

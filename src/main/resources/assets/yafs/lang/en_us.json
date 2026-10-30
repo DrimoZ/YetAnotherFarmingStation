@@ -1,5 +1,12 @@
 {
   "itemGroup.yafs": "Yet Another Farming Station",
   "block.yafs.greenhouse_t1": "Greenhouse (Tier I)",
-  "block.yafs.multiblock_part": "Greenhouse"
+  "block.yafs.multiblock_part": "Greenhouse",
+  "yafs.gui.plot.empty": "Empty plot",
+  "yafs.gui.plot.growth": "Growth: %s%%",
+  "yafs.gui.status.working": "Growing",
+  "yafs.gui.status.waiting": "Waiting",
+  "yafs.gui.status.blocked": "Blocked: the output is full",
+  "yafs.gui.status.problem": "Cannot grow here",
+  "yafs.gui.status.off": "Switched off"
 }

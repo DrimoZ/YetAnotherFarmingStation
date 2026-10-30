@@ -5,7 +5,10 @@ import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockShape;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
@@ -75,6 +78,18 @@ public class GreenhouseBlock extends MultiblockBlock {
             }
         }
         return ItemInteractionResult.FAIL;
+    }
+
+    /** Main vide, ou un item qui ne va pas en parcelle : l'écran. Les parties renvoient leurs clics ici. */
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (!(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) return InteractionResult.PASS;
+
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new GreenhouseMenu(id, inventory, greenhouse), getName()),
+                    buffer -> buffer.writeBlockPos(pos));
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     /** Le contenu tombe avant que le block entity ne disparaisse ; le loot, lui, ne porte que l'item. */

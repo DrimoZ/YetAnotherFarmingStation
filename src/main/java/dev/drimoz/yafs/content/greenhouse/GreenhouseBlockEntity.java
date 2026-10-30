@@ -17,6 +17,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
+import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -136,6 +137,29 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     public void setEnvironment(Conditions environment) {
         this.environment = environment;
+    }
+
+    /** Croissance et statut de chaque parcelle, lus à la demande par le menu ouvert. */
+    public ContainerData menuData() {
+        return new ContainerData() {
+            @Override
+            public int get(int index) {
+                int plot = index / GreenhouseMenu.DATA_PER_PLOT;
+                return index % GreenhouseMenu.DATA_PER_PLOT == 0
+                        ? Math.round(GreenhouseBlockEntity.this.growth[plot].progress() * GreenhouseMenu.PROGRESS_SCALE)
+                        : GreenhouseBlockEntity.this.status[plot].ordinal();
+            }
+
+            @Override
+            public void set(int index, int value) {
+                // Lecture seule : le client ne pilote pas la croissance.
+            }
+
+            @Override
+            public int getCount() {
+                return PLOTS * GreenhouseMenu.DATA_PER_PLOT;
+            }
+        };
     }
 
     /** Pose un item dans un emplacement de parcelle. Pour les GameTests, en attendant l'écran. */

@@ -1,5 +1,12 @@
 {
   "itemGroup.yafs": "Yet Another Farming Station",
   "block.yafs.greenhouse_t1": "Serre (palier I)",
-  "block.yafs.multiblock_part": "Serre"
+  "block.yafs.multiblock_part": "Serre",
+  "yafs.gui.plot.empty": "Parcelle vide",
+  "yafs.gui.plot.growth": "Croissance : %s %%",
+  "yafs.gui.status.working": "Pousse",
+  "yafs.gui.status.waiting": "En attente",
+  "yafs.gui.status.blocked": "Bloquée : la sortie est pleine",
+  "yafs.gui.status.problem": "Ne peut pas pousser ici",
+  "yafs.gui.status.off": "Éteinte"
 }

@@ -4,6 +4,7 @@ import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import dev.drimoz.yafs.registry.YafsCreativeTabs;
 import dev.drimoz.yafs.registry.YafsItems;
+import dev.drimoz.yafs.registry.YafsMenus;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -18,6 +19,7 @@ public class YetAnotherFarmingStation {
         YafsBlocks.BLOCK_ENTITIES.register(modEventBus);
         YafsItems.ITEMS.register(modEventBus);
         YafsCreativeTabs.TABS.register(modEventBus);
+        YafsMenus.MENUS.register(modEventBus);
 
         modEventBus.addListener(MultiblockPartBlockEntity::registerCapabilities);
     }
