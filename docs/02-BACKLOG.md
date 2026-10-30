@@ -37,7 +37,7 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-010~~ | ✅ | S | **`core/` : la parcelle** — **fait** : `PlotGrowth` (progression, densité) et son `Codec` borné. Culture, substrat et catalyseur sont un inventaire de la serre, pas une donnée de `core/`, qui ne connaît pas les items. | JUnit : aller-retour du codec |
-| YAF-011 | P0 | S | **`core/` : efficacité et loi du minimum** — plages, baisse linéaire, plancher 0.1, eau vide = 0, facteur limitant nommé. | JUnit : chaque facteur limitant, plancher, eau vide |
+| ~~YAF-011~~ | ✅ | S | **`core/` : efficacité et loi du minimum** — **fait** (`Efficiency`) — plages, baisse linéaire, plancher 0.1, eau vide = 0, facteur limitant nommé. | JUnit : chaque facteur limitant, plancher, eau vide |
 | YAF-012 | P0 | M | **Croissance simulée** dans le maître, par pas de 20 ticks ; récolte vers la réserve de sortie ; graines en trop ; parcelle mûre en BLOCKED si la sortie est pleine. Blé codé en dur en attendant YAF-013. | GameTest : un blé pousse et se récolte ; sortie pleine → rien de perdu |
 | YAF-013 | P1 | M | **Détection automatique** : `BlockItem` → bloc de culture, `canSurvive` sur un mini-monde fictif par substrat candidat, récolte par la table de loot de l'état mûr. Cache par rechargement, network codec. | GameTest : blé, carotte, pomme de terre, betterave, verrue du Nether reconnus avec les bons substrats |
 | YAF-014 | P1 | M | **Registres datapack** `yafs/crop` et `yafs/substrate`, codecs bornés ; une surcharge remplace la détection. | JSON invalide refusé et journalisé ; surcharge appliquée après `/reload` |
