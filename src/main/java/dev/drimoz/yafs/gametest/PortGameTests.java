@@ -231,7 +231,8 @@ public class PortGameTests {
         BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false);
 
         BlockState state = helper.getLevel().getBlockState(pos);
-        if (state.useItemOn(stack, helper.getLevel(), player, InteractionHand.MAIN_HAND, hit) == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+        // Comme le jeu : ce que le bloc ne consomme pas revient à l'item (PASS ou SKIP_DEFAULT).
+        if (!state.useItemOn(stack, helper.getLevel(), player, InteractionHand.MAIN_HAND, hit).consumesAction()) {
             stack.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND, hit));
         }
         return player.getMainHandItem();

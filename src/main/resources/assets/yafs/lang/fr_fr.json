@@ -116,5 +116,7 @@
   "yafs.tooltip.port.remove": "Accroupi : le retire.",
   "yafs.tooltip.port.limit": "2, 4 ou 6 ports selon le palier.",
   "yafs.tooltip.creative_only": "Créatif seulement",
-  "yafs.tooltip.creative_energy_source": "Pousse une énergie sans fin dans ses six voisins."
+  "yafs.tooltip.creative_energy_source": "Pousse une énergie sans fin dans ses six voisins.",
+  "yafs.gui.env.ports": "Ports",
+  "yafs.gui.port_hint": "Câbles et tuyaux ne se branchent que sur un port. Port de serre sur un mur, puis encore jusqu'à : %s."
 }

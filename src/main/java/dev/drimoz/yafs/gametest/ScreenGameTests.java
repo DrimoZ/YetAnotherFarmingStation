@@ -13,12 +13,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -82,6 +87,28 @@ public class ScreenGameTests {
 
         helper.assertTrue(menu.efficiency(0) == 1D, "Avec la lampe : " + menu.efficiency(0));
         helper.assertTrue(menu.light() == 15, "Lumière affichée " + menu.light());
+        helper.succeed();
+    }
+
+    /**
+     * Un bloc en main, clic sur la serre : l'écran s'ouvre, rien n'est rangé ni posé. Comme le jeu :
+     * le bloc visé répond d'abord ; s'il passe la main, c'est l'écran (useWithoutItem) qui répond.
+     */
+    @GameTest(template = PLATFORM)
+    public static void aHeldBlockOpensTheScreenInsteadOfBeingPlaced(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        ItemStack dirt = new ItemStack(Items.DIRT, 5);
+        player.setItemInHand(InteractionHand.MAIN_HAND, dirt);
+        BlockPos part = helper.absolutePos(MASTER.offset(1, 1, -1));
+        BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(part), Direction.NORTH, part, false);
+
+        BlockState state = helper.getLevel().getBlockState(part);
+        ItemInteractionResult result = state.useItemOn(dirt, helper.getLevel(), player, InteractionHand.MAIN_HAND, hit);
+        helper.assertTrue(result == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION, "Le bloc tenu a été pris : " + result);
+        helper.assertTrue(state.useWithoutItem(helper.getLevel(), player, hit).consumesAction(), "L'écran ne s'ouvre pas");
+        helper.assertTrue(dirt.getCount() == 5, "De la terre a été prise");
+        helper.assertTrue(greenhouse.plots().getStackInSlot(GreenhouseBlockEntity.SUBSTRATE).isEmpty(), "De la terre rangée en parcelle");
         helper.succeed();
     }
 

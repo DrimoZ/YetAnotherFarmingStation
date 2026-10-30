@@ -56,7 +56,7 @@ import java.util.Locale;
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
     private static final int ENV_TAB_WIDTH = 120;
-    private static final int ENV_ROWS = 10;
+    private static final int ENV_ROWS = 11;
 
     /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
     private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
@@ -382,6 +382,9 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.water", compact(this.menu.water()) + " mB",
                 this.menu.water() > 0 ? GuiTheme.TAB_VALUE : GuiTheme.Status.PROBLEM.tabColour);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.energy", compact(this.menu.energy()) + " FE", GuiTheme.TAB_VALUE);
+        // Sans port, ni câble ni tuyau ne se branche : en rouge, c'est la première chose à voir.
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.ports", this.menu.ports() + " / " + this.menu.tier().maxPorts(),
+                this.menu.ports() > 0 ? GuiTheme.TAB_VALUE : GuiTheme.Status.PROBLEM.tabColour);
 
         int growing = 0;
         int problems = 0;
@@ -530,7 +533,9 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         if (within(mouseX, mouseY, this.leftPos + GuiMetrics.GAUGE_X, this.topPos + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
             graphics.renderComponentTooltip(this.font, List.of(
                     Component.translatable("yafs.gui.energy", this.menu.energy(), GreenhouseBlockEntity.ENERGY_CAPACITY),
-                    Component.translatable("yafs.gui.energy.help").withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
+                    Component.translatable("yafs.gui.energy.help").withStyle(ChatFormatting.GRAY),
+                    Component.translatable("yafs.gui.port_hint", Component.translatable("yafs.port.mode.energy_input")).withStyle(ChatFormatting.DARK_AQUA)),
+                    mouseX, mouseY);
             return;
         }
         if (this.hoveredSlot != null && !this.hoveredSlot.hasItem() && isModuleSlot(this.hoveredSlot)) {
@@ -543,7 +548,9 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         if (within(mouseX, mouseY, this.leftPos + WATER_X, this.topPos + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
             graphics.renderComponentTooltip(this.font, List.of(
                     Component.translatable("yafs.gui.water", this.menu.water(), GreenhouseBlockEntity.TANK_CAPACITY),
-                    Component.translatable("yafs.gui.water.help").withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
+                    Component.translatable("yafs.gui.water.help").withStyle(ChatFormatting.GRAY),
+                    Component.translatable("yafs.gui.port_hint", Component.translatable("yafs.port.mode.fluid_input")).withStyle(ChatFormatting.DARK_AQUA)),
+                    mouseX, mouseY);
             return;
         }
 

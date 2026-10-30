@@ -63,7 +63,9 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int REDSTONE_MODE = 6;
     public static final int REDSTONE_THRESHOLD = 7;
     public static final int SIGNAL = 8;
-    private static final int SHARED_DATA = 9;
+    /** Les ports posés : sans eux, rien n'entre ni ne sort, et l'écran doit le dire. */
+    public static final int PORTS = 9;
+    private static final int SHARED_DATA = 10;
 
     /** Boutons de menu de l'onglet Contrôle, au-dessus des rangs de parcelle (0 à 15) et de CLOSE_DETAIL. */
     public static final int SWITCH_OFF = 300;
@@ -239,6 +241,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     public int signal() {
         return this.data.get(waterData(this.tier) + SIGNAL);
+    }
+
+    public int ports() {
+        return this.data.get(waterData(this.tier) + PORTS);
     }
 
     /** Le client ouvre ou ferme localement, et prévient le serveur par {@link #clickMenuButton}. */

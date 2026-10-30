@@ -5,6 +5,8 @@ import com.mojang.logging.LogUtils;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
+import dev.drimoz.yafs.content.greenhouse.PortMode;
+import dev.drimoz.yafs.content.multiblock.MultiblockPartBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import dev.drimoz.yafs.registry.YafsItems;
@@ -133,6 +135,11 @@ public final class GuiPreview {
                 + (ORIGIN.getX() + 16) + " " + (ORIGIN.getY() - 1) + " " + (ORIGIN.getZ() + 16) + " minecraft:smooth_stone"));
         step(10, mc -> onServer(mc, level -> {
             build(level, small, YafsBlocks.GREENHOUSE_T1.get(), List.of(), 0);
+            // Un port d'énergie, et la source créative collée contre : l'énergie doit monter à l'écran.
+            BlockPos port = small.offset(1, 0, 1);
+            level.setBlock(port, level.getBlockState(port).setValue(MultiblockPartBlock.PORT, PortMode.ENERGY_INPUT), 3);
+            level.invalidateCapabilities(port);
+            level.setBlock(port.east(), YafsBlocks.CREATIVE_ENERGY_SOURCE.get().defaultBlockState(), 3);
             build(level, big, YafsBlocks.GREENHOUSE_T3.get(),
                     List.of(YafsItems.ACCELERATOR_1.get(), YafsItems.GROW_LAMP.get(), YafsItems.DENSITY_1.get()), 1_000_000);
         }));
@@ -141,6 +148,11 @@ public final class GuiPreview {
         step(40, mc -> use(mc, small));
         step(5, mc -> hover(mc, 0.0, 0.0));
         step(20, mc -> shot("greenhouse_t1"));
+        // L'interrupteur de l'onglet Contrôle : la serre doit passer à « Éteinte ».
+        step(5, mc -> clickTab(mc, 2));
+        step(15, mc -> clickTabContent(mc, 2, 10, 8));
+        step(20, mc -> shot("greenhouse_t1_switched_off"));
+        step(5, mc -> clickTabContent(mc, 2, 10, 8));
         step(5, mc -> mc.setScreen(null));
 
         step(10, mc -> command(mc, "tp @s " + (big.getX()) + " " + ORIGIN.getY() + " " + (big.getZ() - 6) + " 0 20"));
@@ -245,6 +257,14 @@ public final class GuiPreview {
         if (minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen) {
             var area = screen.tabAreas().get(index);
             screen.mouseClicked(area.getX() + 11, area.getY() + 11, 0);
+        }
+    }
+
+    /** Clique dans le contenu du n-ième onglet, en coordonnées de ce contenu (sous l'en-tête). */
+    static void clickTabContent(Minecraft minecraft, int index, int x, int y) {
+        if (minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen) {
+            var area = screen.tabAreas().get(index);
+            screen.mouseClicked(area.getX() + 6 + x, area.getY() + 22 + y, 0);
         }
     }
 

@@ -358,6 +358,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         case GreenhouseMenu.REDSTONE_MODE -> GreenhouseBlockEntity.this.condition.mode().ordinal();
                         case GreenhouseMenu.REDSTONE_THRESHOLD -> GreenhouseBlockEntity.this.condition.threshold();
                         case GreenhouseMenu.SIGNAL -> signal();
+                        case GreenhouseMenu.PORTS -> GreenhouseBlockEntity.this.level == null ? 0
+                                : ((GreenhouseBlock) getBlockState().getBlock()).portCount(GreenhouseBlockEntity.this.level, GreenhouseBlockEntity.this.worldPosition);
                         default -> 0;
                     };
                 }

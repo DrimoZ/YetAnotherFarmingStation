@@ -147,7 +147,7 @@ public class TierGameTests {
 
         BlockState state = helper.getLevel().getBlockState(pos);
         ItemInteractionResult result = state.useItemOn(stack, helper.getLevel(), player, InteractionHand.MAIN_HAND, hit);
-        if (result == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+        if (!result.consumesAction()) {
             stack.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND, hit));
         }
         return player.getItemInHand(InteractionHand.MAIN_HAND);

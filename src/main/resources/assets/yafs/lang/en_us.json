@@ -116,5 +116,7 @@
   "yafs.tooltip.port.remove": "Sneak-use: removes it.",
   "yafs.tooltip.port.limit": "2, 4 or 6 ports depending on the tier.",
   "yafs.tooltip.creative_only": "Creative only",
-  "yafs.tooltip.creative_energy_source": "Pushes endless energy into its six neighbours."
+  "yafs.tooltip.creative_energy_source": "Pushes endless energy into its six neighbours.",
+  "yafs.gui.env.ports": "Ports",
+  "yafs.gui.port_hint": "Cables and pipes only connect to a port. Use a Greenhouse Port on a wall, then again until: %s."
 }

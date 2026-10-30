@@ -2,7 +2,6 @@ package dev.drimoz.yafs.content.greenhouse;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
@@ -140,8 +139,10 @@ public class GreenhouseBlock extends MultiblockBlock {
     // Interface (Clics)
 
     /**
-     * L'item du palier suivant agrandit la serre ; un seau la remplit ; une graine ou un bloc va dans
-     * la première parcelle qui l'attend. Les parties renvoient leurs clics ici.
+     * Avec un item en main : celui du palier suivant agrandit la serre, un seau la remplit, le Port
+     * passe la main à son item (qui sait quel mur on vise). Tout le reste ouvre l'écran, comme une
+     * main vide : un bloc tenu ne doit jamais se poser contre la serre au lieu de l'ouvrir. Les
+     * parties renvoient leurs clics ici.
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
@@ -162,24 +163,12 @@ public class GreenhouseBlock extends MultiblockBlock {
         // Un seau, sur n'importe quel bloc : c'est le joueur, pas un tuyau ; pas besoin de port.
         if (FluidUtil.interactWithFluidHandler(player, hand, greenhouse.water())) return ItemInteractionResult.sidedSuccess(level.isClientSide);
 
-        if (!(stack.getItem() instanceof BlockItem item) || item.getBlock() instanceof GreenhouseBlock) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
-        }
-        if (level.isClientSide) return ItemInteractionResult.SUCCESS;
+        if (stack.getItem() instanceof PortItem) return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
 
-        // ponytail: interaction provisoire pour voir pousser en jeu, remplacée par l'écran (YAF-032).
-        int slot = Crops.of(item) != null ? GreenhouseBlockEntity.CROP : GreenhouseBlockEntity.SUBSTRATE;
-        for (int plot = 0; plot < greenhouse.plotCount(); plot++) {
-            if (greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + slot).isEmpty()) {
-                greenhouse.setPlotItem(plot, slot, stack.copyWithCount(1));
-                stack.consume(1, player);
-                return ItemInteractionResult.CONSUME;
-            }
-        }
-        return ItemInteractionResult.FAIL;
+        // Le jeu appelle alors useWithoutItem, qui ouvre l'écran.
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
-
-    /** Main vide, ou un item qui ne va pas en parcelle : l'écran. */
+    /** Main vide, ou n'importe quel item sans usage propre sur la serre : l'écran. */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) return InteractionResult.PASS;
