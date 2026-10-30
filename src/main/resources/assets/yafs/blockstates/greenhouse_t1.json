@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "yafs:block/greenhouse_t1" },
+    "facing=south": { "model": "yafs:block/greenhouse_t1" },
+    "facing=east": { "model": "yafs:block/greenhouse_t1" },
+    "facing=west": { "model": "yafs:block/greenhouse_t1" }
+  }
+}

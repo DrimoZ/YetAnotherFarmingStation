@@ -26,7 +26,7 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-001~~ | ✅ | M | **Porter le cadre multibloc** — **fait** de FactoryIO (`MultiblockShape`, `MultiblockBlock`, `MultiblockPartBlock`, `MultiblockPartBlockEntity`) vers NeoForge 1.21.1. Capabilities : enregistrement par `RegisterCapabilitiesEvent`, la partie renvoie celle du maître. | `MultiblockShapeTest` porté passe |
-| YAF-002 | P0 | S | **Serre P1 posable** : item, bloc maître, volume 3×3×3, modèle provisoire. | GameTests : pose bloquée si un bloc gêne ; casse depuis chaque partie, l'item tombe une seule fois |
+| ~~YAF-002~~ | ✅ | S | **Serre P1 posable** — **fait** : item, bloc maître, volume 3×3×3, modèle provisoire. | GameTests : pose bloquée si un bloc gêne ; casse depuis chaque partie, l'item tombe une seule fois |
 | YAF-003 | P0 | S | **Contour fantôme de pose** (client) : vert si `canPlace`, rouge sinon. | vu en `runClient` |
 | YAF-004 | P0 | XS | Onglet créatif, clés `en_us` / `fr_fr`. | `TranslationsTest` : les deux fichiers ont les mêmes clés |
 | YAF-005 | P1 | S | **Paliers P2 et P3** : définition palier → volume, parcelles, emplacements de module, ports, densité max. | GameTests : pose de P2 et P3 |
