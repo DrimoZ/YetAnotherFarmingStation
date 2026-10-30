@@ -83,9 +83,9 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-060 | P1 | M | **Item module** à composant + registre `yafs/module` ; emplacements dans l'onglet bleu, effet recalculé en direct. | un module ajouté en datapack apparaît et fonctionne |
-| YAF-061 | P1 | S | Lampe de croissance, Chauffage, Refroidisseur (FE). | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
-| YAF-062 | P1 | S | Collecteur de pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
+| 🟡 YAF-060 | P1 | M | **Item module** à composant + registre `yafs/module` ; emplacements dans l'onglet bleu, effet recalculé en direct. — **fait** (registre de datapack, rechargé au lancement du monde ; effets dans l'infobulle de l'item, l'effet sur la serre s'affichera avec l'onglet Environnement, YAF-033 ; onglet à voir en jeu) | un module ajouté en datapack apparaît et fonctionne |
+| ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
+| ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
 | YAF-063 | P2 | S | Accélérateur, cumulable, coût croissant. | JUnit : coût proportionnel |
 | YAF-064 | P2 | S | Densité et Capacité. | GameTest : densité ×2 double la récolte **et** la consommation |
 | YAF-065 | P2 | S | Composteur (résidus → engrais). | GameTest : la boucle tourne seule |

@@ -3,6 +3,8 @@ package dev.drimoz.yafs.content.greenhouse;
 import com.mojang.serialization.Codec;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.module.ModuleDefinition;
+import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.core.Climate;
 import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
@@ -11,6 +13,9 @@ import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.protocol.Packet;
@@ -105,14 +110,33 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** L'énergie des modules (YAF-061) ; elle n'entre que par un port d'énergie. */
     public static final int ENERGY_CAPACITY = 10_000;
-    private final EnergyStorage energy = new EnergyStorage(ENERGY_CAPACITY, 1_000, 0) {
+    private final Battery energy = new Battery();
+
+    /** Une réserve qu'on remplit de l'extérieur et que seuls les modules vident. */
+    public final class Battery extends EnergyStorage {
+
+        Battery() {
+            super(ENERGY_CAPACITY, 1_000, 0);
+        }
+
         @Override
         public int receiveEnergy(int toReceive, boolean simulate) {
             int received = super.receiveEnergy(toReceive, simulate);
             if (received > 0 && !simulate) setChanged();
             return received;
         }
-    };
+
+        /** Tout ou rien : le montant entier, ou rien n'est pris. */
+        boolean spend(int amount) {
+            if (amount > this.energy) return false;
+            this.energy -= amount;
+            setChanged();
+            return true;
+        }
+    }
+
+    /** Un module par emplacement, un seul de chaque sorte. */
+    private final ItemStackHandler modules;
 
     // Ce que voient les ports (YAF-051). Des objets fixes : les caches de capability des voisins les gardent.
     private final IItemHandler inputPort = new InputPort();
@@ -136,6 +160,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private Conditions environment;
     private boolean raining;
 
+    /** Ce que les modules ont fait de l'environnement au dernier pas. */
+    @Nullable
+    private Conditions effective;
+    private int lightFloor;
+    private double temperatureShift;
+
     public GreenhouseBlockEntity(BlockPos pos, BlockState state) {
         super(YafsBlocks.GREENHOUSE_ENTITY.get(), pos, state);
 
@@ -145,6 +175,27 @@ public class GreenhouseBlockEntity extends BlockEntity {
             protected void onContentsChanged(int slot) {
                 setChanged();
                 syncToClient();
+            }
+        };
+        this.modules = new ItemStackHandler(this.tier.moduleSlots()) {
+            @Override
+            protected void onContentsChanged(int slot) {
+                setChanged();
+            }
+
+            @Override
+            public int getSlotLimit(int slot) {
+                return 1;
+            }
+
+            @Override
+            public boolean isItemValid(int slot, ItemStack stack) {
+                ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
+                if (kind == null) return false;
+                for (int other = 0; other < getSlots(); other++) {
+                    if (other != slot && kind.equals(ModuleItem.kind(getStackInSlot(other)))) return false;
+                }
+                return true;
             }
         };
         this.growth = new PlotGrowth[this.tier.plots()];
@@ -181,8 +232,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.water;
     }
 
-    public EnergyStorage energy() {
+    public Battery energy() {
         return this.energy;
+    }
+
+    public ItemStackHandler modules() {
+        return this.modules;
     }
 
     /** Ce qu'expose un port dans ce mode, pour cette capability ; {@code null} si rien. */
@@ -222,6 +277,16 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     public void setEnvironment(Conditions environment) {
         this.environment = environment;
+    }
+
+    /** Impose la pluie jusqu'au prochain relevé ; pour les GameTests, comme {@link #setEnvironment}. */
+    public void setRaining(boolean raining) {
+        this.raining = raining;
+    }
+
+    /** L'environnement que voient les parcelles : celui du lieu, corrigé par les modules qui tournent. */
+    public Conditions effectiveEnvironment() {
+        return this.effective != null ? this.effective : this.environment;
     }
 
     /** Croissance et statut de chaque parcelle, lus à la demande par le menu ouvert. */
@@ -283,8 +348,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
+        runModules(elapsed);
+
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
         this.environment = new Conditions(this.environment.light(), this.environment.temperature(), waterCoverage());
+        this.effective = new Conditions(Math.max(this.environment.light(), this.lightFloor),
+                this.environment.temperature() + this.temperatureShift, this.environment.water());
 
         boolean visibleChange = false;
         for (int plot = 0; plot < this.growth.length; plot++) {
@@ -295,6 +364,31 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
         setChanged();
         if (visibleChange) syncToClient();
+    }
+
+    /**
+     * Chaque module tourne s'il a son énergie pour le pas entier, sinon il ne fait rien. Tous les
+     * effets se cumulent, sauf la lumière, dont on garde le plancher le plus haut.
+     */
+    private void runModules(int elapsed) {
+        this.lightFloor = 0;
+        this.temperatureShift = 0D;
+        if (this.level == null) return;
+
+        Registry<ModuleDefinition> registry = this.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
+        if (registry == null) return;
+
+        for (int slot = 0; slot < this.modules.getSlots(); slot++) {
+            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(this.modules.getStackInSlot(slot));
+            ModuleDefinition module = kind != null ? registry.get(kind) : null;
+            if (module == null || !this.energy.spend(module.energyPerTick() * elapsed)) continue;
+
+            this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
+            this.temperatureShift += module.temperatureShift();
+            if (this.raining && module.rainCollection() > 0) {
+                this.water.fill(new FluidStack(Fluids.WATER, module.rainCollection()), IFluidHandler.FluidAction.EXECUTE);
+            }
+        }
     }
 
     /**
@@ -343,7 +437,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (known == null || !known.accepts(substrate.getItem()) || !known.catalysedBy(catalyst.getItem())) return PlotStatus.PROBLEM;
         if (this.environment.water() <= 0D && !this.growth[plot].isMature()) return PlotStatus.PROBLEM;
 
-        double efficiency = Efficiency.evaluate(known.requirements(), this.environment).value();
+        double efficiency = Efficiency.evaluate(known.requirements(), this.effective).value();
         PlotGrowth current = this.growth[plot].advance(efficiency * elapsed / BASE_TICKS);
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
@@ -531,9 +625,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     // Casse
 
-    /** Tout ce que contient la serre tombe au sol : parcelles et sortie. */
+    /** Tout ce que contient la serre tombe au sol : parcelles, sortie, modules. */
     public void dropContents(Level level, BlockPos pos) {
-        for (ItemStackHandler handler : List.of(this.plots, this.output)) {
+        for (ItemStackHandler handler : List.of(this.plots, this.output, this.modules)) {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), handler.getStackInSlot(slot));
             }
@@ -549,6 +643,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("output", this.output.serializeNBT(registries));
         tag.put("water", this.water.writeToNBT(registries, new CompoundTag()));
         tag.put("energy", this.energy.serializeNBT(registries));
+        tag.put("modules", this.modules.serializeNBT(registries));
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
     }
 
@@ -574,6 +669,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (tag.contains("output")) this.output.deserializeNBT(registries, tag.getCompound("output"));
         if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
         if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
+        if (tag.contains("modules")) copyInto(this.modules, registries, tag.getCompound("modules"));
 
         // Une croissance illisible repart de zéro : on perd au pire une récolte, jamais un item.
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());
@@ -587,10 +683,14 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * la taille sauvegardée, celle de l'ancien palier quand la serre vient de grandir.
      */
     private void loadPlots(HolderLookup.Provider registries, CompoundTag tag) {
+        copyInto(this.plots, registries, tag);
+    }
+
+    private static void copyInto(ItemStackHandler handler, HolderLookup.Provider registries, CompoundTag tag) {
         ItemStackHandler saved = new ItemStackHandler();
         saved.deserializeNBT(registries, tag);
-        for (int slot = 0; slot < this.plots.getSlots(); slot++) {
-            this.plots.setStackInSlot(slot, slot < saved.getSlots() ? saved.getStackInSlot(slot) : ItemStack.EMPTY);
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            handler.setStackInSlot(slot, slot < saved.getSlots() ? saved.getStackInSlot(slot) : ItemStack.EMPTY);
         }
     }
 }

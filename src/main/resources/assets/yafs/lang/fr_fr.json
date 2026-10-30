@@ -20,5 +20,15 @@
   "yafs.port.mode.output_harvest": "Port : sortie, récolte seule",
   "yafs.port.mode.output_seeds": "Port : sortie, graines en trop seules",
   "yafs.port.mode.fluid_input": "Port : entrée d'eau",
-  "yafs.port.mode.energy_input": "Port : entrée d'énergie"
+  "yafs.port.mode.energy_input": "Port : entrée d'énergie",
+  "item.yafs.module": "Module de serre",
+  "module.yafs.grow_lamp": "Lampe de croissance",
+  "module.yafs.heater": "Chauffage",
+  "module.yafs.cooler": "Refroidisseur",
+  "module.yafs.rain_collector": "Collecteur de pluie",
+  "yafs.module.light_floor": "Lumière jamais sous %s",
+  "yafs.module.temperature_shift": "Température %s °C",
+  "yafs.module.rain_collection": "Recueille %s mB de pluie par pas",
+  "yafs.module.energy_per_tick": "Consomme %s FE/t",
+  "yafs.gui.modules": "Modules"
 }

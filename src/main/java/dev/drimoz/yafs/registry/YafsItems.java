@@ -2,7 +2,9 @@ package dev.drimoz.yafs.registry;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.PortItem;
+import dev.drimoz.yafs.content.module.ModuleItem;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -15,6 +17,8 @@ public final class YafsItems {
     public static final DeferredItem<BlockItem> GREENHOUSE_T3 = ITEMS.registerSimpleBlockItem(YafsBlocks.GREENHOUSE_T3);
 
     public static final DeferredItem<PortItem> PORT = ITEMS.registerItem("port", PortItem::new);
+
+    public static final DeferredItem<ModuleItem> MODULE = ITEMS.registerItem("module", ModuleItem::new, new Item.Properties().stacksTo(16));
 
     private YafsItems() {}
 }

@@ -1,5 +1,6 @@
 package dev.drimoz.yafs.content.greenhouse;
 
+import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsMenus;
 import dev.drimoz.yafs.shared.GuiMetrics;
@@ -30,6 +31,11 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int OUTPUT_COLUMN = 6;
     public static final int OUTPUT_SIDE = 3;
 
+    /** L'onglet bleu des modules, collé à droite de la fenêtre : deux colonnes de slots. */
+    public static final int MODULE_TAB_X = GuiMetrics.WIDTH + GuiMetrics.TAB_GAP;
+    public static final int MODULE_COLUMNS = 2;
+    public static final int MODULE_TAB_WIDTH = 2 * GuiMetrics.TAB_PADDING + MODULE_COLUMNS * GuiMetrics.SLOT;
+
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
     public static final int DATA_PER_PLOT = 2;
@@ -41,10 +47,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     private final BlockPos pos;
     private final ContainerLevelAccess access;
     private final ContainerData data;
+    /** Sortie puis modules ; l'inventaire du joueur vient après. */
+    private final int containerSlots;
 
     /** Côté serveur. */
     public GreenhouseMenu(int id, Inventory inventory, GreenhouseBlockEntity greenhouse) {
-        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.menuData(),
+        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.modules(), greenhouse.menuData(),
                 ContainerLevelAccess.create(greenhouse.getLevel(), greenhouse.getBlockPos()));
     }
 
@@ -54,10 +62,27 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, GreenhouseTier tier) {
-        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
+        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), clientModules(tier),
+                new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
     }
 
-    private GreenhouseMenu(int id, Inventory inventory, GreenhouseTier tier, BlockPos pos, IItemHandler output, ContainerData data, ContainerLevelAccess access) {
+    /** Côté client, la même règle qu'au serveur, pour que le slot refuse sans aller-retour. */
+    private static ItemStackHandler clientModules(GreenhouseTier tier) {
+        return new ItemStackHandler(tier.moduleSlots()) {
+            @Override
+            public int getSlotLimit(int slot) {
+                return 1;
+            }
+
+            @Override
+            public boolean isItemValid(int slot, ItemStack stack) {
+                return ModuleItem.kind(stack) != null;
+            }
+        };
+    }
+
+    private GreenhouseMenu(int id, Inventory inventory, GreenhouseTier tier, BlockPos pos, IItemHandler output, IItemHandler modules,
+                           ContainerData data, ContainerLevelAccess access) {
         super(YafsMenus.GREENHOUSE.get(), id);
 
         this.tier = tier;
@@ -75,6 +100,13 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 }
             });
         }
+
+        for (int slot = 0; slot < modules.getSlots(); slot++) {
+            int x = MODULE_TAB_X + GuiMetrics.TAB_PADDING + (slot % MODULE_COLUMNS) * GuiMetrics.SLOT + 1;
+            int y = GuiMetrics.TAB_TOP + GuiMetrics.TAB_HEADER + (slot / MODULE_COLUMNS) * GuiMetrics.SLOT + 1;
+            addSlot(new SlotItemHandler(modules, slot, x, y));
+        }
+        this.containerSlots = OUTPUT_SLOTS + modules.getSlots();
 
         int inventoryY = GuiMetrics.inventoryY(contentBottom());
         for (int row = 0; row < 3; row++) {
@@ -138,15 +170,22 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return worst;
     }
 
-    /** Maj-clic : de la sortie vers l'inventaire ; rien ne va dans la sortie. */
+    public int moduleSlots() {
+        return this.containerSlots - OUTPUT_SLOTS;
+    }
+
+    /** Maj-clic : sortie et modules vers l'inventaire ; un module de l'inventaire vers les modules. */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = this.slots.get(index);
-        if (index >= OUTPUT_SLOTS || !slot.hasItem()) return ItemStack.EMPTY;
+        if (!slot.hasItem()) return ItemStack.EMPTY;
 
         ItemStack stack = slot.getItem();
         ItemStack original = stack.copy();
-        if (!moveItemStackTo(stack, OUTPUT_SLOTS, OUTPUT_SLOTS + PLAYER_SLOTS, true)) return ItemStack.EMPTY;
+        boolean moved = index < this.containerSlots
+                ? moveItemStackTo(stack, this.containerSlots, this.containerSlots + PLAYER_SLOTS, true)
+                : ModuleItem.kind(stack) != null && moveItemStackTo(stack, OUTPUT_SLOTS, this.containerSlots, false);
+        if (!moved) return ItemStack.EMPTY;
 
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
         else slot.setChanged();

@@ -64,9 +64,28 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         for (int slot = 0; slot < GreenhouseBlockEntity.OUTPUT_SLOTS; slot++) {
             GuiSprites.slot(graphics, left + this.menu.slots.get(slot).x, top + this.menu.slots.get(slot).y);
         }
+        if (this.menu.moduleSlots() > 0) {
+            GuiSprites.tab(graphics, left + GreenhouseMenu.MODULE_TAB_X, top + GuiMetrics.TAB_TOP, GreenhouseMenu.MODULE_TAB_WIDTH, moduleTabHeight(), GuiTheme.TAB_AUGMENTS);
+            GuiTheme.tabLabel(graphics, this.font, Component.translatable("yafs.gui.modules"),
+                    left + GreenhouseMenu.MODULE_TAB_X + GuiMetrics.TAB_PADDING, top + GuiMetrics.TAB_TOP + 7);
+        }
         for (int slot = GreenhouseBlockEntity.OUTPUT_SLOTS; slot < this.menu.slots.size(); slot++) {
             GuiSprites.slot(graphics, left + this.menu.slots.get(slot).x, top + this.menu.slots.get(slot).y);
         }
+    }
+
+    private int moduleTabHeight() {
+        int rows = (this.menu.moduleSlots() + GreenhouseMenu.MODULE_COLUMNS - 1) / GreenhouseMenu.MODULE_COLUMNS;
+        return GuiMetrics.TAB_HEADER + rows * GuiMetrics.SLOT + GuiMetrics.TAB_PADDING;
+    }
+
+    /** L'onglet dépasse de la fenêtre : un clic dedans n'est pas un clic dehors, qui jetterait l'item tenu. */
+    @Override
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
+        int tabX = guiLeft + GreenhouseMenu.MODULE_TAB_X;
+        int tabY = guiTop + GuiMetrics.TAB_TOP;
+        boolean inTab = mouseX >= tabX && mouseX < tabX + GreenhouseMenu.MODULE_TAB_WIDTH && mouseY >= tabY && mouseY < tabY + moduleTabHeight();
+        return !inTab && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
     }
 
     // Parcelles
