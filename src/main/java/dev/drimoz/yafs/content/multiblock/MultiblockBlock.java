@@ -105,6 +105,42 @@ public abstract class MultiblockBlock extends BaseEntityBlock {
         }
     }
 
+    // Interface (Agrandissement)
+
+    /** {@code bigger} peut-il être posé par-dessus ce multibloc pour l'agrandir ? Non, par défaut. */
+    public boolean growsInto(MultiblockBlock bigger) {
+        return false;
+    }
+
+    /**
+     * Ce volume plus grand tient-il autour de ce maître ? Ses propres parties ne gênent pas ; le
+     * reste doit être remplaçable et libre d'entité, comme à la pose.
+     */
+    public boolean canGrowInto(Level level, BlockPos master, Direction facing, MultiblockShape bigger) {
+        for (BlockPos pos : bigger.positions(master, facing)) {
+            if (pos.equals(master)) continue;
+            if (level.isOutsideBuildHeight(pos)) return false;
+            if (level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part && master.equals(part.masterPos())) continue;
+            if (!level.getBlockState(pos).canBeReplaced()) return false;
+            if (!level.isUnobstructed(null, Shapes.block().move(pos.getX(), pos.getY(), pos.getZ()))) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Retire les parties sans casser le maître. Chaque partie est détachée d'abord : sinon, en
+     * disparaissant, elle croirait le volume cassé et emporterait le maître avec elle.
+     */
+    public void detachParts(Level level, BlockPos master, Direction facing) {
+        for (BlockPos pos : this.shape.positions(master, facing)) {
+            if (pos.equals(master)) continue;
+            if (level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part && master.equals(part.masterPos())) {
+                part.detach();
+                level.removeBlock(pos, false);
+            }
+        }
+    }
+
     // Interface (Casse)
 
     /**

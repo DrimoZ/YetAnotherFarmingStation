@@ -47,8 +47,6 @@ import java.util.List;
  */
 public class GreenhouseBlockEntity extends BlockEntity {
 
-    /** P1. Les autres paliers arrivent avec YAF-005. */
-    public static final int PLOTS = 4;
 
     public static final int CROP = 0;
     public static final int SUBSTRATE = 1;
@@ -83,14 +81,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     private static final Codec<List<PlotGrowth>> GROWTH_CODEC = PlotGrowth.CODEC.listOf();
 
+    private final GreenhouseTier tier;
+
     /** Le client voit ce que contiennent les parcelles : c'est ce qu'il dessine. */
-    private final ItemStackHandler plots = new ItemStackHandler(PLOTS * SLOTS_PER_PLOT) {
-        @Override
-        protected void onContentsChanged(int slot) {
-            setChanged();
-            syncToClient();
-        }
-    };
+    private final ItemStackHandler plots;
 
     private final ItemStackHandler output = new ItemStackHandler(OUTPUT_SLOTS) {
         @Override
@@ -109,8 +103,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** L'eau bue, en fractions de mB : un pas de croissance en boit moins d'un. */
     private double thirst;
 
-    private final PlotGrowth[] growth = new PlotGrowth[PLOTS];
-    private final PlotStatus[] status = new PlotStatus[PLOTS];
+    private final PlotGrowth[] growth;
+    private final PlotStatus[] status;
+
+    /** Le palier suivant prend la place : rien ne doit tomber (YAF-006). */
+    private boolean upgrading;
 
     private int ticks;
 
@@ -121,8 +118,34 @@ public class GreenhouseBlockEntity extends BlockEntity {
     public GreenhouseBlockEntity(BlockPos pos, BlockState state) {
         super(YafsBlocks.GREENHOUSE_ENTITY.get(), pos, state);
 
+        this.tier = ((GreenhouseBlock) state.getBlock()).tier();
+        this.plots = new ItemStackHandler(this.tier.plots() * SLOTS_PER_PLOT) {
+            @Override
+            protected void onContentsChanged(int slot) {
+                setChanged();
+                syncToClient();
+            }
+        };
+        this.growth = new PlotGrowth[this.tier.plots()];
+        this.status = new PlotStatus[this.tier.plots()];
         Arrays.fill(this.growth, PlotGrowth.SOWN);
         Arrays.fill(this.status, PlotStatus.WAITING);
+    }
+
+    public GreenhouseTier tier() {
+        return this.tier;
+    }
+
+    public int plotCount() {
+        return this.growth.length;
+    }
+
+    void startUpgrade() {
+        this.upgrading = true;
+    }
+
+    boolean isUpgrading() {
+        return this.upgrading;
     }
 
     public IItemHandler plots() {
@@ -167,7 +190,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return new ContainerData() {
             @Override
             public int get(int index) {
-                if (index == GreenhouseMenu.WATER_DATA) return GreenhouseBlockEntity.this.water.getFluidAmount();
+                if (index == GreenhouseMenu.waterData(GreenhouseBlockEntity.this.tier)) return GreenhouseBlockEntity.this.water.getFluidAmount();
 
                 int plot = index / GreenhouseMenu.DATA_PER_PLOT;
                 return index % GreenhouseMenu.DATA_PER_PLOT == 0
@@ -182,7 +205,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             @Override
             public int getCount() {
-                return GreenhouseMenu.DATA_SIZE;
+                return GreenhouseMenu.dataSize(GreenhouseBlockEntity.this.tier);
             }
         };
     }
@@ -225,7 +248,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.environment = new Conditions(this.environment.light(), this.environment.temperature(), waterCoverage());
 
         boolean visibleChange = false;
-        for (int plot = 0; plot < PLOTS; plot++) {
+        for (int plot = 0; plot < this.growth.length; plot++) {
             PlotGrowth before = this.growth[plot];
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
             visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
@@ -363,15 +386,27 @@ public class GreenhouseBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        this.plots.deserializeNBT(registries, tag.getCompound("plots"));
+        loadPlots(registries, tag.getCompound("plots"));
         // Absente du paquet de synchronisation : le client garde sa sortie vide plutôt que de la vider.
         if (tag.contains("output")) this.output.deserializeNBT(registries, tag.getCompound("output"));
         if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
 
         // Une croissance illisible repart de zéro : on perd au pire une récolte, jamais un item.
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());
-        for (int plot = 0; plot < PLOTS; plot++) {
+        for (int plot = 0; plot < this.growth.length; plot++) {
             this.growth[plot] = plot < saved.size() ? saved.get(plot) : PlotGrowth.SOWN;
+        }
+    }
+
+    /**
+     * Copiées emplacement par emplacement : {@code deserializeNBT} redimensionnerait les parcelles à
+     * la taille sauvegardée, celle de l'ancien palier quand la serre vient de grandir.
+     */
+    private void loadPlots(HolderLookup.Provider registries, CompoundTag tag) {
+        ItemStackHandler saved = new ItemStackHandler();
+        saved.deserializeNBT(registries, tag);
+        for (int slot = 0; slot < this.plots.getSlots(); slot++) {
+            this.plots.setStackInSlot(slot, slot < saved.getSlots() ? saved.getStackInSlot(slot) : ItemStack.EMPTY);
         }
     }
 }

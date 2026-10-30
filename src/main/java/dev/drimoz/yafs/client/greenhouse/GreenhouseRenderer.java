@@ -3,8 +3,11 @@ package dev.drimoz.yafs.client.greenhouse;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
+import dev.drimoz.yafs.content.greenhouse.GreenhouseTier;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -16,14 +19,14 @@ import net.neoforged.neoforge.client.model.data.ModelData;
 
 /**
  * Le maître dessine les parcelles : un carré de substrat et, dessus, la culture au stade de sa
- * croissance, avec le modèle du jeu. Prototype de YAF-040 : grille 2×2 de la serre P1, aucun
+ * croissance, avec le modèle du jeu. Prototype de YAF-040 : grille du palier, aucun
  * niveau de détail selon la distance (YAF-041). Le type de rendu {@code null} laisse chaque modèle
  * choisir le sien (cutout pour les cultures).
  */
 public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEntity> {
 
-    /** Décalage des centres de case par rapport au centre de la serre, en blocs. */
-    private static final float CELL = 0.6F;
+    /** Marge entre le bord du volume et la grille, en blocs : 1,2 bloc par case en P1, 1,6 en P3. */
+    private static final float MARGIN = 0.6F;
     /** Le dessus du socle du modèle provisoire : 2 pixels. */
     private static final float FLOOR = 2F / 16F;
     private static final float SOIL = 0.25F;
@@ -37,12 +40,19 @@ public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEn
     @Override
     public void render(GreenhouseBlockEntity greenhouse, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffers, int packedLight, int packedOverlay) {
-        for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
+        GreenhouseTier tier = greenhouse.tier();
+        int side = tier.plotSide();
+        float spacing = (tier.shape().width() - MARGIN) / side;
+
+        // ponytail: au-delà de P1, le modèle provisoire n'a qu'un socle ; un contour dit le volume (YAF-090).
+        if (tier != GreenhouseTier.I) outline(greenhouse, poseStack, buffers);
+
+        for (int plot = 0; plot < greenhouse.plotCount(); plot++) {
             BlockState crop = greenhouse.displayedState(plot);
             if (crop == null) continue;
 
             poseStack.pushPose();
-            poseStack.translate(plot % 2 == 0 ? -CELL : CELL, FLOOR, plot / 2 == 0 ? -CELL : CELL);
+            poseStack.translate((plot % side - (side - 1) / 2F) * spacing, FLOOR, (plot / side - (side - 1) / 2F) * spacing);
 
             ItemStack substrate = greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.SUBSTRATE);
             if (substrate.getItem() instanceof BlockItem soil) {
@@ -56,6 +66,11 @@ public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEn
             this.blocks.renderSingleBlock(crop, poseStack, buffers, packedLight, packedOverlay, ModelData.EMPTY, null);
             poseStack.popPose();
         }
+    }
+
+    private void outline(GreenhouseBlockEntity greenhouse, PoseStack poseStack, MultiBufferSource buffers) {
+        AABB bounds = getRenderBoundingBox(greenhouse).move(-greenhouse.getBlockPos().getX(), -greenhouse.getBlockPos().getY(), -greenhouse.getBlockPos().getZ());
+        LevelRenderer.renderLineBox(poseStack, buffers.getBuffer(RenderType.lines()), bounds, 0.75F, 0.9F, 0.75F, 0.6F);
     }
 
     /** Le volume entier : sans quoi les plantes disparaîtraient dès que le maître sort de l'écran. */

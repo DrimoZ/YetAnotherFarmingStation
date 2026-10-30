@@ -4,6 +4,7 @@ import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseMenu;
+import dev.drimoz.yafs.content.greenhouse.GreenhouseTier;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.core.Climate;
@@ -98,14 +99,14 @@ public class GreenhouseGameTests {
     public static void breakingAnyPositionRemovesEverythingAndDropsOnce(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos master = helper.absolutePos(MASTER);
-        AABB area = GreenhouseBlock.TIER_1.bounds(master, Direction.NORTH).inflate(2);
+        AABB area = GreenhouseTier.I.shape().bounds(master, Direction.NORTH).inflate(2);
 
-        for (BlockPos broken : GreenhouseBlock.TIER_1.positions(master, Direction.NORTH)) {
+        for (BlockPos broken : GreenhouseTier.I.shape().positions(master, Direction.NORTH)) {
             place(helper);
 
             level.destroyBlock(broken, true);
 
-            for (BlockPos pos : GreenhouseBlock.TIER_1.positions(master, Direction.NORTH)) {
+            for (BlockPos pos : GreenhouseTier.I.shape().positions(master, Direction.NORTH)) {
                 helper.assertTrue(level.getBlockState(pos).isAir(), "Reste un bloc en " + pos + " après la casse de " + broken);
             }
 
@@ -126,7 +127,7 @@ public class GreenhouseGameTests {
     public static void breakingDropsTheContentsOnce(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos master = helper.absolutePos(MASTER);
-        AABB area = GreenhouseBlock.TIER_1.bounds(master, Direction.NORTH).inflate(2);
+        AABB area = GreenhouseTier.I.shape().bounds(master, Direction.NORTH).inflate(2);
 
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
@@ -272,7 +273,7 @@ public class GreenhouseGameTests {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
-        helper.setBlock(MASTER.above(GreenhouseBlock.TIER_1.height()), Blocks.STONE);
+        helper.setBlock(MASTER.above(GreenhouseTier.I.shape().height()), Blocks.STONE);
 
         helper.succeedWhen(() -> {
             greenhouse.sampleEnvironment();
@@ -414,6 +415,6 @@ public class GreenhouseGameTests {
 
     private static List<BlockPos> volume(GameTestHelper helper) {
         Direction facing = helper.getBlockState(MASTER).getValue(MultiblockBlock.FACING);
-        return GreenhouseBlock.TIER_1.positions(helper.absolutePos(MASTER), facing);
+        return GreenhouseTier.I.shape().positions(helper.absolutePos(MASTER), facing);
     }
 }

@@ -9,5 +9,7 @@
   "yafs.gui.status.blocked": "Bloquée : la sortie est pleine",
   "yafs.gui.status.problem": "Ne peut pas pousser ici",
   "yafs.gui.status.off": "Éteinte",
-  "yafs.gui.water": "Eau : %s / %s mB"
+  "yafs.gui.water": "Eau : %s / %s mB",
+  "block.yafs.greenhouse_t2": "Serre (palier II)",
+  "block.yafs.greenhouse_t3": "Serre (palier III)"
 }

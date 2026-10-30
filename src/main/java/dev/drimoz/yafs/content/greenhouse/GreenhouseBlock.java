@@ -1,42 +1,51 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
-import dev.drimoz.yafs.content.multiblock.MultiblockShape;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.fluids.FluidUtil;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.fluids.FluidUtil;
 
 import javax.annotation.Nullable;
 
-/**
- * Le maître d'une serre. Un palier, un volume : P1 seulement pour l'instant, les autres arrivent
- * avec YAF-005.
- */
+/** Le maître d'une serre, un bloc par {@link GreenhouseTier palier}. */
 public class GreenhouseBlock extends MultiblockBlock {
 
-    public static final MultiblockShape TIER_1 = new MultiblockShape(3, 3, 3);
+    public static final MapCodec<GreenhouseBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            GreenhouseTier.CODEC.fieldOf("tier").forGetter(GreenhouseBlock::tier),
+            propertiesCodec()
+    ).apply(instance, GreenhouseBlock::new));
 
-    public static final MapCodec<GreenhouseBlock> CODEC = simpleCodec(GreenhouseBlock::new);
+    private final GreenhouseTier tier;
 
-    public GreenhouseBlock(Properties properties) {
-        super(properties, TIER_1);
+    public GreenhouseBlock(GreenhouseTier tier, Properties properties) {
+        super(properties, tier.shape());
+
+        this.tier = tier;
+    }
+
+    public GreenhouseTier tier() {
+        return this.tier;
     }
 
     @Override
@@ -57,24 +66,75 @@ public class GreenhouseBlock extends MultiblockBlock {
                 : createTickerHelper(type, YafsBlocks.GREENHOUSE_ENTITY.get(), (l, pos, s, greenhouse) -> greenhouse.serverTick());
     }
 
+    // Interface (Monter de palier, YAF-006)
+
+    /** Le bloc de serre du palier suivant, si {@code stack} en est l'item. */
+    @Nullable
+    public GreenhouseBlock upgradeFrom(ItemStack stack) {
+        return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof GreenhouseBlock next
+                && growsInto(next) ? next : null;
+    }
+
+    @Override
+    public boolean growsInto(MultiblockBlock bigger) {
+        return bigger instanceof GreenhouseBlock next && next.tier == this.tier.next();
+    }
+
+    public boolean canUpgrade(Level level, BlockPos master, GreenhouseBlock next) {
+        return canGrowInto(level, master, level.getBlockState(master).getValue(FACING), next.shape());
+    }
+
     /**
-     * Clic avec une graine ou un bloc : posé dans la première parcelle qui l'attend. Les parties
-     * renvoient leurs clics ici, donc n'importe quel bloc de la serre convient.
+     * Remplace le maître par celui du palier suivant, contenu compris : les parties partent sans
+     * casser le volume, le nouveau maître reprend la sauvegarde de l'ancien, puis pose ses parties.
      */
-    // ponytail: interaction provisoire pour voir pousser en jeu, remplacée par l'écran (YAF-031, YAF-032).
+    private void upgrade(Level level, BlockPos master, GreenhouseBlock next, GreenhouseBlockEntity old) {
+        Direction facing = level.getBlockState(master).getValue(FACING);
+        CompoundTag saved = old.saveWithoutMetadata(level.registryAccess());
+
+        old.startUpgrade();
+        detachParts(level, master, facing);
+        level.setBlock(master, next.defaultBlockState().setValue(FACING, facing), Block.UPDATE_ALL);
+
+        if (level.getBlockEntity(master) instanceof GreenhouseBlockEntity grown) {
+            grown.loadWithComponents(saved, level.registryAccess());
+            grown.setChanged();
+        }
+        next.placeParts(level, master, facing);
+    }
+
+    // Interface (Clics)
+
+    /**
+     * L'item du palier suivant agrandit la serre ; un seau la remplit ; une graine ou un bloc va dans
+     * la première parcelle qui l'attend. Les parties renvoient leurs clics ici.
+     */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        // Un seau d'eau remplit la réserve ; vanilla et NeoForge font tout le travail.
+        if (!(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+
+        GreenhouseBlock next = upgradeFrom(stack);
+        if (next != null) {
+            if (!canUpgrade(level, pos, next)) return ItemInteractionResult.FAIL;
+            if (!level.isClientSide) {
+                upgrade(level, pos, next, greenhouse);
+                stack.consume(1, player);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+
         if (FluidUtil.interactWithFluidHandler(player, hand, level, pos, null)) return ItemInteractionResult.sidedSuccess(level.isClientSide);
 
-        if (!(stack.getItem() instanceof BlockItem item) || stack.is(asItem())
-                || !(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) {
+        if (!(stack.getItem() instanceof BlockItem item) || item.getBlock() instanceof GreenhouseBlock) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (level.isClientSide) return ItemInteractionResult.SUCCESS;
 
+        // ponytail: interaction provisoire pour voir pousser en jeu, remplacée par l'écran (YAF-032).
         int slot = Crops.of(item) != null ? GreenhouseBlockEntity.CROP : GreenhouseBlockEntity.SUBSTRATE;
-        for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
+        for (int plot = 0; plot < greenhouse.plotCount(); plot++) {
             if (greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + slot).isEmpty()) {
                 greenhouse.setPlotItem(plot, slot, stack.copyWithCount(1));
                 stack.consume(1, player);
@@ -84,22 +144,31 @@ public class GreenhouseBlock extends MultiblockBlock {
         return ItemInteractionResult.FAIL;
     }
 
-    /** Main vide, ou un item qui ne va pas en parcelle : l'écran. Les parties renvoient leurs clics ici. */
+    /** Main vide, ou un item qui ne va pas en parcelle : l'écran. */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) return InteractionResult.PASS;
 
         if (player instanceof ServerPlayer serverPlayer) {
             serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new GreenhouseMenu(id, inventory, greenhouse), getName()),
-                    buffer -> buffer.writeBlockPos(pos));
+                    buffer -> {
+                        buffer.writeBlockPos(pos);
+                        buffer.writeEnum(this.tier);
+                    });
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
-    /** Le contenu tombe avant que le block entity ne disparaisse ; le loot, lui, ne porte que l'item. */
+    // Interface (Casse)
+
+    /**
+     * Le contenu tombe avant que le block entity ne disparaisse ; le loot, lui, ne porte que l'item.
+     * Rien ne tombe quand c'est le palier suivant qui prend la place.
+     */
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse
+                && !greenhouse.isUpgrading()) {
             greenhouse.dropContents(level, pos);
         }
 

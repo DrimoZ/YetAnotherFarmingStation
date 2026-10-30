@@ -23,15 +23,14 @@ import java.util.Locale;
  */
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
-    private static final int GAUGE_HEIGHT = GreenhouseMenu.CONTENT_ROWS * GuiMetrics.SLOT;
 
     public GreenhouseScreen(GreenhouseMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
 
         this.imageWidth = GuiMetrics.WIDTH;
-        this.imageHeight = GuiMetrics.height(GreenhouseMenu.CONTENT_BOTTOM);
+        this.imageHeight = GuiMetrics.height(menu.contentBottom());
         this.titleLabelY = GuiMetrics.TITLE_Y;
-        this.inventoryLabelY = GuiMetrics.inventoryLabelY(GreenhouseMenu.CONTENT_BOTTOM);
+        this.inventoryLabelY = GuiMetrics.inventoryLabelY(menu.contentBottom());
     }
 
     @Override
@@ -55,10 +54,10 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiSprites.panel(graphics, left, top, this.imageWidth, this.imageHeight);
         GuiSprites.statusLight(graphics, theme(this.menu.worstStatus()), left + GuiMetrics.LED_X, top + GuiMetrics.LED_Y);
 
-        GuiSprites.gauge(graphics, left + GuiMetrics.GAUGE_X, top + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, GAUGE_HEIGHT,
+        GuiSprites.gauge(graphics, left + GuiMetrics.GAUGE_X, top + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight(),
                 this.menu.water() / (float) GreenhouseBlockEntity.TANK_CAPACITY);
 
-        for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
+        for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
             renderPlot(graphics, plot, left + plotX(plot), top + plotY(plot));
         }
 
@@ -94,12 +93,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     private void renderPlotTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         int gaugeX = this.leftPos + GuiMetrics.GAUGE_X;
         int gaugeY = this.topPos + GuiMetrics.CONTENT_TOP;
-        if (mouseX >= gaugeX && mouseX < gaugeX + GuiMetrics.GAUGE_WIDTH && mouseY >= gaugeY && mouseY < gaugeY + GAUGE_HEIGHT) {
+        if (mouseX >= gaugeX && mouseX < gaugeX + GuiMetrics.GAUGE_WIDTH && mouseY >= gaugeY && mouseY < gaugeY + gaugeHeight()) {
             graphics.renderTooltip(this.font, Component.translatable("yafs.gui.water", this.menu.water(), GreenhouseBlockEntity.TANK_CAPACITY), mouseX, mouseY);
             return;
         }
 
-        for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
+        for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
             int x = this.leftPos + plotX(plot);
             int y = this.topPos + plotY(plot);
             if (mouseX < x || mouseX >= x + GuiMetrics.SLOT || mouseY < y || mouseY >= y + GuiMetrics.SLOT) continue;
@@ -127,12 +126,16 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.CROP);
     }
 
-    private static int plotX(int plot) {
-        return GuiMetrics.column(1 + plot % GreenhouseMenu.PLOT_COLUMNS);
+    private int gaugeHeight() {
+        return this.menu.contentRows() * GuiMetrics.SLOT;
     }
 
-    private static int plotY(int plot) {
-        return GuiMetrics.CONTENT_TOP + (plot / GreenhouseMenu.PLOT_COLUMNS) * GuiMetrics.SLOT;
+    private int plotX(int plot) {
+        return GuiMetrics.column(1 + plot % this.menu.tier().plotSide());
+    }
+
+    private int plotY(int plot) {
+        return GuiMetrics.CONTENT_TOP + (plot / this.menu.tier().plotSide()) * GuiMetrics.SLOT;
     }
 
     private static GuiTheme.Status theme(PlotStatus status) {

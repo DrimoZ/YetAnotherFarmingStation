@@ -9,5 +9,7 @@
   "yafs.gui.status.blocked": "Blocked: the output is full",
   "yafs.gui.status.problem": "Cannot grow here",
   "yafs.gui.status.off": "Switched off",
-  "yafs.gui.water": "Water: %s / %s mB"
+  "yafs.gui.water": "Water: %s / %s mB",
+  "block.yafs.greenhouse_t2": "Greenhouse (Tier II)",
+  "block.yafs.greenhouse_t3": "Greenhouse (Tier III)"
 }

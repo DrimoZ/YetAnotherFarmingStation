@@ -1,7 +1,6 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import dev.drimoz.yafs.core.PlotStatus;
-import dev.drimoz.yafs.registry.YafsBlocks;
 import dev.drimoz.yafs.registry.YafsMenus;
 import dev.drimoz.yafs.shared.GuiMetrics;
 import net.minecraft.core.BlockPos;
@@ -24,46 +23,44 @@ import net.neoforged.neoforge.items.SlotItemHandler;
  * connaît déjà par la synchronisation du block entity (YAF-040).
  *
  * <p>La disposition se fixe ici, des deux côtés, sur la grille {@link GuiMetrics} : jauge en
- * colonne 0, parcelles à partir de la colonne 1, sortie 3×3 en colonnes 6 à 8.
+ * colonne 0, parcelles à partir de la colonne 1 (jusqu'à la 4 en P3), sortie 3×3 en colonnes 6 à 8.
  */
 public class GreenhouseMenu extends AbstractContainerMenu {
 
-    public static final int PLOT_COLUMNS = 2;
-    public static final int PLOT_ROWS = GreenhouseBlockEntity.PLOTS / PLOT_COLUMNS;
     public static final int OUTPUT_COLUMN = 6;
     public static final int OUTPUT_SIDE = 3;
-    public static final int CONTENT_ROWS = Math.max(PLOT_ROWS, OUTPUT_SIDE);
-    public static final int CONTENT_BOTTOM = GuiMetrics.CONTENT_TOP + CONTENT_ROWS * GuiMetrics.SLOT;
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
     public static final int DATA_PER_PLOT = 2;
-    /** Après les parcelles : la réserve d'eau, en mB. */
-    public static final int WATER_DATA = GreenhouseBlockEntity.PLOTS * DATA_PER_PLOT;
-    public static final int DATA_SIZE = WATER_DATA + 1;
 
     private static final int OUTPUT_SLOTS = GreenhouseBlockEntity.OUTPUT_SLOTS;
     private static final int PLAYER_SLOTS = 36;
 
+    private final GreenhouseTier tier;
     private final BlockPos pos;
     private final ContainerLevelAccess access;
     private final ContainerData data;
 
     /** Côté serveur. */
     public GreenhouseMenu(int id, Inventory inventory, GreenhouseBlockEntity greenhouse) {
-        this(id, inventory, greenhouse.getBlockPos(), greenhouse.output(), greenhouse.menuData(),
+        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.menuData(),
                 ContainerLevelAccess.create(greenhouse.getLevel(), greenhouse.getBlockPos()));
     }
 
-    /** Côté client : la position suffit, le reste arrive par la synchronisation du menu. */
+    /** Côté client : position et palier suffisent, le reste arrive par la synchronisation du menu. */
     public GreenhouseMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-        this(id, inventory, buffer.readBlockPos(), new ItemStackHandler(OUTPUT_SLOTS),
-                new SimpleContainerData(DATA_SIZE), ContainerLevelAccess.NULL);
+        this(id, inventory, buffer.readBlockPos(), buffer.readEnum(GreenhouseTier.class));
     }
 
-    private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, IItemHandler output, ContainerData data, ContainerLevelAccess access) {
+    private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, GreenhouseTier tier) {
+        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
+    }
+
+    private GreenhouseMenu(int id, Inventory inventory, GreenhouseTier tier, BlockPos pos, IItemHandler output, ContainerData data, ContainerLevelAccess access) {
         super(YafsMenus.GREENHOUSE.get(), id);
 
+        this.tier = tier;
         this.pos = pos;
         this.access = access;
         this.data = data;
@@ -79,17 +76,39 @@ public class GreenhouseMenu extends AbstractContainerMenu {
             });
         }
 
-        int inventoryY = GuiMetrics.inventoryY(CONTENT_BOTTOM);
+        int inventoryY = GuiMetrics.inventoryY(contentBottom());
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 addSlot(new Slot(inventory, 9 + row * 9 + column, GuiMetrics.column(column) + 1, inventoryY + row * GuiMetrics.SLOT));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(inventory, column, GuiMetrics.column(column) + 1, GuiMetrics.hotbarY(CONTENT_BOTTOM)));
+            addSlot(new Slot(inventory, column, GuiMetrics.column(column) + 1, GuiMetrics.hotbarY(contentBottom())));
         }
 
         addDataSlots(data);
+    }
+
+    /** Après les parcelles : la réserve d'eau, en mB. */
+    public static int waterData(GreenhouseTier tier) {
+        return tier.plots() * DATA_PER_PLOT;
+    }
+
+    public static int dataSize(GreenhouseTier tier) {
+        return waterData(tier) + 1;
+    }
+
+    public GreenhouseTier tier() {
+        return this.tier;
+    }
+
+    /** Les lignes du contenu : la grille de parcelles, ou la sortie 3×3 si elle est plus haute. */
+    public int contentRows() {
+        return Math.max(this.tier.plotSide(), OUTPUT_SIDE);
+    }
+
+    public int contentBottom() {
+        return GuiMetrics.CONTENT_TOP + contentRows() * GuiMetrics.SLOT;
     }
 
     public BlockPos pos() {
@@ -97,7 +116,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     public int water() {
-        return this.data.get(WATER_DATA);
+        return this.data.get(waterData(this.tier));
     }
 
     public float progress(int plot) {
@@ -113,7 +132,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     /** La serre prend le statut le plus grave de ses parcelles. */
     public PlotStatus worstStatus() {
         PlotStatus worst = PlotStatus.OFF;
-        for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
+        for (int plot = 0; plot < this.tier.plots(); plot++) {
             if (status(plot).compareTo(worst) > 0) worst = status(plot);
         }
         return worst;
@@ -137,6 +156,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return stillValid(this.access, player, YafsBlocks.GREENHOUSE_T1.get());
+        return this.access.evaluate((level, pos) -> level.getBlockState(pos).getBlock() instanceof GreenhouseBlock
+                && player.canInteractWithBlock(pos, 4.0D), true);
     }
 }

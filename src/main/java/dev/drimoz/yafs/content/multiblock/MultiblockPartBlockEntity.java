@@ -47,6 +47,11 @@ public class MultiblockPartBlockEntity extends BlockEntity {
         setChanged();
     }
 
+    /** Plus de maître : la partie peut disparaître sans rien emporter. */
+    public void detach() {
+        this.masterOffset = BlockPos.ZERO;
+    }
+
     /** {@code null} tant qu'aucun maître n'a été désigné. */
     @Nullable
     public BlockPos masterPos() {
