@@ -42,7 +42,7 @@ un monde).
 | ~~YAF-013~~ | ✅ | M | **Détection automatique** — **fait** (`Crops`, 8 cultures vanilla en 11 ms ; calculée des deux côtés plutôt que transmise, elle ne dépend que des registres et des tags) : `BlockItem` → bloc de culture, `canSurvive` sur un mini-monde fictif par substrat candidat, récolte par la table de loot de l'état mûr. Cache par rechargement, network codec. | GameTest : blé, carotte, pomme de terre, betterave, verrue du Nether reconnus avec les bons substrats |
 | YAF-014 | P1 | M | **Registres datapack** `yafs/crop` et `yafs/substrate`, codecs bornés ; une surcharge remplace la détection. | JSON invalide refusé et journalisé ; surcharge appliquée après `/reload` |
 | YAF-015 | P1 | M | **Cas exotiques** : canne à sucre, cactus, melon et citrouille (tige → fruit), cultures sur 2 blocs, plantes à bloc-entité. | un GameTest par cas |
-| ~~YAF-016~~ | ✅ | S | **Exigences vanilla livrées** — **fait**, en dur dans `Crops` jusqu à YAF-014 ; test fait sur la verrue, la canne attendant YAF-015 (températures par culture) ; défaut tolérant pour le reste. | GameTest : la canne pousse moins vite en taïga qu'en désert |
+| ~~YAF-016~~ | ✅ | S | **Exigences vanilla livrées** — **fait**, en dur dans `Crops` jusqu'à YAF-014 ; test fait sur la verrue, la canne attendant YAF-015 (températures par culture) ; défaut tolérant pour le reste. | GameTest : la canne pousse moins vite en taïga qu'en désert |
 | YAF-017 | P2 | S | **Substrats à bonus** (« terre fertile » : +rendement). | GameTest : rendement accru |
 
 ## Épic C — Environnement et ressources
@@ -50,7 +50,7 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-020~~ | ✅ | S | **Environnement de base** — **fait** : lumière du ciel au maître, biome → °C, pluie ; recalcul toutes les 100 ticks. | JUnit : conversion biome → °C ; GameTest : sans ciel, lumière 0 |
-| ~~YAF-021~~ | ✅ | S | **Réserve d eau** — **fait** (8 000 mB, 500 mB par croissance, seau ou tuyau sur n importe quel bloc en attendant les ports) : réservoir de fluide, consommation par cycle × densité, eau vide → PROBLEM. | GameTest : sans eau, rien ne pousse et le statut le dit |
+| ~~YAF-021~~ | ✅ | S | **Réserve d'eau** — **fait** (8 000 mB, 500 mB par croissance, seau ou tuyau sur n'importe quel bloc en attendant les ports) : réservoir de fluide, consommation par cycle × densité, eau vide → PROBLEM. | GameTest : sans eau, rien ne pousse et le statut le dit |
 | YAF-022 | P2 | S | **Engrais** : registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
 | YAF-023 | P2 | S | **Résidus** : compost avec une probabilité par culture ; réserve pleine → BLOCKED. | GameTest : conservation, blocage |
 
