@@ -1,5 +1,6 @@
 package dev.drimoz.yafs;
 
+import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import dev.drimoz.yafs.registry.YafsCreativeTabs;
@@ -8,6 +9,8 @@ import dev.drimoz.yafs.registry.YafsMenus;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.TagsUpdatedEvent;
 
 @Mod(YetAnotherFarmingStation.MOD_ID)
 public class YetAnotherFarmingStation {
@@ -22,5 +25,6 @@ public class YetAnotherFarmingStation {
         YafsMenus.MENUS.register(modEventBus);
 
         modEventBus.addListener(MultiblockPartBlockEntity::registerCapabilities);
+        NeoForge.EVENT_BUS.addListener((TagsUpdatedEvent event) -> Crops.invalidate());
     }
 }

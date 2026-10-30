@@ -1,6 +1,7 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import com.mojang.serialization.MapCodec;
+import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockShape;
 import dev.drimoz.yafs.registry.YafsBlocks;
@@ -13,7 +14,6 @@ import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -69,7 +69,7 @@ public class GreenhouseBlock extends MultiblockBlock {
         }
         if (level.isClientSide) return ItemInteractionResult.SUCCESS;
 
-        int slot = item.getBlock() instanceof CropBlock ? GreenhouseBlockEntity.CROP : GreenhouseBlockEntity.SUBSTRATE;
+        int slot = Crops.of(item) != null ? GreenhouseBlockEntity.CROP : GreenhouseBlockEntity.SUBSTRATE;
         for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
             if (greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + slot).isEmpty()) {
                 greenhouse.setPlotItem(plot, slot, stack.copyWithCount(1));

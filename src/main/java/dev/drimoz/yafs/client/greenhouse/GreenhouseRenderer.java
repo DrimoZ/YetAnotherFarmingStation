@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.client.model.data.ModelData;
 
@@ -37,8 +38,8 @@ public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEn
     public void render(GreenhouseBlockEntity greenhouse, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffers, int packedLight, int packedOverlay) {
         for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
-            ItemStack crop = greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.CROP);
-            if (!(crop.getItem() instanceof BlockItem cropItem)) continue;
+            BlockState crop = greenhouse.displayedState(plot);
+            if (crop == null) continue;
 
             poseStack.pushPose();
             poseStack.translate(plot % 2 == 0 ? -CELL : CELL, FLOOR, plot / 2 == 0 ? -CELL : CELL);
@@ -52,8 +53,7 @@ public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEn
             }
 
             poseStack.translate(0F, SOIL, 0F);
-            this.blocks.renderSingleBlock(GreenhouseBlockEntity.displayedState(cropItem.getBlock(), greenhouse.growth(plot)),
-                    poseStack, buffers, packedLight, packedOverlay, ModelData.EMPTY, null);
+            this.blocks.renderSingleBlock(crop, poseStack, buffers, packedLight, packedOverlay, ModelData.EMPTY, null);
             poseStack.popPose();
         }
     }

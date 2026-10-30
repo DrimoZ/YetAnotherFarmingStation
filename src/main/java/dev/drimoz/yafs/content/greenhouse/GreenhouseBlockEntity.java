@@ -1,6 +1,8 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import com.mojang.serialization.Codec;
+import dev.drimoz.yafs.content.crop.Crop;
+import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.core.Climate;
 import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
@@ -19,17 +21,15 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +39,7 @@ import java.util.List;
  *
  * <p>Une parcelle n'est pas un vrai bloc : elle ne reçoit pas de random ticks, sa croissance
  * avance par pas de {@link #STEP} ticks, à la vitesse que permet l'{@link #environment()
- * environnement}. Seul le blé pousse pour l'instant ; la détection des cultures arrive avec YAF-013.
+ * environnement}. Toute culture que {@link Crops} reconnaît y pousse.
  */
 public class GreenhouseBlockEntity extends BlockEntity {
 
@@ -217,23 +217,20 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
     }
 
-    /** L'état de bloc à dessiner pour une culture à ce stade : l'âge proportionnel pour une {@link CropBlock}. */
-    public static BlockState displayedState(Block crop, PlotGrowth growth) {
-        if (crop instanceof CropBlock cropBlock) {
-            return cropBlock.getStateForAge((int) (growth.progress() * cropBlock.getMaxAge()));
-        }
-        return crop.defaultBlockState();
+    /** L'état de bloc à dessiner pour cette parcelle, ou {@code null} si elle n'a pas de culture connue. */
+    @Nullable
+    public BlockState displayedState(int plot) {
+        Crop crop = Crops.of(this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CROP).getItem());
+        return crop == null ? null : crop.stateAt(this.growth[plot].progress());
     }
 
     private PlotStatus growPlot(ServerLevel level, int plot, int elapsed) {
         ItemStack crop = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CROP);
         if (crop.isEmpty()) return PlotStatus.WAITING;
 
+        Crop known = Crops.of(crop.getItem());
         ItemStack substrate = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE);
-        // ponytail: blé seul, sur terre ou terre labourée ; YAF-013/014 remplacent ce test.
-        if (!crop.is(Items.WHEAT_SEEDS) || !(substrate.is(Items.DIRT) || substrate.is(Items.FARMLAND))) {
-            return PlotStatus.PROBLEM;
-        }
+        if (known == null || !known.accepts(substrate.getItem())) return PlotStatus.PROBLEM;
 
         // ponytail: exigences tolérantes pour tout le monde, jusqu'aux exigences par culture (YAF-016).
         double efficiency = Efficiency.evaluate(Requirements.TOLERANT, this.environment).value();
@@ -241,8 +238,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
 
-        BlockState mature = ((CropBlock) Blocks.WHEAT).getStateForAge(((CropBlock) Blocks.WHEAT).getMaxAge());
-        if (!harvest(level, mature, current.density())) return PlotStatus.BLOCKED;
+        if (!harvest(level, known.mature(), current.density())) return PlotStatus.BLOCKED;
 
         this.growth[plot] = current.harvested();
         return PlotStatus.WORKING;
