@@ -1,5 +1,6 @@
 package dev.drimoz.yafs;
 
+import dev.drimoz.yafs.content.crop.CropData;
 import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
@@ -27,6 +28,9 @@ public class YetAnotherFarmingStation {
 
         modEventBus.addListener(MultiblockPartBlockEntity::registerCapabilities);
         modEventBus.addListener(GreenhouseBlockEntity::registerCapabilities);
+        modEventBus.addListener(CropData::onRegisterPayloads);
         NeoForge.EVENT_BUS.addListener((TagsUpdatedEvent event) -> Crops.invalidate());
+        NeoForge.EVENT_BUS.addListener(CropData::onAddReloadListeners);
+        NeoForge.EVENT_BUS.addListener(CropData::onDatapackSync);
     }
 }

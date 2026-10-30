@@ -1,0 +1,4 @@
+{
+  "items": ["minecraft:dirt", "minecraft:grass_block", "minecraft:dirt_path"],
+  "counts_as": "minecraft:farmland"
+}

@@ -1,5 +1,9 @@
 package dev.drimoz.yafs.core;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 /**
  * La loi du minimum : chaque facteur d'environnement donne une efficacité, seule la pire compte.
  * Voir {@code docs/01-DESIGN.md} §4.3.
@@ -24,6 +28,21 @@ public final class Efficiency {
 
         /** Ce qu'on suppose d'une culture dont on ne sait rien : lumière vanilla, large plage. */
         public static final Requirements TOLERANT = new Requirements(9, 0D, 35D);
+
+        /**
+         * Borné ; une plage inversée est refusée en {@code DataResult}, pas levée ni retournée. Les
+         * champs absents prennent la valeur tolérante. Lu en trois nombres d'abord, pour que le
+         * constructeur, qui lève, ne voie que des plages déjà vérifiées.
+         */
+        public static final Codec<Requirements> CODEC = RecordCodecBuilder.<double[]>create(instance -> instance.group(
+                Codec.intRange(0, 15).optionalFieldOf("min_light", TOLERANT.minLight()).forGetter(raw -> (int) raw[0]),
+                Codec.doubleRange(-100D, 100D).optionalFieldOf("min_temperature", TOLERANT.minTemperature()).forGetter(raw -> raw[1]),
+                Codec.doubleRange(-100D, 100D).optionalFieldOf("max_temperature", TOLERANT.maxTemperature()).forGetter(raw -> raw[2])
+        ).apply(instance, (light, min, max) -> new double[]{light, min, max})).flatXmap(
+                raw -> raw[1] > raw[2]
+                        ? DataResult.error(() -> "Plage de température inversée : " + raw[1] + " > " + raw[2])
+                        : DataResult.success(new Requirements((int) raw[0], raw[1], raw[2])),
+                requirements -> DataResult.success(new double[]{requirements.minLight(), requirements.minTemperature(), requirements.maxTemperature()}));
 
         public Requirements {
             if (minTemperature > maxTemperature) {

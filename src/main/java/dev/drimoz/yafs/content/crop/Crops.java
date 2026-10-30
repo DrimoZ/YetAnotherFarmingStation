@@ -4,11 +4,9 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.BlockItem;
 import dev.drimoz.yafs.core.Efficiency.Requirements;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -46,7 +44,7 @@ import java.util.Set;
  *
  * <p>Calculé à la première demande, des deux côtés : le client en a besoin pour l'écran, et le
  * résultat ne dépend que des registres et des tags, qu'il possède aussi. Vidé quand les tags
- * changent.
+ * changent, ou quand les datapacks ({@link CropData}) disent autre chose.
  */
 public final class Crops {
 
@@ -74,23 +72,6 @@ public final class Crops {
         }
     }
 
-    /**
-     * Les exigences des cultures vanilla, livrées avec le mod (YAF-016). Les cultures vanilla n'en
-     * ont pas dans le jeu : ce sont des choix, calés sur ce que la plante évoque et sur
-     * {@link dev.drimoz.yafs.core.Climate} (plaines 20 °C, taïga 11 °C, désert 40 °C). Toute autre
-     * culture est {@link Requirements#TOLERANT}.
-     *
-     * <p>La verrue ne demande pas de lumière : en vanilla, elle pousse dans le noir.
-     */
-    // ponytail: en dur jusqu'aux surcharges datapack (YAF-014), qui reprendront ces valeurs en JSON.
-    private static final Map<Item, Requirements> VANILLA = Map.of(
-            Items.WHEAT_SEEDS, new Requirements(9, 10D, 30D),
-            Items.CARROT, new Requirements(9, 5D, 25D),
-            Items.POTATO, new Requirements(9, 5D, 25D),
-            Items.BEETROOT_SEEDS, new Requirements(9, 0D, 22D),
-            Items.SWEET_BERRIES, new Requirements(9, -10D, 14D),
-            Items.TORCHFLOWER_SEEDS, new Requirements(9, 15D, 35D),
-            Items.NETHER_WART, new Requirements(0, 35D, 60D));
 
     @Nullable
     private static Map<Item, Crop> crops;
@@ -140,18 +121,51 @@ public final class Crops {
             BlockState plant = bush.defaultBlockState();
             for (Block soil : soils) {
                 if (accepts(bush, plant, soil.defaultBlockState())) substrates.add(soil.asItem());
-                // ponytail: la terre compte comme terre labourée irriguée ; le registre des substrats (YAF-014) le dira.
-                else if (soil.defaultBlockState().is(BlockTags.DIRT) && accepts(bush, plant, Blocks.FARMLAND.defaultBlockState())) {
-                    substrates.add(soil.asItem());
+            }
+            // Ce qui compte comme un autre sol : la terre comme terre labourée, par exemple.
+            for (SubstrateDefinition definition : CropData.substrates()) {
+                if (accepts(bush, plant, definition.countsAs().defaultBlockState())) {
+                    definition.items().forEach(holder -> substrates.add(holder.value()));
                 }
             }
             if (!substrates.isEmpty()) {
-                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), VANILLA.getOrDefault(item, Requirements.TOLERANT)));
+                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), Requirements.TOLERANT, null));
             }
+        }
+
+        for (CropOverride override : CropData.overrides()) {
+            Crop crop = found.get(override.seed());
+            if (crop == null) crop = undetected(override);
+            if (crop != null) found.put(override.seed(), apply(override, crop));
         }
 
         LOGGER.info("{} cultures reconnues en {} ms", found.size(), (System.nanoTime() - start) / 1_000_000);
         return Map.copyOf(found);
+    }
+
+    /** Chaque champ présent remplace celui de la détection. */
+    private static Crop apply(CropOverride override, Crop crop) {
+        Set<Item> substrates = override.substrates()
+                .map(set -> set.stream().map(holder -> holder.value()).collect(java.util.stream.Collectors.toUnmodifiableSet()))
+                .orElse(crop.substrates());
+        return new Crop(crop.seed(), crop.block(), crop.age(), substrates,
+                override.requirements().orElse(crop.requirements()),
+                override.catalyst().orElse(crop.catalyst()));
+    }
+
+    /**
+     * Une surcharge pour une graine que la détection a écartée. Elle doit au moins nommer ses
+     * substrats, et la graine poser un bloc à âge ; sinon on ne sait pas la faire pousser.
+     */
+    @Nullable
+    private static Crop undetected(CropOverride override) {
+        IntegerProperty age = override.seed() instanceof BlockItem item ? ageOf(item.getBlock()) : null;
+        if (age == null || override.substrates().isEmpty()) {
+            LOGGER.error("Culture {} refusée : la graine ne pose pas de bloc à âge, ou la surcharge ne nomme pas ses substrats",
+                    BuiltInRegistries.ITEM.getKey(override.seed()));
+            return null;
+        }
+        return new Crop(override.seed(), ((BlockItem) override.seed()).getBlock(), age, Set.of(), Requirements.TOLERANT, null);
     }
 
     @Nullable

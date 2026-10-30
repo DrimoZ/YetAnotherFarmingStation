@@ -277,7 +277,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         Crop known = Crops.of(crop.getItem());
         ItemStack substrate = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE);
-        if (known == null || !known.accepts(substrate.getItem())) return PlotStatus.PROBLEM;
+        ItemStack catalyst = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CATALYST);
+        if (known == null || !known.accepts(substrate.getItem()) || !known.catalysedBy(catalyst.getItem())) return PlotStatus.PROBLEM;
         if (this.environment.water() <= 0D && !this.growth[plot].isMature()) return PlotStatus.PROBLEM;
 
         double efficiency = Efficiency.evaluate(known.requirements(), this.environment).value();

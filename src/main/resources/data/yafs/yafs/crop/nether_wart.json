@@ -1,0 +1,4 @@
+{
+  "seed": "minecraft:nether_wart",
+  "requirements": { "min_light": 0, "min_temperature": 35, "max_temperature": 60 }
+}

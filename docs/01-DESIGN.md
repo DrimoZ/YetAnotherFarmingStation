@@ -122,12 +122,10 @@ simplement « très chaud » : la verrue du Nether pousse dans l'Overworld si on
 Chaque culture déclare une plage idéale par facteur :
 
 ```json
-{
-  "light":       { "min": 9 },
-  "temperature": { "min": 15, "max": 30 },
-  "water":       { "per_cycle": 50 }
-}
+{ "min_light": 9, "min_temperature": 15, "max_temperature": 30 }
 ```
+
+L'eau n'est pas une exigence par culture : une croissance complète boit 500 mB par plant.
 
 - **Cultures vanilla** : des valeurs livrées avec le mod (canne à sucre et cactus aiment le chaud,
   baies sucrées le froid, verrue du Nether le très chaud…).
@@ -173,17 +171,19 @@ que l'interface et JEI n'aient pas besoin de demander au serveur.
 
 ### 5.2 Surcharges JSON
 
-Registre datapack `yafs/crop`. Une entrée **remplace** ce que la détection a trouvé :
+Fichiers `data/<ns>/yafs/crop/*.json`, relus à chaque `/reload` et envoyés aux joueurs. Chaque
+champ présent **remplace** ce que la détection a trouvé ; un champ absent le laisse :
 
 ```json
 {
   "seed": "mysticalagriculture:nether_star_seeds",
-  "substrates": ["#yafs:farmland"],
+  "substrates": ["#minecraft:dirt", "minecraft:farmland"],
   "catalyst": "mysticalagriculture:nether_star_crux",
-  "requirements": { "temperature": { "min": 25 } },
-  "residue": { "item": "yafs:compost", "chance": 0.1 }
+  "requirements": { "min_temperature": 25, "max_temperature": 40 }
 }
 ```
+
+Le résidu (`residue`) s'y ajoutera avec YAF-023.
 
 Une entrée est obligatoire pour les **cas exotiques**, chacun couvert par un GameTest :
 
@@ -198,8 +198,12 @@ borné, comme dans FactoryIO.
 
 ### 5.3 Substrats
 
-Registre `yafs/substrate` : quel item compte comme quel bloc de sol. La terre compte comme une
-terre labourée irriguée, pour éviter de manipuler des houes. Un substrat peut aussi porter un bonus,
+Fichiers `data/<ns>/yafs/substrate/*.json` : quels items comptent comme quel bloc de sol. La terre
+compte comme une terre labourée irriguée, pour éviter de manipuler des houes :
+
+```json
+{ "items": ["minecraft:dirt", "minecraft:grass_block"], "counts_as": "minecraft:farmland" }
+``` Un substrat peut aussi porter un bonus,
 par exemple la « terre fertile » qui donne +rendement. C'est une progression sans passer par les
 modules.
 
