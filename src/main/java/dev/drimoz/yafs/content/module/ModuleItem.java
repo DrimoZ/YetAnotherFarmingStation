@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.neoforged.neoforge.items.IItemHandler;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -24,12 +25,35 @@ public class ModuleItem extends Item {
         super(properties.stacksTo(16));
     }
 
-    /** Combien de ce module une case accepte, d'après sa définition ; 1 si on ne la trouve pas. */
+    /** Combien de ce module une serre accepte, d'après sa définition ; 1 si on ne la trouve pas. */
     public static int maxStack(ItemStack stack, @Nullable HolderLookup.Provider registries) {
+        ModuleDefinition module = definition(stack, registries);
+        return module == null ? 1 : module.maxStack();
+    }
+
+    @Nullable
+    public static ModuleDefinition definition(ItemStack stack, @Nullable HolderLookup.Provider registries) {
         ResourceKey<ModuleDefinition> kind = kind(stack);
-        if (kind == null || registries == null) return 1;
-        return registries.lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind))
-                .map(holder -> holder.value().maxStack()).orElse(1);
+        if (kind == null || registries == null) return null;
+        return registries.lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind)).map(holder -> holder.value()).orElse(null);
+    }
+
+    /**
+     * Le même jugement au client et au serveur : une sorte de module par serre, et un seul module
+     * par effet qui garde le plus fort (densité, lumière), puisqu'un second ne ferait rien.
+     */
+    public static boolean fits(IItemHandler modules, int slot, ItemStack stack, @Nullable HolderLookup.Provider registries) {
+        ResourceKey<ModuleDefinition> kind = kind(stack);
+        if (kind == null) return false;
+        ModuleDefinition module = definition(stack, registries);
+        for (int other = 0; other < modules.getSlots(); other++) {
+            ItemStack placed = modules.getStackInSlot(other);
+            if (other == slot || placed.isEmpty()) continue;
+            if (kind.equals(kind(placed))) return false;
+            ModuleDefinition rival = definition(placed, registries);
+            if (module != null && rival != null && module.excludes(rival)) return false;
+        }
+        return true;
     }
 
     /** La définition de ce module, nommée comme son item ; {@code null} si ce n'est pas un module. */
@@ -61,7 +85,9 @@ public class ModuleItem extends Item {
                     tooltip.add(Component.translatable("yafs.tooltip.module.needs_energy").withStyle(ChatFormatting.DARK_GRAY));
                 }
                 tooltip.add(Component.translatable(module.maxStack() > 1 ? "yafs.tooltip.module.stack" : "yafs.tooltip.module.single", module.maxStack())
-                        .withStyle(ChatFormatting.DARK_GRAY));
+                        .withStyle(ChatFormatting.GRAY));
+                if (module.density() > 1) tooltip.add(Component.translatable("yafs.tooltip.module.one_density").withStyle(ChatFormatting.GRAY));
+                if (module.lightFloor() > 0) tooltip.add(Component.translatable("yafs.tooltip.module.one_light").withStyle(ChatFormatting.GRAY));
             });
         }
     }

@@ -339,7 +339,8 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         /** Les slots, un filet, puis le bilan : une ligne par effet (ou « Aucun module »), le besoin en énergie, l'alerte. */
         @Override
         protected int contentHeight() {
-            int rows = Math.max(1, moduleEffects().size()) + (menu.demand() > 0 ? 1 : 0) + (starved() ? 1 : 0);
+            int installed = installedModules().size();
+            int rows = installed + (installed > 0 ? 1 : 0) + Math.max(1, moduleEffects().size()) + (menu.demand() > 0 ? 1 : 0) + (starved() ? 1 : 0);
             return moduleRows() * GuiMetrics.SLOT + 6 + rows * GuiTheme.LINE;
         }
 
@@ -347,6 +348,22 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
             int lineY = y + moduleRows() * GuiMetrics.SLOT + 6;
             graphics.fill(x, lineY - 3, x + MODULE_CONTENT_WIDTH, lineY - 2, 0x40FFFFFF);
+
+            // Chaque module posé et son plafond par serre : on voit d'un coup d'œil ce qu'on peut encore ajouter.
+            List<ItemStack> installed = installedModules();
+            for (ItemStack stack : installed) {
+                int max = ModuleItem.maxStack(stack, minecraft.level.registryAccess());
+                String count = stack.getCount() + "/" + max;
+                int room = MODULE_CONTENT_WIDTH - font.width(count) - 4;
+                GuiTheme.tabLabel(graphics, font, Component.literal(font.plainSubstrByWidth(stack.getHoverName().getString(), room)), x, lineY);
+                GuiTheme.tabValue(graphics, font, Component.literal(count), x + MODULE_CONTENT_WIDTH - font.width(count), lineY,
+                        stack.getCount() >= max ? GuiTheme.TAB_MUTED : GuiTheme.TAB_VALUE);
+                lineY += GuiTheme.LINE;
+            }
+            if (!installed.isEmpty()) {
+                lineY += GuiTheme.LINE;
+                graphics.fill(x, lineY - 8, x + MODULE_CONTENT_WIDTH, lineY - 7, 0x40FFFFFF);
+            }
 
             List<Effect> effects = new ArrayList<>(moduleEffects());
             if (effects.isEmpty()) {
@@ -531,6 +548,16 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
      */
     private boolean starved() {
         return this.menu.demand() > 0 && (long) this.menu.energy() < (long) this.menu.demand() * GreenhouseBlockEntity.STEP;
+    }
+
+    private List<ItemStack> installedModules() {
+        List<ItemStack> installed = new ArrayList<>();
+        if (this.minecraft == null || this.minecraft.level == null) return installed;
+        for (int slot = 0; slot < this.menu.moduleSlots(); slot++) {
+            ItemStack stack = this.menu.slots.get(GreenhouseBlockEntity.OUTPUT_SLOTS + slot).getItem();
+            if (!stack.isEmpty()) installed.add(stack);
+        }
+        return installed;
     }
 
     /** Ce que les modules posés font ensemble, lu dans le registre que le jeu a synchronisé. */

@@ -47,7 +47,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     /** L'onglet bleu des modules, premier à droite de la fenêtre (SideTabs) : trois colonnes de slots, puis leur bilan. */
     public static final int MODULE_TAB_X = GuiMetrics.WIDTH;
     public static final int MODULE_COLUMNS = 3;
-    public static final int MODULE_TAB_WIDTH = 96;
+    public static final int MODULE_TAB_WIDTH = 116;
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
@@ -87,6 +87,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     private final GreenhouseTier tier;
     private final BlockPos pos;
     private final ContainerLevelAccess access;
+    /** Les parcelles de la serre ; au client, une copie que seules les cases du détail remplissent. */
+    private final ItemStackHandler plots;
     private final ContainerData data;
     /** Sortie, modules, détail de parcelle ; l'inventaire du joueur vient après. */
     private final int containerSlots;
@@ -127,7 +129,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
             @Override
             public boolean isItemValid(int slot, ItemStack stack) {
-                return ModuleItem.kind(stack) != null;
+                return ModuleItem.fits(this, slot, stack, inventory.player.level().registryAccess());
             }
         };
     }
@@ -139,6 +141,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         this.tier = tier;
         this.pos = pos;
         this.access = access;
+        this.plots = plots;
         this.data = data;
 
         for (int slot = 0; slot < OUTPUT_SLOTS; slot++) {
@@ -323,9 +326,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
             if (GreenhouseMenu.this.selected >= 0) this.plots.setStackInSlot(index(slot), stack);
         }
 
+        /** Un seul item par case, quel que soit ce qu'on tend : un maj-clic ne pose pas toute la pile. */
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            return GreenhouseMenu.this.selected < 0 ? stack : this.plots.insertItem(index(slot), stack, simulate);
+            if (GreenhouseMenu.this.selected < 0 || stack.isEmpty() || !getStackInSlot(slot).isEmpty() || !isItemValid(slot, stack)) return stack;
+            if (!simulate) this.plots.setStackInSlot(index(slot), stack.copyWithCount(1));
+            return stack.copyWithCount(stack.getCount() - 1);
         }
 
         @Override
@@ -419,7 +425,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.detailStart - OUTPUT_SLOTS;
     }
 
-    /** Maj-clic : sortie et modules vers l'inventaire ; un module de l'inventaire vers les modules. */
+    /**
+     * Maj-clic : sortie, modules et détail vers l'inventaire. Depuis l'inventaire : un module vers
+     * les modules ; sinon, parcelle ouverte, vers ses cases ; sinon, réparti sur les parcelles.
+     */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = this.slots.get(index);
@@ -427,15 +436,47 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
         ItemStack stack = slot.getItem();
         ItemStack original = stack.copy();
-        boolean moved = index < this.containerSlots
-                ? moveItemStackTo(stack, this.containerSlots, this.containerSlots + PLAYER_SLOTS, true)
-                : ModuleItem.kind(stack) != null && moveItemStackTo(stack, OUTPUT_SLOTS, this.detailStart, false);
+        boolean moved;
+        if (index < this.containerSlots) {
+            moved = moveItemStackTo(stack, this.containerSlots, this.containerSlots + PLAYER_SLOTS, true);
+        } else if (ModuleItem.kind(stack) != null) {
+            moved = moveItemStackTo(stack, OUTPUT_SLOTS, this.detailStart, false);
+        } else if (this.selected >= 0) {
+            moved = moveItemStackTo(stack, this.detailStart, this.containerSlots, false);
+        } else {
+            // Les parcelles n'ont pas de slot : seul le serveur les connaît, il répartit et renvoie l'inventaire.
+            if (!player.level().isClientSide && sow(stack)) slot.setChanged();
+            return ItemStack.EMPTY;
+        }
         if (!moved) return ItemStack.EMPTY;
 
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
         else slot.setChanged();
         slot.onTake(player, stack);
         return original;
+    }
+
+    /**
+     * Un item par parcelle, sur autant de parcelles que la pile en couvre : une graine dans chaque
+     * parcelle vide, un substrat ou un catalyseur dans chaque parcelle semée qui le veut et ne l'a pas.
+     *
+     * @return {@code true} si quelque chose a été posé
+     */
+    private boolean sow(ItemStack stack) {
+        boolean seed = Crops.of(stack.getItem()) != null;
+        int before = stack.getCount();
+        for (int plot = 0; plot < this.tier.plots() && !stack.isEmpty(); plot++) {
+            int base = plot * GreenhouseBlockEntity.SLOTS_PER_PLOT;
+            Crop sown = Crops.of(this.plots.getStackInSlot(base + GreenhouseBlockEntity.CROP).getItem());
+            int target;
+            if (seed) target = GreenhouseBlockEntity.CROP;
+            else if (sown != null && sown.accepts(stack.getItem())) target = GreenhouseBlockEntity.SUBSTRATE;
+            else if (sown != null && sown.catalyst() == stack.getItem()) target = GreenhouseBlockEntity.CATALYST;
+            else continue;
+            if (!this.plots.getStackInSlot(base + target).isEmpty()) continue;
+            this.plots.setStackInSlot(base + target, stack.split(1));
+        }
+        return stack.getCount() != before;
     }
 
     @Override

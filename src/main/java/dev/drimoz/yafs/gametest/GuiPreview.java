@@ -154,6 +154,8 @@ public final class GuiPreview {
         step(40, mc -> use(mc, big));
         step(5, mc -> hover(mc, 0.0, 0.0));
         step(20, mc -> shot("greenhouse_t3"));
+        step(5, mc -> clickTab(mc, 2));
+        step(15, mc -> shot("greenhouse_t3_modules"));
         // Un module posé, puis un emplacement vide : l'infobulle de l'item, puis l'aide.
         step(5, mc -> hoverGui(mc, 176 + 6 + 1 + 8, 4 + 22 + 1 + 8));
         step(10, mc -> shot("greenhouse_t3_module_tooltip"));

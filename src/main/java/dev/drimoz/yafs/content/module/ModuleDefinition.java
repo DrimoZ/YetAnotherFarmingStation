@@ -31,6 +31,11 @@ import net.minecraft.resources.ResourceLocation;
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
                                double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack) {
 
+    /** Deux modules dont seul le plus fort compterait : deux densités, deux lumières. */
+    public boolean excludes(ModuleDefinition other) {
+        return (this.density > 1 && other.density > 1) || (this.lightFloor > 0 && other.lightFloor > 0);
+    }
+
     /**
      * Un multiplicateur empilé {@code count} fois : les bonus s'additionnent. Deux Accélérateurs I
      * (×2, soit +100 % chacun) font ×3, pas ×4. Des modules différents, eux, se multiplient.

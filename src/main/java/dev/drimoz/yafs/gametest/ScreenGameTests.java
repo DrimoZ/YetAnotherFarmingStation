@@ -112,6 +112,37 @@ public class ScreenGameTests {
         helper.succeed();
     }
 
+    /**
+     * Maj-clic depuis la vue générale : une graine par parcelle vide, puis un sol par parcelle
+     * semée ; parcelle ouverte, une seule graine dans sa case.
+     */
+    @GameTest(template = PLATFORM)
+    public static void shiftClickSowsOnePerPlot(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        GreenhouseMenu menu = new GreenhouseMenu(0, player.getInventory(), greenhouse);
+        int hotbar = menu.slots.size() - 9;
+
+        player.getInventory().setItem(0, new ItemStack(Items.WHEAT_SEEDS, 3));
+        menu.quickMoveStack(player, hotbar);
+        helper.assertTrue(player.getInventory().getItem(0).isEmpty(), "Des graines sont restées : " + player.getInventory().getItem(0));
+        player.getInventory().setItem(0, new ItemStack(Items.DIRT, 10));
+        menu.quickMoveStack(player, hotbar);
+        helper.assertTrue(player.getInventory().getItem(0).getCount() == 7, "Terre restante " + player.getInventory().getItem(0).getCount());
+        for (int plot = 0; plot < 3; plot++) {
+            int base = plot * GreenhouseBlockEntity.SLOTS_PER_PLOT;
+            helper.assertTrue(greenhouse.plots().getStackInSlot(base + GreenhouseBlockEntity.CROP).getCount() == 1
+                    && greenhouse.plots().getStackInSlot(base + GreenhouseBlockEntity.SUBSTRATE).is(Items.DIRT), "Parcelle " + plot + " mal remplie");
+        }
+
+        menu.clickMenuButton(player, 3);
+        player.getInventory().setItem(0, new ItemStack(Items.WHEAT_SEEDS, 5));
+        menu.quickMoveStack(player, hotbar);
+        helper.assertTrue(greenhouse.plots().getStackInSlot(3 * GreenhouseBlockEntity.SLOTS_PER_PLOT).getCount() == 1, "Plus d'une graine dans la case");
+        helper.assertTrue(player.getInventory().getItem(0).getCount() == 4, "Graines restantes " + player.getInventory().getItem(0).getCount());
+        helper.succeed();
+    }
+
     /** Un signal sur n'importe quel bloc du volume éteint la serre : rien ne pousse, tout est OFF. */
     @GameTest(template = PLATFORM)
     public static void redstoneSwitchesTheGreenhouseOff(GameTestHelper helper) {

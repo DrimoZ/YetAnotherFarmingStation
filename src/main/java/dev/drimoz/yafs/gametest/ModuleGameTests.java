@@ -116,6 +116,11 @@ public class ModuleGameTests {
         helper.assertTrue(!greenhouse.modules().isItemValid(1, module("heater")), "Deux chauffages acceptés");
         helper.assertTrue(greenhouse.modules().isItemValid(1, module("cooler")), "Refroidisseur refusé");
         helper.assertTrue(!greenhouse.modules().isItemValid(1, new ItemStack(Items.DIRT)), "De la terre acceptée en module");
+
+        // Densité et lumière gardent le plus fort : un second module du même effet ne ferait rien.
+        greenhouse.modules().setStackInSlot(0, module("density_1"));
+        helper.assertTrue(!greenhouse.modules().isItemValid(1, module("density_3")), "Deux modules de densité acceptés");
+        helper.assertTrue(greenhouse.modules().insertItem(1, module("grow_lamp").copyWithCount(4), false).getCount() == 3, "Plus d'une lampe acceptée");
         helper.succeed();
     }
 

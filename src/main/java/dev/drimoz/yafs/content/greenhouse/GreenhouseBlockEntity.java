@@ -188,6 +188,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** Ce que la serre voudrait consommer, en FE/t, au dernier pas : modules et parcelles alimentées. */
     private long demand;
+    /** Ce que la serre prélève vraiment, en FE/t, d'un pas au suivant : la part du besoin qu'elle peut payer. */
+    private long drain;
+    /** Pendant un pas : ce qui reste de la réserve une fois réservé ce qui a été accordé. */
+    private long budget;
     private int lightFloor;
     private double temperatureShift;
     // Les modules d'augment : tout se multiplie, la vitesse comme ce qu'elle coûte.
@@ -225,12 +229,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             @Override
             public boolean isItemValid(int slot, ItemStack stack) {
-                ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
-                if (kind == null) return false;
-                for (int other = 0; other < getSlots(); other++) {
-                    if (other != slot && kind.equals(ModuleItem.kind(getStackInSlot(other)))) return false;
-                }
-                return true;
+                return ModuleItem.fits(this, slot, stack, GreenhouseBlockEntity.this.level == null ? null : GreenhouseBlockEntity.this.level.registryAccess());
             }
         };
         this.growth = new PlotGrowth[this.tier.plots()];
@@ -433,7 +432,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.ticks++;
         if (this.environment == null || this.ticks % SAMPLE_INTERVAL == 0) sampleEnvironment();
         // Décalé selon la position : les serres d'une base ne travaillent pas toutes au même tick.
-        if (Math.floorMod(this.ticks + this.worldPosition.hashCode(), PROCESS_INTERVAL) == 0) grow(PROCESS_INTERVAL);
+        if (Math.floorMod(this.ticks + this.worldPosition.hashCode(), PROCESS_INTERVAL) == 0) process(PROCESS_INTERVAL);
+        // L'énergie, elle, s'écoule à chaque tick : le pas l'a réservée, la réserve la contient.
+        if (this.drain > 0) this.energy.spend(Math.min(this.drain, this.energy.getEnergyStored()));
     }
 
     /**
@@ -452,8 +453,23 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.raining = this.level.isRainingAt(roof);
     }
 
-    /** Fait avancer chaque parcelle de {@code elapsed} ticks. Public pour que les GameTests n'attendent pas 24 minutes. */
+    /**
+     * Fait avancer chaque parcelle de {@code elapsed} ticks, énergie payée d'un coup. Pour les
+     * GameTests, qui n'attendent pas 24 minutes ; en jeu, {@link #serverTick} étale le paiement.
+     */
     public void grow(int elapsed) {
+        process(elapsed);
+        this.energy.spend(this.drain * elapsed);
+        this.drain = 0;
+    }
+
+    /**
+     * Un pas de {@code elapsed} ticks : décide ce qui tourne selon l'énergie en réserve, et fixe
+     * {@link #drain}, ce qu'il faudra prélever à chaque tick jusqu'au pas suivant.
+     */
+    private void process(int elapsed) {
+        this.drain = 0;
+        this.budget = this.energy.getEnergyStored();
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
@@ -521,7 +537,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
             ModuleDefinition module = kind != null ? registry.get(kind) : null;
             int count = stack.getCount();
-            if (module == null || !this.energy.spend((long) module.energyPerTick() * count * elapsed)) continue;
+            if (module == null || !afford((long) module.energyPerTick() * count, elapsed)) continue;
 
             this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
             this.temperatureShift += module.temperatureShift() * count;
@@ -618,10 +634,18 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * multiplicateurs × densité. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
      */
     private double poweredSpeed(int energy, int elapsed) {
-        double perTick = energy * this.energyMultiplier * this.density;
-        this.demand += Math.round(perTick);
-        if (!this.energy.spend(Math.round(perTick * elapsed))) return 1D;
+        long perTick = Math.round(energy * this.energyMultiplier * this.density);
+        this.demand += perTick;
+        if (!afford(perTick, elapsed)) return 1D;
         return YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier;
+    }
+
+    /** Réserve {@code perTick} FE/t pour tout le pas, si la réserve les contient ; tout ou rien. */
+    private boolean afford(long perTick, int elapsed) {
+        if (perTick * elapsed > this.budget) return false;
+        this.budget -= perTick * elapsed;
+        this.drain += perTick;
+        return true;
     }
 
     /**
@@ -780,6 +804,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("energy", this.energy.serializeNBT(registries));
         tag.put("modules", this.modules.serializeNBT(registries));
         tag.putBoolean("switchedOn", this.switchedOn);
+        tag.putLong("drain", this.drain);
         tag.putInt("redstoneMode", this.condition.mode().ordinal());
         tag.putInt("redstoneThreshold", this.condition.threshold());
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
@@ -809,6 +834,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
         if (tag.contains("modules")) copyInto(this.modules, registries, tag.getCompound("modules"));
         if (tag.contains("switchedOn")) this.switchedOn = tag.getBoolean("switchedOn");
+        this.drain = Math.max(0L, tag.getLong("drain"));
         if (tag.contains("redstoneMode")) {
             this.condition = new RedstoneCondition(RedstoneCondition.Mode.byOrdinal(tag.getInt("redstoneMode")), tag.getInt("redstoneThreshold"));
         }
