@@ -58,7 +58,7 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-030 | P0 | M | **Porter la charte GUI** de FactoryIO (`GuiMetrics`, `GuiTheme`, `GuiSprites` et sa planche). | un écran vide de 176 px s'ouvre en `runClient` |
+| ~~YAF-030~~ | ✅ | M | **Porter la charte GUI** — **fait** de FactoryIO (`GuiMetrics`, `GuiTheme`, `GuiSprites` et sa planche). | un écran vide de 176 px s'ouvre en `runClient` |
 | YAF-031 | P0 | M | **Écran de la serre** : grille de parcelles (barre de croissance, liseré de statut), jauge d'eau colonne 0, voyant. Valeurs par `ContainerData`, boutons par `clickMenuButton`. | `runClient` et `runServer` : la croissance avance à l'écran |
 | YAF-032 | P1 | M | **Détail d'une parcelle** en fenêtre superposée : emplacements Culture / Substrat / Catalyseur, exigences comparées à l'environnement. | poser et retirer une culture depuis l'écran ; substrat incompatible refusé par le serveur |
 | YAF-033 | P1 | S | **Onglet Environnement** (jaune) : 3 facteurs, « Limité par », items/min, eau/min. | la ligne « Limité par » change quand on pose une lampe |
