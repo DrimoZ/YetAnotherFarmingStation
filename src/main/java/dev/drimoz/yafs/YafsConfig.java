@@ -12,11 +12,6 @@ public final class YafsConfig {
                     "Growth speed of a powered plot, relative to an unpowered one.")
             .defineInRange("energizedSpeed", 2.0D, 1.0D, 16.0D);
 
-    public static final ModConfigSpec.IntValue ENERGY_PER_PLOT = BUILDER
-            .comment("FE par tick que coûte une parcelle alimentée, avant les multiplicateurs des modules.",
-                    "FE per tick a powered plot costs, before module multipliers.")
-            .defineInRange("energyPerPlot", 10, 0, 100_000);
-
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private YafsConfig() {}

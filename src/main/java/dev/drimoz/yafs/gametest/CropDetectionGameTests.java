@@ -100,7 +100,7 @@ public class CropDetectionGameTests {
         try {
             List<CropOverride> changed = new ArrayList<>(shipped);
             changed.add(new CropOverride(Items.CARROT, Optional.of(List.of(new ItemMatch(Items.SAND, null))),
-                    Optional.of(Items.GOLD_BLOCK), Optional.empty(), Optional.empty()));
+                    Optional.of(Items.GOLD_BLOCK), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
             CropData.set(changed, substrates);
 
             Crop carrot = known(helper, Items.CARROT);

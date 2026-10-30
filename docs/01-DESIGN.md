@@ -45,20 +45,19 @@ On reprend le cadre multibloc de FactoryIO (`docs/12` §2) :
 
 ### 2.2 Paliers
 
-| Palier | Volume (l×h×p) | Parcelles | Emplacements de module | Ports max | Densité max |
-|---|---|---|---|---|---|
-| P1 | 3×3×3 | 4 (2×2) | 2 | 2 | ×2 |
-| P2 | 5×4×5 | 9 (3×3) | 4 | 4 | ×3 |
-| P3 | 7×5×7 | 16 (4×4) | 6 | 6 | ×4 |
+| Palier | Volume (l×h×p) | Parcelles | Emplacements de module | Densité max |
+|---|---|---|---|---|
+| P1 | 3×3×3 | 4 (2×2) | 2 | ×2 |
+| P2 | 5×4×5 | 9 (3×3) | 4 | ×3 |
+| P3 | 7×5×7 | 16 (4×4) | 6 | ×4 |
 
-Un palier ne donne **jamais de vitesse**. Il donne de la place : plus de parcelles, de modules et
-de ports.
+Un palier ne donne **jamais de vitesse**. Il donne de la place : plus de parcelles et de modules.
 
 ### 2.3 Monter de palier
 
 On utilise l'item du palier suivant **sur une serre posée**. Le contour fantôme montre le nouveau
 volume, centré sur le même maître. Si la place manque, il est rouge et rien ne change. Sinon, le
-volume s'agrandit en conservant parcelles, modules, ports et réserves, et l'item est consommé.
+volume s'agrandit en conservant parcelles, modules et réserves, et l'item est consommé.
 
 Il n'est pas possible de redescendre : on casse la serre et on repose un palier inférieur.
 
@@ -108,7 +107,7 @@ Plus tard : les bonus entre plantes voisines.
 | Facteur | Valeur de base (le lieu) | Corrigé par |
 |---|---|---|
 | **Lumière** | lumière du ciel au maître, qui suit le cycle jour/nuit ; 0 sans ciel visible | Lampe de croissance |
-| **Eau** | ce que contient la réserve, rapporté à la consommation | Collecteur de pluie, port d'entrée de fluide |
+| **Eau** | ce que contient la réserve, rapporté à la consommation | Collecteur de pluie, tuyau branché au socle |
 | **Température** | température du biome au maître, convertie en °C | Chauffage / Refroidisseur |
 
 Le climat est **une valeur de la serre entière**, pas un calcul par bloc. On le recalcule rarement
@@ -125,7 +124,15 @@ Chaque culture déclare une plage idéale par facteur :
 { "min_light": 9, "min_temperature": 15, "max_temperature": 30 }
 ```
 
-L'eau n'est pas une exigence par culture : une croissance complète boit 500 mB par plant.
+L'eau n'est pas une exigence par culture, mais un **coût**. Chaque culture a le sien, que le JSON
+peut changer : `ticks` (durée d'un cycle, 28 672 par défaut, un blé vanilla idéal), `water_per_cycle`
+(500 mB) et `energy_per_tick` (10 FE/t, payés seulement quand la parcelle est alimentée). Chaque
+parcelle paie sa culture ; la serre affiche la somme.
+
+La serre travaille **tous les 10 ticks**. Une parcelle récolte au plus une fois par pas : si sa
+culture a fini plusieurs cycles entre-temps, elle les récolte en un lot (64 au plus), la table de
+loot étant tirée pour 8 plants puis mise à l'échelle. Un lot qui ne tient pas dans la sortie est
+coupé en deux, jusqu'à un seul cycle ; le reste attend, mûr.
 
 - **Cultures vanilla** : des valeurs livrées avec le mod (canne à sucre et cactus aiment le chaud,
   baies sucrées le froid, verrue du Nether le très chaud…).
@@ -225,7 +232,7 @@ Le mod **ne produit pas d'énergie**, comme FactoryIO.
 une probabilité définie par culture. Le compost **se recycle en engrais** : à la main, ou
 automatiquement avec le module Composteur. La boucle est fermée.
 
-Plus tard : des résidus fluides (une « boue »), qui sortiraient par les ports de fluide.
+Plus tard : des résidus fluides (une « boue »), qui sortiraient par le socle.
 
 ---
 
@@ -262,35 +269,20 @@ multiplie récolte, eau et énergie. Sans énergie, vitesse 1 et accélérateurs
 
 ---
 
-## 8. Ports
+## 8. Le socle
 
-**Le socle** (décidé le 30/10/2026) : la couche du bas de la serre est un bloc plein, façon béton,
-et **chacun de ses blocs se branche de partout** : l'eau et l'énergie y entrent, la récolte en sort.
-Pas d'entrée d'items : graines, sols et catalyseurs se posent une fois, à la main, et restent ; une
-entrée reviendra avec ce qui se consomme en continu (l'engrais). Les plantes poussent posées dessus. Les
-murs au-dessus du socle ne laissent rien passer. Écarté : n'ouvrir que les ports, trop piégeux, un
-câble branché sur un mur ne se connectait à rien sans que rien ne le dise.
+La couche du bas de la serre est un bloc plein, façon béton, et **chacun de ses blocs se branche
+de partout** : l'eau et l'énergie y entrent, la récolte en sort. Pas d'entrée d'items : graines,
+sols et catalyseurs se posent une fois, à la main, et restent ; une entrée reviendra avec ce qui se
+consomme en continu (l'engrais). Les murs au-dessus du socle ne laissent rien passer. Un seau
+marche sur n'importe quel bloc.
 
-Un **port** spécialise un bloc, du socle ou d'un mur : on utilise l'item « Port » sur une partie de
-la serre. Le nombre de ports est plafonné par palier (§2.2).
+Écarté (30/10/2026) : un item « Port » qui spécialisait un bloc (sortie filtrée, entrée d'eau,
+entrée d'énergie), plafonné par palier. Le socle prend déjà tout ; trier la récolte, les mods de
+logistique le font très bien.
 
-| Mode | Capability exposée |
-|---|---|
-| Entrée d'items | graines (vers la première parcelle vide), substrats, engrais |
-| Sortie d'items | réserve de sortie, avec un filtre : récolte / graines en trop / résidus / tout |
-| Entrée de fluide | réserve d'eau |
-| Sortie de fluide | réservé aux résidus fluides (plus tard) |
-| Entrée d'énergie | tampon FE des modules |
-
-Chaque port a **un seul mode** ; une sortie porte son filtre dans son mode (sortie : tout, récolte
-seule, graines seules). On change de mode en réutilisant l'item Port sur le port, et on le retire
-accroupi. Les mods de logistique gèrent déjà très bien les entrées et sorties séparées.
-
-Un seau, lui, marche sur n'importe quel bloc : c'est le joueur, pas un tuyau. Monter de palier
-rend les ports au joueur, puisque le mur a bougé.
-
-Le port délègue au maître le `Capability` / `BlockCapabilityCache` tel quel, sans l'envelopper :
-inserters de FactoryIO, tuyaux et mods tiers voient un inventaire ordinaire.
+Le socle délègue au maître ses handlers tels quels, sans les envelopper : inserters de FactoryIO,
+tuyaux et mods tiers voient un inventaire ordinaire.
 
 **Rien n'est jamais détruit** : quand la sortie ou la réserve de résidus est pleine, la parcelle
 reste mûre et passe au statut BLOCKED.
@@ -399,7 +391,7 @@ Toutes les recettes sont en datapack.
 
 - `core/` : la logique pure (efficacité, loi du minimum, densité, coûts, résolution d'une
   culture). Aucune référence au jeu ; elle est testée en JUnit.
-- `content/` : la serre, les parcelles, les modules, les ports, et le cadre multibloc porté de
+- `content/` : la serre, les parcelles, les modules, le socle, et le cadre multibloc porté de
   FactoryIO.
 - `client/` : les écrans, le rendu, l'aperçu de pose. C'est le seul endroit où
   `net.minecraft.client` est autorisé.
@@ -415,7 +407,7 @@ Toutes les recettes sont en datapack.
 | Type | Couvre |
 |---|---|
 | JUnit | codecs, calcul d'efficacité, loi du minimum, densité, coûts |
-| GameTest | pose, montée de palier, casse avec conservation du contenu, ports, chaque cas exotique de §5.2, persistance au rechargement |
+| GameTest | pose, montée de palier, casse avec conservation du contenu, socle, chaque cas exotique de §5.2, persistance au rechargement |
 
 Les invariants vérifiés en permanence : **aucun item n'est créé ni détruit** en dehors de la
 récolte, persistance après rechargement, budgets de performance.

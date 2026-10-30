@@ -1,7 +1,6 @@
 package dev.drimoz.yafs.registry;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
-import dev.drimoz.yafs.content.greenhouse.PortItem;
 import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseItem;
 import net.minecraft.ChatFormatting;
@@ -32,7 +31,6 @@ public final class YafsItems {
                     tooltip.add(Component.translatable("yafs.tooltip.creative_energy_source").withStyle(ChatFormatting.GRAY));
                 }
             });
-    public static final DeferredItem<PortItem> PORT = ITEMS.registerItem("port", PortItem::new);
 
     public static final DeferredItem<ModuleItem> GROW_LAMP = ITEMS.registerItem("grow_lamp", ModuleItem::new);
     public static final DeferredItem<ModuleItem> HEATER = ITEMS.registerItem("heater", ModuleItem::new);

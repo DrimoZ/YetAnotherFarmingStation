@@ -1,10 +1,7 @@
 package dev.drimoz.yafs.content.multiblock;
 
 import com.mojang.serialization.MapCodec;
-import dev.drimoz.yafs.content.greenhouse.PortMode;
-import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -20,7 +17,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
@@ -37,21 +33,18 @@ public class MultiblockPartBlock extends BaseEntityBlock {
 
     public static final MapCodec<MultiblockPartBlock> CODEC = simpleCodec(MultiblockPartBlock::new);
 
-    /** Un port de serre (YAF-050) : dans l'état du bloc, pour que le client le voie sans synchronisation. */
-    public static final EnumProperty<PortMode> PORT = EnumProperty.create("port", PortMode.class);
-
     /** La couche du bas : un bloc plein, branchable de partout. Dans l'état, pour que le client la dessine. */
     public static final BooleanProperty BASE = BooleanProperty.create("base");
 
     public MultiblockPartBlock(Properties properties) {
         super(properties);
 
-        registerDefaultState(this.stateDefinition.any().setValue(PORT, PortMode.NONE).setValue(BASE, false));
+        registerDefaultState(this.stateDefinition.any().setValue(BASE, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(PORT, BASE);
+        builder.add(BASE);
     }
 
     @Override
@@ -59,10 +52,10 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return CODEC;
     }
 
-    /** Invisible au-dessus du socle, sauf un port ; le socle est un bloc plein. */
+    /** Invisible au-dessus du socle ; le socle est un bloc plein. */
     @Override
     protected RenderShape getRenderShape(BlockState state) {
-        return state.getValue(PORT).isPort() || state.getValue(BASE) ? RenderShape.MODEL : RenderShape.INVISIBLE;
+        return state.getValue(BASE) ? RenderShape.MODEL : RenderShape.INVISIBLE;
     }
 
     @Nullable
@@ -103,11 +96,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock())) {
-            // Un port rend son item, sauf détaché pour une montée de palier, qui le rend au joueur.
-            if (state.getValue(PORT).isPort() && level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part && part.masterPos() != null) {
-                Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(YafsItems.PORT.get()));
-            }
-
             BlockPos master = masterOf(level, pos);
             if (master != null) level.destroyBlock(master, true);
         }

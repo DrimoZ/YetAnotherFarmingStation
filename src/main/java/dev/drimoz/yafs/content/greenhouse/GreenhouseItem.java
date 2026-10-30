@@ -20,7 +20,7 @@ public class GreenhouseItem extends BlockItem {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("yafs.tooltip.greenhouse.capacity", this.tier.plots(), this.tier.moduleSlots(), this.tier.maxPorts())
+        tooltip.add(Component.translatable("yafs.tooltip.greenhouse.capacity", this.tier.plots(), this.tier.moduleSlots())
                 .withStyle(ChatFormatting.GREEN));
         tooltip.add(Component.translatable("yafs.tooltip.greenhouse.volume",
                 this.tier.shape().width(), this.tier.shape().height(), this.tier.shape().depth()).withStyle(ChatFormatting.GRAY));

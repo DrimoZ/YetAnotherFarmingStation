@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.BlockItem;
+import dev.drimoz.yafs.content.crop.Crop.Cost;
 import dev.drimoz.yafs.core.Efficiency.Requirements;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.BlockGetter;
@@ -130,7 +131,7 @@ public final class Crops {
                 }
             }
             if (!substrates.isEmpty()) {
-                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), Requirements.TOLERANT, null, null));
+                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), Requirements.TOLERANT, null, null, Cost.DEFAULT));
             }
         }
 
@@ -152,7 +153,9 @@ public final class Crops {
         return new Crop(crop.seed(), crop.block(), crop.age(), substrates,
                 override.requirements().orElse(crop.requirements()),
                 override.catalyst().orElse(crop.catalyst()),
-                override.harvest().orElse(crop.harvest()));
+                override.harvest().orElse(crop.harvest()),
+                new Cost(override.ticks().orElse(crop.cost().ticks()), override.waterPerCycle().orElse(crop.cost().water()),
+                        override.energyPerTick().orElse(crop.cost().energy())));
     }
 
     /**
@@ -167,7 +170,7 @@ public final class Crops {
                     BuiltInRegistries.ITEM.getKey(override.seed()));
             return null;
         }
-        return new Crop(override.seed(), ((BlockItem) override.seed()).getBlock(), age, Set.of(), Requirements.TOLERANT, null, null);
+        return new Crop(override.seed(), ((BlockItem) override.seed()).getBlock(), age, Set.of(), Requirements.TOLERANT, null, null, Cost.DEFAULT);
     }
 
     @Nullable

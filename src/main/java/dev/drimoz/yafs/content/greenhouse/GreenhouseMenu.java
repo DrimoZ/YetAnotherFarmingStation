@@ -63,8 +63,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int REDSTONE_MODE = 6;
     public static final int REDSTONE_THRESHOLD = 7;
     public static final int SIGNAL = 8;
-    /** Les ports posés : sans eux, rien n'entre ni ne sort, et l'écran doit le dire. */
-    public static final int PORTS = 9;
+    /** L'eau bue, en mB par minute, au rythme du dernier pas. */
+    public static final int WATER_USE = 9;
     /** Le besoin en énergie, FE/t, en deux moitiés comme la réserve. */
     public static final int DEMAND_HIGH = 10;
     public static final int DEMAND_LOW = 11;
@@ -251,12 +251,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.data.get(waterData(this.tier) + SIGNAL);
     }
 
-    public int demand() {
-        return (this.data.get(waterData(this.tier) + DEMAND_HIGH) << 16) | (this.data.get(waterData(this.tier) + DEMAND_LOW) & 0xFFFF);
+    public int waterUse() {
+        return this.data.get(waterData(this.tier) + WATER_USE);
     }
 
-    public int ports() {
-        return this.data.get(waterData(this.tier) + PORTS);
+    public int demand() {
+        return (this.data.get(waterData(this.tier) + DEMAND_HIGH) << 16) | (this.data.get(waterData(this.tier) + DEMAND_LOW) & 0xFFFF);
     }
 
     /** Le client ouvre ou ferme localement, et prévient le serveur par {@link #clickMenuButton}. */

@@ -4,9 +4,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlock;
-import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.registry.YafsBlocks;
-import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -69,36 +67,26 @@ public class GreenhouseBlock extends MultiblockBlock {
                 : createTickerHelper(type, YafsBlocks.GREENHOUSE_ENTITY.get(), (l, pos, s, greenhouse) -> greenhouse.serverTick());
     }
 
-    // Interface (Ports, YAF-050)
+    /** Redstone autour du volume : les parties relaient leurs voisins ici. */
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
 
-    /**
-     * Un port expose ce que son mode dit ; sans port, un bloc du socle expose tout (entrée,
-     * récolte, eau, énergie) ; les murs au-dessus n'exposent rien.
-     */
+        if (level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse) greenhouse.forgetSignal();
+    }
+
+    // Interface (Socle)
+
+    /** Un bloc du socle expose eau, énergie et récolte ; les murs au-dessus n'exposent rien. */
     @Nullable
     @Override
     public <T> T partCapability(BlockCapability<T, Direction> capability, Level level, BlockEntity master, BlockState part, @Nullable Direction side) {
         if (!(master instanceof GreenhouseBlockEntity greenhouse)) return null;
 
-        PortMode mode = part.getValue(MultiblockPartBlock.PORT);
-        Object handler = mode.isPort() ? greenhouse.port(mode, capability)
-                : part.getValue(MultiblockPartBlock.BASE) ? greenhouse.base(capability) : null;
-        @SuppressWarnings("unchecked") // port() et base() ne rendent que le type de la capability demandée
+        Object handler = part.getValue(MultiblockPartBlock.BASE) ? greenhouse.base(capability) : null;
+        @SuppressWarnings("unchecked") // base() ne rend que le type de la capability demandée
         T typed = (T) handler;
         return typed;
-    }
-
-    /** Les ports de la serre de ce maître. */
-    public int portCount(Level level, BlockPos master) {
-        int ports = 0;
-        for (BlockPos pos : shape().positions(master, level.getBlockState(master).getValue(FACING))) {
-            BlockState state = level.getBlockState(pos);
-            if (state.is(YafsBlocks.MULTIBLOCK_PART.get()) && state.getValue(MultiblockPartBlock.PORT).isPort()
-                    && level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part && master.equals(part.masterPos())) {
-                ports++;
-            }
-        }
-        return ports;
     }
 
     // Interface (Monter de palier, YAF-006)
@@ -123,11 +111,9 @@ public class GreenhouseBlock extends MultiblockBlock {
      * Remplace le maître par celui du palier suivant, contenu compris : les parties partent sans
      * casser le volume, le nouveau maître reprend la sauvegarde de l'ancien, puis pose ses parties.
      */
-    private void upgrade(Level level, BlockPos master, GreenhouseBlock next, GreenhouseBlockEntity old, Player player) {
+    private void upgrade(Level level, BlockPos master, GreenhouseBlock next, GreenhouseBlockEntity old) {
         Direction facing = level.getBlockState(master).getValue(FACING);
         CompoundTag saved = old.saveWithoutMetadata(level.registryAccess());
-        // Les ports ne survivent pas à l'agrandissement : le mur a bougé. Ils reviennent au joueur.
-        int ports = portCount(level, master);
 
         old.startUpgrade();
         detachParts(level, master, facing);
@@ -138,16 +124,13 @@ public class GreenhouseBlock extends MultiblockBlock {
             grown.setChanged();
         }
         next.placeParts(level, master, facing);
-
-        if (ports > 0) player.getInventory().placeItemBackInInventory(new ItemStack(YafsItems.PORT.get(), ports));
     }
 
     // Interface (Clics)
 
     /**
-     * Avec un item en main : celui du palier suivant agrandit la serre, un seau la remplit, le Port
-     * passe la main à son item (qui sait quel mur on vise). Tout le reste ouvre l'écran, comme une
-     * main vide : un bloc tenu ne doit jamais se poser contre la serre au lieu de l'ouvrir. Les
+     * Avec un item en main : celui du palier suivant agrandit la serre, un seau la remplit. Tout le
+     * reste ouvre l'écran, comme une main vide : un bloc tenu ne doit jamais se poser contre la serre au lieu de l'ouvrir. Les
      * parties renvoient leurs clics ici.
      */
     @Override
@@ -160,16 +143,14 @@ public class GreenhouseBlock extends MultiblockBlock {
         if (next != null) {
             if (!canUpgrade(level, pos, next)) return ItemInteractionResult.FAIL;
             if (!level.isClientSide) {
-                upgrade(level, pos, next, greenhouse, player);
+                upgrade(level, pos, next, greenhouse);
                 stack.consume(1, player);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
 
-        // Un seau, sur n'importe quel bloc : c'est le joueur, pas un tuyau ; pas besoin de port.
+        // Un seau, sur n'importe quel bloc de la serre.
         if (FluidUtil.interactWithFluidHandler(player, hand, greenhouse.water())) return ItemInteractionResult.sidedSuccess(level.isClientSide);
-
-        if (stack.getItem() instanceof PortItem) return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
 
         // Le jeu appelle alors useWithoutItem, qui ouvre l'écran.
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;

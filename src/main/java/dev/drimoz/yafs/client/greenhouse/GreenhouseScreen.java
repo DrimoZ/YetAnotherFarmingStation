@@ -56,7 +56,9 @@ import java.util.Locale;
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
     private static final int ENV_TAB_WIDTH = 120;
-    private static final int ENV_ROWS = 11;
+    /** Environnement : trois conditions et un verdict ; Fonctionnement : sept relevés et un verdict. */
+    private static final int ENV_ROWS = 4;
+    private static final int OPS_ROWS = 8;
 
     /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
     private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
@@ -68,13 +70,14 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     private static final int CLOSE_SIZE = 9;
 
     private static final double TICKS_PER_MINUTE = 1_200D;
+    private static final ItemStack CLOCK = new ItemStack(Items.CLOCK);
 
     private final SideTabs tabs;
 
     public GreenhouseScreen(GreenhouseMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
 
-        this.tabs = new SideTabs(List.of(new EnvironmentTab(), new ModulesTab(), new ControlTab(new Controls())),
+        this.tabs = new SideTabs(List.of(new EnvironmentTab(), new OperationsTab(), new ModulesTab(), new ControlTab(new Controls())),
                 GuiMetrics.WIDTH, "environment", "modules");
 
         this.imageWidth = GuiMetrics.WIDTH;
@@ -240,12 +243,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    // Onglets : Environnement à gauche (renseigne), Modules et Contrôle à droite (se règlent)
+    // Onglets : Environnement et Fonctionnement à gauche (renseignent), Modules et Contrôle à droite (se règlent)
 
     private static final int ENV_CONTENT_WIDTH = ENV_TAB_WIDTH - 2 * GuiMetrics.TAB_PADDING;
     private static final int MODULE_CONTENT_WIDTH = GreenhouseMenu.MODULE_TAB_WIDTH - 2 * GuiMetrics.TAB_PADDING;
 
-    /** L'onglet jaune : environnement, vitesse, cadence, et ce qui limite la parcelle la plus lente (YAF-033). */
+    /** L'onglet jaune : les conditions, et ce qui limite la parcelle la plus lente (YAF-033). */
     private final class EnvironmentTab extends SideTab {
 
         EnvironmentTab() {
@@ -275,6 +278,39 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         @Override
         protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
             renderEnvironment(graphics, x, y);
+        }
+    }
+
+    /** L'onglet vert : énergie, eau, cadence ; la serre en marche, en chiffres. */
+    private final class OperationsTab extends SideTab {
+
+        OperationsTab() {
+            super("operations", Side.LEFT, GuiTheme.TAB_OPERATIONS);
+        }
+
+        @Override
+        protected Component title() {
+            return Component.translatable("yafs.gui.operations");
+        }
+
+        @Override
+        protected void renderIcon(GuiGraphics graphics, int x, int y) {
+            graphics.renderItem(CLOCK, x, y);
+        }
+
+        @Override
+        protected int contentWidth() {
+            return ENV_CONTENT_WIDTH;
+        }
+
+        @Override
+        protected int contentHeight() {
+            return OPS_ROWS * GuiTheme.LINE + 5;
+        }
+
+        @Override
+        protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
+            renderOperations(graphics, x, y);
         }
     }
 
@@ -379,52 +415,25 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    /** Lumière, température, eau, énergie ; puis vitesse, parcelles, cadence ; enfin le verdict. */
+    /** Les conditions que voient les parcelles, puis ce qu'elles en font : idéal, ou ce qui limite. */
     private void renderEnvironment(GuiGraphics graphics, int x, int y) {
         int row = y;
         row(graphics, x, row, "yafs.gui.env.light", String.valueOf(this.menu.light()), GuiTheme.TAB_VALUE);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.temperature", number(this.menu.temperature()) + " °C", GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.water", compact(this.menu.water()) + " mB",
-                this.menu.water() > 0 ? GuiTheme.TAB_VALUE : GuiTheme.Status.PROBLEM.tabColour);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.energy", compact(this.menu.energy()) + " FE", GuiTheme.TAB_VALUE);
-        // Le socle se branche de partout ; les ports ne servent qu'à spécialiser un bloc.
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.ports", this.menu.ports() + " / " + this.menu.tier().maxPorts(), GuiTheme.TAB_VALUE);
+        boolean wet = this.menu.water() > 0;
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.water", Component.translatable(wet ? "yafs.gui.env.water.yes" : "yafs.gui.env.water.no").getString(),
+                wet ? GuiTheme.TAB_VALUE : GuiTheme.Status.PROBLEM.tabColour);
 
-        int growing = 0;
-        int problems = 0;
         int slowest = -1;
-        double harvests = 0D;
-        double fastest = 0D;
         for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
-            if (this.menu.status(plot) == PlotStatus.PROBLEM) problems++;
             if (this.menu.limiting(plot) == null) continue;
-            growing++;
-            harvests += this.menu.efficiency(plot) * this.menu.speed(plot) * TICKS_PER_MINUTE / GreenhouseBlockEntity.BASE_TICKS;
-            fastest = Math.max(fastest, this.menu.speed(plot));
             if (slowest < 0 || this.menu.efficiency(plot) < this.menu.efficiency(slowest)) slowest = plot;
         }
 
-        row += GuiTheme.LINE + 3;
-        graphics.fill(x, row - 2, x + ENV_CONTENT_WIDTH, row - 1, 0x40FFFFFF);
-        row(graphics, x, row, "yafs.gui.env.speed", "×" + number(fastest), fastest > 1D ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.growing", growing + " / " + this.menu.tier().plots(), GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.harvests", String.format(Locale.ROOT, "%.2f", harvests), GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.drinks", compact((int) Math.round(harvests * GreenhouseBlockEntity.WATER_PER_CYCLE)) + " mB",
-                GuiTheme.TAB_VALUE);
-
         Component verdict;
         int colour;
-        if (!this.menu.switchedOn() || !this.menu.condition().allows(this.menu.signal())) {
-            verdict = Component.translatable(this.menu.switchedOn() ? "yafs.gui.env.redstone" : "yafs.gui.env.off");
-            colour = GuiTheme.Status.OFF.tabColour;
-        } else if (starved()) {
-            verdict = Component.translatable("yafs.gui.modules.unpowered");
-            colour = GuiTheme.Status.PROBLEM.tabColour;
-        } else if (problems > 0 && this.menu.water() <= 0) {
+        if (!wet) {
             verdict = Component.translatable("yafs.gui.env.dry");
-            colour = GuiTheme.Status.PROBLEM.tabColour;
-        } else if (problems > 0) {
-            verdict = Component.translatable("yafs.gui.env.problems", problems);
             colour = GuiTheme.Status.PROBLEM.tabColour;
         } else if (slowest < 0) {
             verdict = Component.translatable("yafs.gui.env.idle");
@@ -438,7 +447,73 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                     Math.round(this.menu.efficiency(slowest) * 100));
             colour = GuiTheme.Status.BLOCKED.tabColour;
         }
-        GuiTheme.tabValue(graphics, this.font, verdict, x, row + GuiTheme.LINE + 2, colour);
+        separator(graphics, x, row += GuiTheme.LINE + 3);
+        GuiTheme.tabValue(graphics, this.font, verdict, x, row, colour);
+    }
+
+    /**
+     * Ce que la serre consomme et produit au rythme actuel : chaque parcelle paie sa culture, la
+     * serre fait la somme. Puis ce qui l'empêche de tourner, s'il y a quelque chose.
+     */
+    private void renderOperations(GuiGraphics graphics, int x, int y) {
+        int growing = 0;
+        int problems = 0;
+        int blocked = 0;
+        double harvests = 0D;
+        double fastest = 0D;
+        double shortest = Double.MAX_VALUE;
+        double longest = 0D;
+        for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
+            PlotStatus status = this.menu.status(plot);
+            if (status == PlotStatus.PROBLEM) problems++;
+            if (status == PlotStatus.BLOCKED) blocked++;
+            double cycle = cycleTicks(plot);
+            if (cycle <= 0D) continue;
+            growing++;
+            harvests += TICKS_PER_MINUTE / cycle;
+            fastest = Math.max(fastest, this.menu.speed(plot));
+            shortest = Math.min(shortest, cycle);
+            longest = Math.max(longest, cycle);
+        }
+
+        int row = y;
+        row(graphics, x, row, "yafs.gui.ops.energy", compact(this.menu.energy()) + " FE", GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.demand", compact(this.menu.demand()) + " FE/t",
+                starved() ? GuiTheme.Status.PROBLEM.tabColour : GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.water", compact(this.menu.waterUse()) + " mB/min", GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.speed", "×" + number(fastest), fastest > 1D ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
+        String cycle = growing == 0 ? "—" : longest - shortest < 1D ? duration(longest) : duration(shortest) + " – " + duration(longest);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.cycle", cycle, GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.harvests", number(Math.round(harvests * 10) / 10D), GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.growing", growing + " / " + this.menu.tier().plots(), GuiTheme.TAB_VALUE);
+
+        Component verdict;
+        int colour;
+        if (!this.menu.switchedOn() || !this.menu.condition().allows(this.menu.signal())) {
+            verdict = Component.translatable(this.menu.switchedOn() ? "yafs.gui.env.redstone" : "yafs.gui.env.off");
+            colour = GuiTheme.Status.OFF.tabColour;
+        } else if (starved()) {
+            verdict = Component.translatable("yafs.gui.modules.unpowered");
+            colour = GuiTheme.Status.PROBLEM.tabColour;
+        } else if (blocked > 0) {
+            verdict = Component.translatable("yafs.gui.ops.full");
+            colour = GuiTheme.Status.BLOCKED.tabColour;
+        } else if (problems > 0) {
+            verdict = Component.translatable("yafs.gui.env.problems", problems);
+            colour = GuiTheme.Status.PROBLEM.tabColour;
+        } else if (growing == 0) {
+            verdict = Component.translatable("yafs.gui.env.idle");
+            colour = GuiTheme.Status.WAITING.tabColour;
+        } else {
+            verdict = Component.translatable("yafs.gui.ops.running");
+            colour = GuiTheme.Status.WORKING.tabColour;
+        }
+        separator(graphics, x, row += GuiTheme.LINE + 3);
+        GuiTheme.tabValue(graphics, this.font, verdict, x, row, colour);
+    }
+
+    private static void separator(GuiGraphics graphics, int x, int y) {
+        graphics.fill(x, y - 2, x + ENV_CONTENT_WIDTH, y - 1, 0x40FFFFFF);
     }
 
     /** Une ligne d'onglet : le libellé à gauche, la valeur alignée à droite. */
@@ -544,7 +619,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             graphics.renderComponentTooltip(this.font, List.of(
                     Component.translatable("yafs.gui.energy", this.menu.energy(), GreenhouseBlockEntity.ENERGY_CAPACITY),
                     Component.translatable("yafs.gui.energy.help").withStyle(ChatFormatting.GRAY),
-                    Component.translatable("yafs.gui.port_hint", Component.translatable("yafs.port.mode.energy_input")).withStyle(ChatFormatting.DARK_AQUA)),
+                    Component.translatable("yafs.gui.base_hint").withStyle(ChatFormatting.DARK_AQUA)),
                     mouseX, mouseY);
             return;
         }
@@ -559,7 +634,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             graphics.renderComponentTooltip(this.font, List.of(
                     Component.translatable("yafs.gui.water", this.menu.water(), GreenhouseBlockEntity.TANK_CAPACITY),
                     Component.translatable("yafs.gui.water.help").withStyle(ChatFormatting.GRAY),
-                    Component.translatable("yafs.gui.port_hint", Component.translatable("yafs.port.mode.fluid_input")).withStyle(ChatFormatting.DARK_AQUA)),
+                    Component.translatable("yafs.gui.base_hint").withStyle(ChatFormatting.DARK_AQUA)),
                     mouseX, mouseY);
             return;
         }
@@ -574,6 +649,8 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             } else {
                 lines.add(crop.getHoverName());
                 lines.add(Component.translatable("yafs.gui.plot.growth", Math.round(this.menu.progress(plot) * 100)).withStyle(ChatFormatting.GRAY));
+                double cycle = cycleTicks(plot);
+                if (cycle > 0D) lines.add(Component.translatable("yafs.gui.plot.cycle", duration(cycle)).withStyle(ChatFormatting.GRAY));
                 PlotStatus status = this.menu.status(plot);
                 lines.add(reason(plot).copy().withStyle(status == PlotStatus.WORKING ? ChatFormatting.GREEN : ChatFormatting.RED));
             }
@@ -676,6 +753,27 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         if (value >= 1_000_000L) return String.format(Locale.ROOT, "%.1fM", value / 1_000_000D);
         if (value >= 10_000L) return String.format(Locale.ROOT, "%.1fk", value / 1_000D);
         return String.valueOf(value);
+    }
+
+    /**
+     * Les ticks d'un cycle de cette parcelle, au rythme actuel : la durée de sa culture, divisée
+     * par son efficacité et sa vitesse. 0 si elle ne pousse pas.
+     */
+    private double cycleTicks(int plot) {
+        Crop crop = Crops.of(crop(plot).getItem());
+        double rate = this.menu.efficiency(plot) * this.menu.speed(plot);
+        if (crop == null || this.menu.limiting(plot) == null || rate <= 0D) return 0D;
+        return crop.cost().ticks() / rate;
+    }
+
+    /** 0.4 s, 12 s, 3 min 20, 1 h 05 : la précision qui compte à cette échelle. */
+    private static String duration(double ticks) {
+        double seconds = ticks / 20D;
+        if (seconds < 10D) return String.format(Locale.ROOT, "%.1f s", seconds);
+        if (seconds < 60D) return Math.round(seconds) + " s";
+        long minutes = Math.round(seconds) / 60;
+        if (minutes < 60) return String.format(Locale.ROOT, "%d min %02d", minutes, Math.round(seconds) % 60);
+        return String.format(Locale.ROOT, "%d h %02d", minutes / 60, minutes % 60);
     }
 
     private static GuiTheme.Status theme(PlotStatus status) {

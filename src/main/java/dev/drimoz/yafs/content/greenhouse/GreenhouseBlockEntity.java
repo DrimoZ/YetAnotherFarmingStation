@@ -69,12 +69,18 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** Un pas de référence pour les tests et les relevés (une seconde) ; en jeu, la serre avance à chaque tick. */
     public static final int STEP = 20;
 
+    /** La durée d'un cycle d'une culture sans surcharge, voir {@link Crop.Cost#DEFAULT}. */
+    public static final int BASE_TICKS = Crop.Cost.DEFAULT.ticks();
+
     /**
-     * Ticks qu'il faut à un blé vanilla dans les meilleures conditions : 7 stades, une chance sur
-     * 3 d'avancer par random tick sur terre labourée irriguée, un random tick tous les 4096/3 ticks
-     * en moyenne. 7 × 3 × 4096 / 3 = 28 672 ticks, soit 24 minutes.
+     * La serre travaille tous les 10 ticks, pas à chaque tick : une parcelle récolte au plus une
+     * fois par pas, en lot si sa culture a fini plusieurs cycles entre-temps.
      */
-    public static final int BASE_TICKS = 28_672;
+    public static final int PROCESS_INTERVAL = 10;
+    /** Le plafond d'un lot : 64 cycles par pas, soit un cycle tous les 0,15 tick. */
+    public static final int MAX_CYCLES_PER_STEP = 64;
+    /** Les tirages de table de loot d'une récolte ; au-delà, on met à l'échelle. */
+    private static final int LOOT_ROLLS = 8;
 
     /** Le lieu change rarement : on le relève toutes les 5 secondes, pas à chaque pas. */
     public static final int SAMPLE_INTERVAL = 100;
@@ -87,8 +93,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** Huit seaux : 48 minutes d'autonomie pour une serre P1 pleine. */
     public static final int TANK_CAPACITY = 8_000;
-    /** L'eau d'une croissance complète d'un plant, en mB. */
-    public static final int WATER_PER_CYCLE = 500;
+    /** L'eau d'une croissance complète d'un plant sans surcharge, en mB. */
+    public static final int WATER_PER_CYCLE = Crop.Cost.DEFAULT.water();
 
     private static final Codec<List<PlotGrowth>> GROWTH_CODEC = PlotGrowth.CODEC.listOf();
 
@@ -111,7 +117,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
     };
 
-    /** L'énergie des modules (YAF-061) ; elle n'entre que par un port d'énergie. */
     /** De quoi tenir une serre P3 poussée à fond quelques secondes : les accélérateurs coûtent cher. */
     public static final int ENERGY_CAPACITY = 1_000_000;
     private final Battery energy = new Battery();
@@ -142,14 +147,18 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** Une sorte de module par emplacement, empilable jusqu'au maximum de sa définition : les effets s'additionnent. */
     private final ItemStackHandler modules;
 
-    // Ce que voient les ports (YAF-051). Des objets fixes : les caches de capability des voisins les gardent.
-    private final IItemHandler harvestPort = new OutputPort(PortMode.OUTPUT_HARVEST);
-    private final IItemHandler seedsPort = new OutputPort(PortMode.OUTPUT_SEEDS);
-    private final IItemHandler allPort = new OutputPort(PortMode.OUTPUT_ALL);
-    private final IFluidHandler waterPort = new WaterPort();
+    // Ce que voit le socle. Des objets fixes : les caches de capability des voisins les gardent.
+    private final IItemHandler outputView = new OutputView();
+    private final IFluidHandler waterInput = new WaterInput();
 
     /** L'eau bue, en fractions de mB : un pas de croissance en boit moins d'un. */
     private double thirst;
+    /** L'eau que boit la parcelle qu'on vient de faire pousser, en mB. */
+    private double thirstOfStep;
+    /** L'eau bue au dernier pas, ramenée en mB par minute, pour l'écran. */
+    private int waterUse;
+    /** Le signal redstone reçu par le volume ; -1 tant qu'un voisin a changé depuis la dernière lecture. */
+    private int signal = -1;
 
     private final PlotGrowth[] growth;
     private final PlotStatus[] status;
@@ -288,7 +297,15 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** Le plus fort signal reçu par l'un des blocs du volume. */
     public int signal() {
-        return this.level == null ? 0 : ((GreenhouseBlock) getBlockState().getBlock()).bestSignal(this.level, this.worldPosition);
+        if (this.level == null) return 0;
+        // Lire tout le volume coûte : on ne relit qu'après un changement de voisin.
+        if (this.signal < 0) this.signal = ((GreenhouseBlock) getBlockState().getBlock()).bestSignal(this.level, this.worldPosition);
+        return this.signal;
+    }
+
+    /** Un voisin a changé : le signal sera relu à la prochaine demande. */
+    public void forgetSignal() {
+        this.signal = -1;
     }
 
     public boolean isRunning() {
@@ -296,36 +313,23 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /**
-     * Ce qu'expose un bloc du socle sans port : l'eau et l'énergie y entrent, toute la récolte en
+     * Ce qu'expose un bloc du socle : l'eau et l'énergie y entrent, toute la récolte en
      * sort. Pas d'entrée d'items : graines, sols et catalyseurs se posent une fois, à la main, et
      * restent. C'est là qu'on branche ses tuyaux et ses câbles sans rien régler.
      */
     @Nullable
     public Object base(BlockCapability<?, ?> capability) {
-        if (capability == Capabilities.ItemHandler.BLOCK) return this.allPort;
-        if (capability == Capabilities.FluidHandler.BLOCK) return this.waterPort;
+        if (capability == Capabilities.ItemHandler.BLOCK) return this.outputView;
+        if (capability == Capabilities.FluidHandler.BLOCK) return this.waterInput;
         if (capability == Capabilities.EnergyStorage.BLOCK) return this.energy;
         return null;
     }
 
     /** Le maître est un bloc du socle comme les autres. */
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.allPort);
-        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.waterPort);
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.outputView);
+        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.waterInput);
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.energy);
-    }
-
-    /** Ce qu'expose un port dans ce mode, pour cette capability ; {@code null} si rien. */
-    @Nullable
-    public Object port(PortMode mode, BlockCapability<?, ?> capability) {
-        return switch (mode) {
-            case OUTPUT_ALL -> capability == Capabilities.ItemHandler.BLOCK ? this.allPort : null;
-            case OUTPUT_HARVEST -> capability == Capabilities.ItemHandler.BLOCK ? this.harvestPort : null;
-            case OUTPUT_SEEDS -> capability == Capabilities.ItemHandler.BLOCK ? this.seedsPort : null;
-            case FLUID_INPUT -> capability == Capabilities.FluidHandler.BLOCK ? this.waterPort : null;
-            case ENERGY_INPUT -> capability == Capabilities.EnergyStorage.BLOCK ? this.energy : null;
-            case NONE -> null;
-        };
     }
 
     public PlotGrowth growth(int plot) {
@@ -389,8 +393,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         case GreenhouseMenu.SIGNAL -> signal();
                         case GreenhouseMenu.DEMAND_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) >>> 16);
                         case GreenhouseMenu.DEMAND_LOW -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) & 0xFFFF);
-                        case GreenhouseMenu.PORTS -> GreenhouseBlockEntity.this.level == null ? 0
-                                : ((GreenhouseBlock) getBlockState().getBlock()).portCount(GreenhouseBlockEntity.this.level, GreenhouseBlockEntity.this.worldPosition);
+                        case GreenhouseMenu.WATER_USE -> GreenhouseBlockEntity.this.waterUse;
                         default -> 0;
                     };
                 }
@@ -429,9 +432,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
     public void serverTick() {
         this.ticks++;
         if (this.environment == null || this.ticks % SAMPLE_INTERVAL == 0) sampleEnvironment();
-        // À chaque tick : l'énergie s'écoule au rythme du besoin affiché, au lieu de tomber par paliers.
-        // ponytail: quelques petits objets par parcelle et par tick ; regrouper en pas si un profil le réclame.
-        grow(1);
+        // Décalé selon la position : les serres d'une base ne travaillent pas toutes au même tick.
+        if (Math.floorMod(this.ticks + this.worldPosition.hashCode(), PROCESS_INTERVAL) == 0) grow(PROCESS_INTERVAL);
     }
 
     /**
@@ -459,6 +461,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (!isRunning()) {
             Arrays.fill(this.status, PlotStatus.OFF);
             Arrays.fill(this.verdicts, null);
+            Arrays.fill(this.speeds, 0D);
+            this.demand = 0;
+            this.waterUse = 0;
             return;
         }
 
@@ -470,23 +475,22 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.effective = new Conditions(Math.max(this.environment.light(), this.lightFloor),
                 this.environment.temperature() + this.temperatureShift, this.environment.water());
 
+        double drunk = 0D;
         boolean visibleChange = false;
         for (int plot = 0; plot < this.growth.length; plot++) {
             PlotGrowth before = this.growth[plot];
             this.verdicts[plot] = null;
+            this.speeds[plot] = 0D;
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
             visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
-            drink(before, this.growth[plot], this.speeds[plot] > 1D ? this.waterMultiplier : 1D);
+            drunk += this.thirstOfStep;
         }
+        drink(drunk);
+        this.waterUse = (int) Math.min(Short.MAX_VALUE, Math.round(drunk * 1_200 / elapsed));
         setChanged();
         if (visibleChange) syncToClient();
     }
 
-    /**
-     * Chaque pile de modules tourne si elle a son énergie pour le pas entier, sinon elle ne fait
-     * rien. Une pile additionne ses effets (deux Accélérateurs I : vitesse ×3, énergie ×7) ; des
-     * modules différents se multiplient entre eux. Lumière et densité gardent la plus haute valeur.
-     */
     private void collectRain() {
         int collected = (int) this.rainfall;
         if (collected <= 0) return;
@@ -494,6 +498,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (this.water.getFluidAmount() >= TANK_CAPACITY) this.rainfall = 0D;
     }
 
+    /**
+     * Chaque pile de modules tourne si elle a son énergie pour le pas entier, sinon elle ne fait
+     * rien. Une pile additionne ses effets (deux Accélérateurs I : vitesse ×3, énergie ×7) ; des
+     * modules différents se multiplient entre eux. Lumière et densité gardent la plus haute valeur.
+     */
     private void runModules(int elapsed) {
         this.demand = 0;
         this.lightFloor = 0;
@@ -521,7 +530,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             this.waterMultiplier *= ModuleDefinition.stacked(module.waterMultiplier(), count);
             this.demand += (long) module.energyPerTick() * count;
             this.density = Math.min(Math.max(this.density, module.density()), this.tier.maxDensity());
-            // rain_collection est en mB par seconde : la serre avance à chaque tick, on reporte les fractions.
+            // rain_collection est en mB par seconde : on reporte les fractions d'un pas à l'autre.
             if (this.raining && module.rainCollection() > 0) {
                 this.rainfall += (double) module.rainCollection() * count * elapsed / STEP;
             }
@@ -536,14 +545,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.water.isEmpty() ? 0D : 1D;
     }
 
-    /**
-     * L'eau suit la croissance réellement faite, × densité, × ce que les accélérateurs y ajoutent
-     * quand la parcelle est alimentée ; une récolte ne boit rien de plus.
-     */
-    private void drink(PlotGrowth before, PlotGrowth after, double multiplier) {
-        double grown = after.progress() >= before.progress() ? after.progress() - before.progress() : 1D - before.progress() + after.progress();
-        this.thirst += grown * WATER_PER_CYCLE * this.density * multiplier;
-
+    /** Boit {@code amount} mB ; les fractions attendent le pas suivant. */
+    private void drink(double amount) {
+        this.thirst += amount;
         int drained = (int) Math.min(this.thirst, this.water.getFluidAmount());
         if (drained <= 0) return;
         this.water.drain(drained, IFluidHandler.FluidAction.EXECUTE);
@@ -567,7 +571,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return crop == null ? null : crop.stateAt(this.growth[plot].progress());
     }
 
+    /**
+     * Avance la parcelle de {@code elapsed} ticks, et récolte d'un coup tous les cycles finis
+     * pendant ce pas : une culture plus rapide que le pas donne plusieurs récoltes à la fois, sans
+     * rien perdre. L'eau que ça boit est laissée dans {@link #thirstOfStep}.
+     */
     private PlotStatus growPlot(ServerLevel level, int plot, int elapsed) {
+        this.thirstOfStep = 0D;
         ItemStack crop = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CROP);
         if (crop.isEmpty()) return PlotStatus.WAITING;
 
@@ -575,45 +585,94 @@ public class GreenhouseBlockEntity extends BlockEntity {
         ItemStack substrate = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE);
         ItemStack catalyst = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CATALYST);
         if (known == null || !known.accepts(substrate.getItem()) || !known.catalysedBy(catalyst.getItem())) return PlotStatus.PROBLEM;
-        if (this.environment.water() <= 0D && !this.growth[plot].isMature()) return PlotStatus.PROBLEM;
+        PlotGrowth before = this.growth[plot];
+        if (this.environment.water() <= 0D && !before.isMature()) return PlotStatus.PROBLEM;
 
         Efficiency.Verdict verdict = Efficiency.evaluate(known.requirements(), this.effective);
         this.verdicts[plot] = verdict;
-        this.speeds[plot] = this.growth[plot].isMature() ? 0D : poweredSpeed(elapsed);
-        // ponytail: une récolte par pas au plus ; au-delà de ×1 400, la croissance en trop serait perdue.
-        PlotGrowth current = this.growth[plot].advance(verdict.value() * this.speeds[plot] * elapsed / BASE_TICKS);
-        this.growth[plot] = current;
-        if (!current.isMature()) return PlotStatus.WORKING;
+        Crop.Cost cost = known.cost();
 
-        if (!harvest(level, known.harvestState(), this.density)) return PlotStatus.BLOCKED;
+        // Mûre et bloquée : elle attend la place, sans rien coûter.
+        double total = 1D;
+        if (!before.isMature()) {
+            this.speeds[plot] = poweredSpeed(cost.energy(), elapsed);
+            // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
+            total = Math.min(before.progress() + verdict.value() * this.speeds[plot] * elapsed / cost.ticks(), MAX_CYCLES_PER_STEP);
+            double water = this.speeds[plot] > 1D ? this.waterMultiplier : 1D;
+            this.thirstOfStep = (total - before.progress()) * cost.water() * this.density * water;
+        }
+        if (total < 1D) {
+            this.growth[plot] = new PlotGrowth((float) total, before.density());
+            return PlotStatus.WORKING;
+        }
 
-        this.growth[plot] = current.harvested();
-        return PlotStatus.WORKING;
+        int harvested = harvest(level, known.harvestState(), (int) total);
+        // Ce qui n'a pas trouvé place reste mûr, pour le pas suivant.
+        this.growth[plot] = new PlotGrowth((float) Math.min(1D, total - harvested), before.density());
+        return harvested == 0 ? PlotStatus.BLOCKED : PlotStatus.WORKING;
     }
 
     /**
      * Une parcelle qui a son énergie pour le pas pousse {@link YafsConfig#ENERGIZED_SPEED} fois plus
-     * vite, et les accélérateurs multiplient encore. Le prix suit : coût de base × multiplicateurs ×
-     * densité. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
+     * vite, et les accélérateurs multiplient encore. Le prix suit : coût de la culture ×
+     * multiplicateurs × densité. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
      */
-    private double poweredSpeed(int elapsed) {
-        double perTick = YafsConfig.ENERGY_PER_PLOT.get() * this.energyMultiplier * this.density;
+    private double poweredSpeed(int energy, int elapsed) {
+        double perTick = energy * this.energyMultiplier * this.density;
         this.demand += Math.round(perTick);
         if (!this.energy.spend(Math.round(perTick * elapsed))) return 1D;
         return YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier;
     }
 
     /**
-     * Tout ou rien : la récolte n'entre que si elle tient entière dans la sortie. Simulée sur une
-     * copie d'abord, puisqu'une insertion simulée pile par pile ne voit pas la place que prennent
-     * les précédentes.
+     * Récolte jusqu'à {@code cycles} cycles de {@link #density} plants, et rend combien sont entrés.
+     * Tout ou rien par lot : s'il ne tient pas dans la sortie, on essaie la moitié, jusqu'à un seul.
+     *
+     * <p>La table de loot est tirée pour {@link #LOOT_ROLLS} plants au plus, puis mise à l'échelle :
+     * soixante-quatre cycles coûtent autant que huit.
      */
-    private boolean harvest(ServerLevel level, BlockState mature, int density) {
-        List<ItemStack> drops = new ArrayList<>();
-        for (int plant = 0; plant < density; plant++) {
-            drops.addAll(Block.getDrops(mature, level, this.worldPosition, null));
+    private int harvest(ServerLevel level, BlockState mature, int cycles) {
+        int rolls = Math.min(cycles * this.density, LOOT_ROLLS);
+        List<ItemStack> sample = new ArrayList<>();
+        for (int roll = 0; roll < rolls; roll++) {
+            for (ItemStack drop : Block.getDrops(mature, level, this.worldPosition, null)) merge(sample, drop);
         }
 
+        for (int batch = cycles; batch > 0; batch /= 2) {
+            List<ItemStack> drops = scaled(sample, (long) batch * this.density, rolls);
+            if (fits(drops)) {
+                for (ItemStack drop : drops) ItemHandlerHelper.insertItemStacked(this.output, drop, false);
+                return batch;
+            }
+        }
+        return 0;
+    }
+
+    private static void merge(List<ItemStack> into, ItemStack drop) {
+        for (ItemStack stack : into) {
+            if (ItemStack.isSameItemSameComponents(stack, drop)) {
+                stack.grow(drop.getCount());
+                return;
+            }
+        }
+        into.add(drop.copy());
+    }
+
+    /** Ce que donnent {@code plants} plants, d'après ce qu'en ont donné {@code rolls}. */
+    private static List<ItemStack> scaled(List<ItemStack> sample, long plants, int rolls) {
+        List<ItemStack> drops = new ArrayList<>(sample.size());
+        for (ItemStack stack : sample) {
+            int count = (int) Math.min(Integer.MAX_VALUE, Math.round((double) stack.getCount() * plants / rolls));
+            if (count > 0) drops.add(stack.copyWithCount(count));
+        }
+        return drops;
+    }
+
+    /**
+     * Simulé sur une copie : une insertion simulée pile par pile ne voit pas la place que prennent
+     * les précédentes.
+     */
+    private boolean fits(List<ItemStack> drops) {
         ItemStackHandler trial = new ItemStackHandler(OUTPUT_SLOTS);
         for (int slot = 0; slot < OUTPUT_SLOTS; slot++) {
             trial.setStackInSlot(slot, this.output.getStackInSlot(slot).copy());
@@ -621,31 +680,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         for (ItemStack drop : drops) {
             if (!ItemHandlerHelper.insertItemStacked(trial, drop.copy(), false).isEmpty()) return false;
         }
-
-        for (ItemStack drop : drops) {
-            ItemHandlerHelper.insertItemStacked(this.output, drop, false);
-        }
         return true;
     }
 
-    // Ports
+    // Socle
 
-    /** Une sortie d'items, filtrée : ce qui ne passe pas le filtre est invisible par ce port. */
-    private final class OutputPort implements IItemHandler {
-
-        private final PortMode mode;
-
-        OutputPort(PortMode mode) {
-            this.mode = mode;
-        }
-
-        private boolean passes(ItemStack stack) {
-            return switch (this.mode) {
-                case OUTPUT_SEEDS -> Crops.of(stack.getItem()) != null;
-                case OUTPUT_HARVEST -> Crops.of(stack.getItem()) == null;
-                default -> true;
-            };
-        }
+    /** La sortie vue de l'extérieur : on y prend, on n'y dépose pas. */
+    private final class OutputView implements IItemHandler {
 
         @Override
         public int getSlots() {
@@ -654,8 +695,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         @Override
         public ItemStack getStackInSlot(int slot) {
-            ItemStack stack = GreenhouseBlockEntity.this.output.getStackInSlot(slot);
-            return passes(stack) ? stack : ItemStack.EMPTY;
+            return GreenhouseBlockEntity.this.output.getStackInSlot(slot);
         }
 
         @Override
@@ -665,7 +705,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         @Override
         public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            if (!passes(GreenhouseBlockEntity.this.output.getStackInSlot(slot))) return ItemStack.EMPTY;
             return GreenhouseBlockEntity.this.output.extractItem(slot, amount, simulate);
         }
 
@@ -681,7 +720,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /** Une entrée de fluide : on remplit la réserve, on ne la vide pas par là. */
-    private final class WaterPort implements IFluidHandler {
+    private final class WaterInput implements IFluidHandler {
 
         @Override
         public int getTanks() {

@@ -17,10 +17,10 @@ Le niveau d'une serre ; il fixe sa taille, son nombre de parcelles et de modules
 vitesse. On monte de palier sur place.
 _Éviter_ : tier, niveau, rang
 
-**Port** :
-Un bloc de la serre que le joueur a désigné comme passage, avec un seul mode (entrée ou sortie
-d'items, de fluide, ou entrée d'énergie) ; les autres blocs ne laissent rien passer.
-_Éviter_ : face, valve, hatch, bus, interface
+**Socle** :
+La couche du bas d'une serre, un bloc plein ; tout s'y branche, de tous côtés. Les murs au-dessus
+ne laissent rien passer.
+_Éviter_ : port, face, valve, hatch, bus, interface
 
 **Module** :
 Un item placé dans une serre qui corrige son environnement ou accélère ses parcelles, à un coût.

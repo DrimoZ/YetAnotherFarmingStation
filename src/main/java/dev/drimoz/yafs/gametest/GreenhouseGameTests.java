@@ -1,13 +1,14 @@
 package dev.drimoz.yafs.gametest;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
+import dev.drimoz.yafs.content.crop.CropData;
+import dev.drimoz.yafs.content.crop.CropOverride;
+import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseMenu;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseTier;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
-import dev.drimoz.yafs.content.greenhouse.PortMode;
-import dev.drimoz.yafs.content.multiblock.MultiblockPartBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.core.Climate;
 import dev.drimoz.yafs.core.Efficiency;
@@ -40,7 +41,9 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * La serre posée, cassée (YAF-002), et ses parcelles qui poussent (YAF-012). Plateforme 11×8×11 ({@code tools/GenerateTestStructure.java}),
@@ -187,6 +190,37 @@ public class GreenhouseGameTests {
         greenhouse.output().setStackInSlot(1, ItemStack.EMPTY);
         greenhouse.grow(GreenhouseBlockEntity.STEP);
         helper.assertTrue(count(greenhouse.output(), Items.WHEAT) == 1, "La récolte n'a pas repris");
+        helper.succeed();
+    }
+
+    /**
+     * Une culture plus rapide que le pas récolte en lot, sans rien perdre ; elle boit et coûte ce
+     * que dit son JSON, pas le défaut.
+     */
+    @GameTest(template = PLATFORM)
+    public static void aFastCropHarvestsInBatchesAtItsOwnCost(GameTestHelper helper) {
+        List<CropOverride> shipped = CropData.overrides();
+        List<SubstrateDefinition> substrates = CropData.substrates();
+        try {
+            List<CropOverride> changed = new ArrayList<>(shipped);
+            changed.add(new CropOverride(Items.WHEAT_SEEDS, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.of(20), Optional.of(30), Optional.of(3)));
+            CropData.set(changed, substrates);
+
+            GreenhouseBlockEntity greenhouse = place(helper);
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+            greenhouse.energy().receiveEnergy(10_000, false);
+
+            // Énergie : vitesse ×2, donc 10 cycles de 20 ticks en 100 ticks, récoltés d'un coup.
+            int water = greenhouse.water().getFluidAmount();
+            greenhouse.grow(100);
+            helper.assertTrue(count(greenhouse.output(), Items.WHEAT) == 10, count(greenhouse.output(), Items.WHEAT) + " blés pour 10 cycles");
+            helper.assertTrue(water - greenhouse.water().getFluidAmount() == 300, (water - greenhouse.water().getFluidAmount()) + " mB bus pour 10 cycles");
+            helper.assertTrue(greenhouse.energy().getEnergyStored() == 10_000 - 3 * 100, "Énergie " + greenhouse.energy().getEnergyStored());
+        } finally {
+            CropData.set(shipped, substrates);
+        }
         helper.succeed();
     }
 
@@ -338,18 +372,16 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Une croissance complète boit WATER_PER_CYCLE mB, et la réserve se remplit par un port d'eau. */
+    /** Une croissance complète boit WATER_PER_CYCLE mB, et la réserve se remplit par le socle. */
     @GameTest(template = PLATFORM)
-    public static void growingDrinksTheReserveFilledThroughAPort(GameTestHelper helper) {
+    public static void growingDrinksTheReserveFilledThroughTheBase(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
         greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
         greenhouse.water().setFluid(FluidStack.EMPTY);
 
-        BlockPos port = MASTER.offset(1, 2, 1);
-        helper.setBlock(port, helper.getBlockState(port).setValue(MultiblockPartBlock.PORT, PortMode.FLUID_INPUT));
-        IFluidHandler part = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, helper.absolutePos(port), Direction.UP);
-        helper.assertTrue(part != null, "Le port d'eau ne relaie pas la réserve");
+        IFluidHandler part = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, helper.absolutePos(MASTER.offset(1, 0, 1)), Direction.UP);
+        helper.assertTrue(part != null, "Le socle ne relaie pas la réserve");
         part.fill(new FluidStack(Fluids.WATER, 1_000), IFluidHandler.FluidAction.EXECUTE);
         helper.assertTrue(greenhouse.water().getFluidAmount() == 1_000, "Réserve " + greenhouse.water().getFluidAmount());
 

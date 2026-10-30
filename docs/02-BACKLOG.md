@@ -71,13 +71,11 @@ un monde).
 | ~~YAF-040~~ | ✅ | M | **Prototype de rendu des plantes** — **fait, vu sur les captures** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
 | YAF-041 | P1 | S | **Budget de performance** : mesure de 50 serres P3 pleines, niveau de détail selon la distance. Budget versionné dans `docs/`. | chiffres consignés, budget tenu |
 
-## Épic F — Ports
+## Épic F — Socle
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| ~~YAF-050~~ | ✅ | M | **Item Port** — **fait** (le port est dans l'état du bloc, visible sans synchronisation ; ports rendus à la casse et à la montée de palier) : transforme une partie de mur en port, plafond par palier ; seuls les ports exposent des capabilities. | GameTest : un hopper sous une partie normale ne tire rien, sous un port il tire |
-| ~~YAF-051~~ | ✅ | M | **Modes de port** — **fait** (le filtre de sortie est un mode : sortie tout / récolte / graines ; une réserve d'énergie de 10 000 FE attend les modules ; pas de sortie de fluide tant qu'il n'y a pas de résidu fluide) : entrée/sortie d'items, entrée de fluide, entrée d'énergie ; filtre de sortie (récolte / graines / résidus / tout). | GameTests par mode |
-| YAF-052 | P2 | XS | Changer le mode d'un port à la clé. Pour l'instant, on le change en réutilisant l'item Port : la clé ne vaut la peine que si un configurateur sert ailleurs. | — |
+| ~~YAF-050~~ | ✅ | M | **Le socle** — **fait** : la couche du bas se branche de partout (eau, énergie, récolte). L'item Port, d'abord fait, a été retiré le 30/10/2026 : le socle le rendait inutile. | GameTests `BaseGameTests` |
 
 ## Épic G — Modules
 

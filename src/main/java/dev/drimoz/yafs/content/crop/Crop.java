@@ -18,9 +18,25 @@ import java.util.Set;
  * @param requirements ce que la culture attend de l'environnement
  * @param catalyst     le bloc à poser sous le substrat, {@code null} si la culture n'en veut pas
  * @param harvest      le bloc dont la table de loot donne la récolte, {@code null} pour la culture mûre
+ * @param cost         ce que coûte un cycle : durée, eau, énergie ; chaque parcelle paie le sien, la serre la somme
  */
 public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substrates, Requirements requirements,
-                   @Nullable Item catalyst, @Nullable Block harvest) {
+                   @Nullable Item catalyst, @Nullable Block harvest, Cost cost) {
+
+    /**
+     * @param ticks  la durée d'un cycle à vitesse ×1 et efficacité pleine
+     * @param water  l'eau d'un cycle complet, en mB
+     * @param energy ce que coûte la parcelle alimentée, en FE/t, avant les modules
+     */
+    public record Cost(int ticks, int water, int energy) {
+
+        /**
+         * Le blé vanilla dans les meilleures conditions : 7 stades, une chance sur 3 d'avancer par
+         * random tick sur terre labourée irriguée, un random tick tous les 4096/3 ticks en moyenne.
+         * 7 × 3 × 4096 / 3 = 28 672 ticks, soit 24 minutes.
+         */
+        public static final Cost DEFAULT = new Cost(28_672, 500, 10);
+    }
 
     public int maxAge() {
         return this.age.getPossibleValues().stream().mapToInt(Integer::intValue).max().orElse(0);

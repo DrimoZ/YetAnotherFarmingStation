@@ -35,6 +35,7 @@ public final class GuiTheme {
 
     public static final int TAB_INFO = 0xC89420;
     public static final int TAB_AUGMENTS = 0x3C6FC8;
+    public static final int TAB_OPERATIONS = 0x3C9A4C;
     public static final int TAB_CONTROL = 0xC03C2C;
     public static final int TAB_SETTINGS = 0x7C7C94;
 

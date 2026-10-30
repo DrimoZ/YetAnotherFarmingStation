@@ -5,8 +5,6 @@ import com.mojang.logging.LogUtils;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
-import dev.drimoz.yafs.content.greenhouse.PortMode;
-import dev.drimoz.yafs.content.multiblock.MultiblockPartBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import dev.drimoz.yafs.registry.YafsItems;
@@ -135,11 +133,8 @@ public final class GuiPreview {
                 + (ORIGIN.getX() + 16) + " " + (ORIGIN.getY() - 1) + " " + (ORIGIN.getZ() + 16) + " minecraft:smooth_stone"));
         step(10, mc -> onServer(mc, level -> {
             build(level, small, YafsBlocks.GREENHOUSE_T1.get(), List.of(), 0);
-            // Un port d'énergie, et la source créative collée contre : l'énergie doit monter à l'écran.
-            BlockPos port = small.offset(1, 0, 1);
-            level.setBlock(port, level.getBlockState(port).setValue(MultiblockPartBlock.PORT, PortMode.ENERGY_INPUT), 3);
-            level.invalidateCapabilities(port);
-            level.setBlock(port.east(), YafsBlocks.CREATIVE_ENERGY_SOURCE.get().defaultBlockState(), 3);
+            // La source créative collée contre le socle : l'énergie doit monter à l'écran.
+            level.setBlock(small.offset(2, 0, 1), YafsBlocks.CREATIVE_ENERGY_SOURCE.get().defaultBlockState(), 3);
             build(level, big, YafsBlocks.GREENHOUSE_T3.get(),
                     List.of(YafsItems.ACCELERATOR_1.get(), YafsItems.GROW_LAMP.get(), YafsItems.DENSITY_1.get()), 1_000_000);
         }));
@@ -149,10 +144,10 @@ public final class GuiPreview {
         step(5, mc -> hover(mc, 0.0, 0.0));
         step(20, mc -> shot("greenhouse_t1"));
         // L'interrupteur de l'onglet Contrôle : la serre doit passer à « Éteinte ».
-        step(5, mc -> clickTab(mc, 2));
-        step(15, mc -> clickTabContent(mc, 2, 10, 8));
+        step(5, mc -> clickTab(mc, 3));
+        step(15, mc -> clickTabContent(mc, 3, 10, 8));
         step(20, mc -> shot("greenhouse_t1_switched_off"));
-        step(5, mc -> clickTabContent(mc, 2, 10, 8));
+        step(5, mc -> clickTabContent(mc, 3, 10, 8));
         step(5, mc -> mc.setScreen(null));
 
         step(10, mc -> command(mc, "tp @s " + (big.getX()) + " " + ORIGIN.getY() + " " + (big.getZ() - 6) + " 0 20"));
@@ -174,10 +169,12 @@ public final class GuiPreview {
         step(5, mc -> clickGui(mc, 25 + 9, 30 + 18 + 9));
         step(10, mc -> shot("greenhouse_t3_detail_empty"));
         step(5, mc -> clickGui(mc, 169 - 5, 20 + 4));
-        step(5, mc -> clickTab(mc, 2));
+        step(5, mc -> clickTab(mc, 1));
+        step(15, mc -> shot("greenhouse_t3_operations"));
+        step(5, mc -> clickTab(mc, 3));
         step(15, mc -> shot("greenhouse_t3_control"));
-        step(5, mc -> clickTab(mc, 0));
-        step(5, mc -> clickTab(mc, 2));
+        step(5, mc -> clickTab(mc, 1));
+        step(5, mc -> clickTab(mc, 3));
         step(15, mc -> shot("greenhouse_t3_tabs_closed"));
         step(5, mc -> mc.setScreen(null));
 
@@ -255,7 +252,7 @@ public final class GuiPreview {
                 new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
     }
 
-    /** Clique l'en-tête du n-ième onglet de l'écran de serre : 0 Environnement, 1 Modules, 2 Contrôle. */
+    /** Clique l'en-tête du n-ième onglet de l'écran de serre : 0 Environnement, 1 Fonctionnement, 2 Modules, 3 Contrôle. */
     static void clickTab(Minecraft minecraft, int index) {
         if (minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen) {
             var area = screen.tabAreas().get(index);

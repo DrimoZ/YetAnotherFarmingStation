@@ -2,6 +2,7 @@ package dev.drimoz.yafs.gametest;
 
 import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
+import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.module.ModuleItem;
@@ -66,7 +67,7 @@ public class ModuleGameTests {
         helper.assertTrue(Math.abs(cold - 0.1F * step) < 1e-6F, "Sans énergie : " + cold);
         float powered = (float) (step * YafsConfig.ENERGIZED_SPEED.get());
         helper.assertTrue(Math.abs(heated - powered) < 1e-6F, "Chauffée et alimentée : " + heated + " au lieu de " + powered);
-        int spent = (40 + YafsConfig.ENERGY_PER_PLOT.get()) * GreenhouseBlockEntity.STEP;
+        int spent = (40 + Crop.Cost.DEFAULT.energy()) * GreenhouseBlockEntity.STEP;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == given - spent, "Énergie " + greenhouse.energy().getEnergyStored());
         helper.succeed();
     }
@@ -151,7 +152,7 @@ public class ModuleGameTests {
         double speed = YafsConfig.ENERGIZED_SPEED.get() * 2 * 4;
         float step = (float) GreenhouseBlockEntity.STEP / GreenhouseBlockEntity.BASE_TICKS;
         helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - speed * step) < 1e-5, "Progression " + greenhouse.growth(0).progress());
-        int spent = YafsConfig.ENERGY_PER_PLOT.get() * GreenhouseBlockEntity.STEP * 4 * 16;
+        int spent = Crop.Cost.DEFAULT.energy() * GreenhouseBlockEntity.STEP * 4 * 16;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
         double drunk = speed * step * GreenhouseBlockEntity.WATER_PER_CYCLE * 2 * 4;
         helper.assertTrue(Math.abs(water - greenhouse.water().getFluidAmount() - drunk) <= 1, "Eau bue " + (water - greenhouse.water().getFluidAmount()));
@@ -173,7 +174,7 @@ public class ModuleGameTests {
         float step = (float) GreenhouseBlockEntity.STEP / GreenhouseBlockEntity.BASE_TICKS;
         double speed = YafsConfig.ENERGIZED_SPEED.get() * 3;
         helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - speed * step) < 1e-5, "Progression " + greenhouse.growth(0).progress());
-        int spent = YafsConfig.ENERGY_PER_PLOT.get() * GreenhouseBlockEntity.STEP * 7;
+        int spent = Crop.Cost.DEFAULT.energy() * GreenhouseBlockEntity.STEP * 7;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
 
         ItemStack many = module("accelerator_1");
