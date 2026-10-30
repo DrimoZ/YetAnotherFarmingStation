@@ -49,7 +49,7 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-020 | P0 | S | **Environnement de base** : lumière du ciel au maître, biome → °C, pluie ; recalcul toutes les 100 ticks. | JUnit : conversion biome → °C ; GameTest : sans ciel, lumière 0 |
+| ~~YAF-020~~ | ✅ | S | **Environnement de base** — **fait** : lumière du ciel au maître, biome → °C, pluie ; recalcul toutes les 100 ticks. | JUnit : conversion biome → °C ; GameTest : sans ciel, lumière 0 |
 | YAF-021 | P1 | S | **Réserve d'eau** : réservoir de fluide, consommation par cycle × densité, eau vide → PROBLEM. | GameTest : sans eau, rien ne pousse et le statut le dit |
 | YAF-022 | P2 | S | **Engrais** : registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
 | YAF-023 | P2 | S | **Résidus** : compost avec une probabilité par culture ; réserve pleine → BLOCKED. | GameTest : conservation, blocage |

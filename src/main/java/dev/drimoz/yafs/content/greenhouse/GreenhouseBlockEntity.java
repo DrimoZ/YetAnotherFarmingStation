@@ -1,6 +1,10 @@
 package dev.drimoz.yafs.content.greenhouse;
 
 import com.mojang.serialization.Codec;
+import dev.drimoz.yafs.core.Climate;
+import dev.drimoz.yafs.core.Efficiency;
+import dev.drimoz.yafs.core.Efficiency.Conditions;
+import dev.drimoz.yafs.core.Efficiency.Requirements;
 import dev.drimoz.yafs.core.PlotGrowth;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
@@ -30,8 +34,8 @@ import java.util.List;
  * Toute la logique d'une serre : ses parcelles, leur croissance simulée, la réserve de sortie.
  *
  * <p>Une parcelle n'est pas un vrai bloc : elle ne reçoit pas de random ticks, sa croissance
- * avance par pas de {@link #STEP} ticks. Seul le blé pousse pour l'instant ; la détection des
- * cultures arrive avec YAF-013, l'environnement avec YAF-020.
+ * avance par pas de {@link #STEP} ticks, à la vitesse que permet l'{@link #environment()
+ * environnement}. Seul le blé pousse pour l'instant ; la détection des cultures arrive avec YAF-013.
  */
 public class GreenhouseBlockEntity extends BlockEntity {
 
@@ -55,6 +59,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     public static final int BASE_TICKS = 28_672;
 
+    /** Le lieu change rarement : on le relève toutes les 5 secondes, pas à chaque pas. */
+    public static final int SAMPLE_INTERVAL = 100;
+
     private static final Codec<List<PlotGrowth>> GROWTH_CODEC = PlotGrowth.CODEC.listOf();
 
     private final ItemStackHandler plots = new ItemStackHandler(PLOTS * SLOTS_PER_PLOT) {
@@ -75,6 +82,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private final PlotStatus[] status = new PlotStatus[PLOTS];
 
     private int ticks;
+
+    /** {@code null} tant qu'il n'a pas été relevé : le premier pas le fait. */
+    private Conditions environment;
+    private boolean raining;
 
     public GreenhouseBlockEntity(BlockPos pos, BlockState state) {
         super(YafsBlocks.GREENHOUSE_ENTITY.get(), pos, state);
@@ -99,6 +110,23 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.status[plot];
     }
 
+    /** L'environnement de base, tel que relevé au dernier passage ; {@code null} avant le premier. */
+    public Conditions environment() {
+        return this.environment;
+    }
+
+    public boolean raining() {
+        return this.raining;
+    }
+
+    /**
+     * Impose un environnement jusqu'au prochain relevé. Pour les GameTests : la lumière du serveur
+     * de test dépend de son heure, qu'ils ne maîtrisent pas.
+     */
+    public void setEnvironment(Conditions environment) {
+        this.environment = environment;
+    }
+
     /** Pose un item dans un emplacement de parcelle. Pour les GameTests, en attendant l'écran. */
     public void setPlotItem(int plot, int slot, ItemStack stack) {
         this.plots.setStackInSlot(plot * SLOTS_PER_PLOT + slot, stack);
@@ -107,12 +135,32 @@ public class GreenhouseBlockEntity extends BlockEntity {
     // Croissance
 
     public void serverTick() {
-        if (++this.ticks % STEP == 0) grow(STEP);
+        this.ticks++;
+        if (this.environment == null || this.ticks % SAMPLE_INTERVAL == 0) sampleEnvironment();
+        if (this.ticks % STEP == 0) grow(STEP);
+    }
+
+    /**
+     * Relève l'environnement du lieu, juste au-dessus du toit, au centre : c'est là que la serre
+     * reçoit le jour. La lumière suit le cycle jour/nuit ; un vrai bloc d'éclairage la remplace
+     * s'il fait mieux, comme pour une culture vanilla.
+     */
+    public void sampleEnvironment() {
+        if (this.level == null) return;
+
+        BlockPos roof = this.worldPosition.above(((GreenhouseBlock) getBlockState().getBlock()).shape().height());
+        int light = this.level.getRawBrightness(roof, this.level.getSkyDarken());
+        double temperature = Climate.celsius(this.level.getBiome(this.worldPosition).value().getBaseTemperature());
+
+        // ponytail: eau illimitée jusqu'à la réserve (YAF-021).
+        this.environment = new Conditions(light, temperature, 1D);
+        this.raining = this.level.isRainingAt(roof);
     }
 
     /** Fait avancer chaque parcelle de {@code elapsed} ticks. Public pour que les GameTests n'attendent pas 24 minutes. */
     public void grow(int elapsed) {
         if (!(this.level instanceof ServerLevel serverLevel)) return;
+        if (this.environment == null) sampleEnvironment();
 
         for (int plot = 0; plot < PLOTS; plot++) {
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
@@ -130,8 +178,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
             return PlotStatus.PROBLEM;
         }
 
-        // ponytail: environnement idéal (efficacité 1) jusqu'à YAF-020.
-        PlotGrowth current = this.growth[plot].advance((double) elapsed / BASE_TICKS);
+        // ponytail: exigences tolérantes pour tout le monde, jusqu'aux exigences par culture (YAF-016).
+        double efficiency = Efficiency.evaluate(Requirements.TOLERANT, this.environment).value();
+        PlotGrowth current = this.growth[plot].advance(efficiency * elapsed / BASE_TICKS);
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
 

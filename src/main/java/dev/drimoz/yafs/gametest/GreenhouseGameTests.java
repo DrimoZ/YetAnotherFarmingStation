@@ -5,6 +5,9 @@ import dev.drimoz.yafs.content.greenhouse.GreenhouseBlock;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
+import dev.drimoz.yafs.core.Climate;
+import dev.drimoz.yafs.core.Efficiency;
+import dev.drimoz.yafs.core.Efficiency.Conditions;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import dev.drimoz.yafs.registry.YafsItems;
@@ -43,6 +46,9 @@ public class GreenhouseGameTests {
     private static final String PLATFORM = "platform";
 
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
+
+    /** Plein jour, plaines, réserve pleine. */
+    private static final Conditions IDEAL = new Conditions(15, 20D, 1D);
 
     // Tests (Pose)
 
@@ -176,6 +182,45 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
+    // Tests (Environnement)
+
+    /**
+     * Un toit opaque coupe le jour : lumière 0, et le blé pousse au plancher, dix fois moins vite.
+     *
+     * <p>Le moteur de lumière recalcule après coup, pas dans le tick qui pose le toit : on attend
+     * qu'il ait rattrapé avant de juger. La croissance ne se joue qu'une fois, quand il l'a fait.
+     */
+    @GameTest(template = PLATFORM)
+    public static void underARoofThereIsNoLightAndWheatCrawls(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+        helper.setBlock(MASTER.above(GreenhouseBlock.TIER_1.height()), Blocks.STONE);
+
+        helper.succeedWhen(() -> {
+            greenhouse.sampleEnvironment();
+            helper.assertTrue(greenhouse.environment().light() == 0, "Lumière " + greenhouse.environment().light() + " sous un toit");
+
+            greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
+            float progress = greenhouse.growth(0).progress();
+            // Marge : la serre pousse aussi d'elle-même pendant les ticks d'attente.
+            helper.assertTrue(Math.abs(progress - Efficiency.FLOOR) < 0.01F, "Progression " + progress + " au lieu du plancher");
+        });
+    }
+
+    /** La température vient du biome : la plateforme de test est en plaines. */
+    @GameTest(template = PLATFORM)
+    public static void theTemperatureComesFromTheBiome(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+
+        greenhouse.sampleEnvironment();
+
+        float biome = helper.getLevel().getBiome(helper.absolutePos(MASTER)).value().getBaseTemperature();
+        helper.assertTrue(greenhouse.environment().temperature() == Climate.celsius(biome),
+                greenhouse.environment().temperature() + " °C pour un biome à " + biome);
+        helper.succeed();
+    }
+
     /** Une culture que la serre ne sait pas faire pousser est un problème, pas une attente. */
     @GameTest(template = PLATFORM)
     public static void anUnsupportedCropIsAProblem(GameTestHelper helper) {
@@ -197,7 +242,9 @@ public class GreenhouseGameTests {
         helper.setBlock(MASTER, YafsBlocks.GREENHOUSE_T1.get().defaultBlockState().setValue(MultiblockBlock.FACING, Direction.NORTH));
         YafsBlocks.GREENHOUSE_T1.get().placeParts(helper.getLevel(), helper.absolutePos(MASTER), Direction.NORTH);
 
-        return (GreenhouseBlockEntity) helper.getBlockEntity(MASTER);
+        GreenhouseBlockEntity greenhouse = (GreenhouseBlockEntity) helper.getBlockEntity(MASTER);
+        greenhouse.setEnvironment(IDEAL);
+        return greenhouse;
     }
 
     /** Un joueur en survie clique la face du dessus de {@code floor} avec l'item ; renvoie sa pile. */
