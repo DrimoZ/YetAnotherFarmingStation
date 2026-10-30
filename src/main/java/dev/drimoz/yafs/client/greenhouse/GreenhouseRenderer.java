@@ -27,8 +27,8 @@ public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEn
 
     /** Marge entre le bord du volume et la grille, en blocs : 1,2 bloc par case en P1, 1,6 en P3. */
     private static final float MARGIN = 0.6F;
-    /** Le dessus du socle du modèle provisoire : 2 pixels. */
-    private static final float FLOOR = 2F / 16F;
+    /** Les plantes poussent sur le socle, la couche du bas, qui est un bloc plein. */
+    private static final float FLOOR = 1F;
     private static final float SOIL = 0.25F;
 
     private final BlockRenderDispatcher blocks;
@@ -44,7 +44,7 @@ public class GreenhouseRenderer implements BlockEntityRenderer<GreenhouseBlockEn
         int side = tier.plotSide();
         float spacing = (tier.shape().width() - MARGIN) / side;
 
-        // ponytail: au-delà de P1, le modèle provisoire n'a qu'un socle ; un contour dit le volume (YAF-090).
+        // ponytail: au-delà de P1, pas de verre dessiné ; un contour dit le volume (YAF-090).
         if (tier != GreenhouseTier.I) outline(greenhouse, poseStack, buffers);
 
         for (int plot = 0; plot < greenhouse.plotCount(); plot++) {

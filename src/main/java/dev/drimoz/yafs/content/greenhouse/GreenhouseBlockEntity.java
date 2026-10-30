@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.BlockCapability;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.energy.EnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -142,7 +143,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private final ItemStackHandler modules;
 
     // Ce que voient les ports (YAF-051). Des objets fixes : les caches de capability des voisins les gardent.
-    private final IItemHandler inputPort = new InputPort();
     private final IItemHandler harvestPort = new OutputPort(PortMode.OUTPUT_HARVEST);
     private final IItemHandler seedsPort = new OutputPort(PortMode.OUTPUT_SEEDS);
     private final IItemHandler allPort = new OutputPort(PortMode.OUTPUT_ALL);
@@ -285,11 +285,30 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.switchedOn && this.condition.allows(signal());
     }
 
+    /**
+     * Ce qu'expose un bloc du socle sans port : l'eau et l'énergie y entrent, toute la récolte en
+     * sort. Pas d'entrée d'items : graines, sols et catalyseurs se posent une fois, à la main, et
+     * restent. C'est là qu'on branche ses tuyaux et ses câbles sans rien régler.
+     */
+    @Nullable
+    public Object base(BlockCapability<?, ?> capability) {
+        if (capability == Capabilities.ItemHandler.BLOCK) return this.allPort;
+        if (capability == Capabilities.FluidHandler.BLOCK) return this.waterPort;
+        if (capability == Capabilities.EnergyStorage.BLOCK) return this.energy;
+        return null;
+    }
+
+    /** Le maître est un bloc du socle comme les autres. */
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.allPort);
+        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.waterPort);
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.energy);
+    }
+
     /** Ce qu'expose un port dans ce mode, pour cette capability ; {@code null} si rien. */
     @Nullable
     public Object port(PortMode mode, BlockCapability<?, ?> capability) {
         return switch (mode) {
-            case ITEM_INPUT -> capability == Capabilities.ItemHandler.BLOCK ? this.inputPort : null;
             case OUTPUT_ALL -> capability == Capabilities.ItemHandler.BLOCK ? this.allPort : null;
             case OUTPUT_HARVEST -> capability == Capabilities.ItemHandler.BLOCK ? this.harvestPort : null;
             case OUTPUT_SEEDS -> capability == Capabilities.ItemHandler.BLOCK ? this.seedsPort : null;
@@ -585,65 +604,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     // Ports
-
-    /**
-     * Une entrée d'items : un seul emplacement apparent, toujours vide, et chaque item reçu va à la
-     * première parcelle qui l'attend, un par parcelle. Rien ne ressort par là.
-     */
-    private final class InputPort implements IItemHandler {
-
-        @Override
-        public int getSlots() {
-            return 1;
-        }
-
-        @Override
-        public ItemStack getStackInSlot(int slot) {
-            return ItemStack.EMPTY;
-        }
-
-        @Override
-        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            int target = targetSlot(stack);
-            if (target < 0) return stack;
-
-            if (!simulate) GreenhouseBlockEntity.this.plots.setStackInSlot(target, stack.copyWithCount(1));
-            return stack.copyWithCount(stack.getCount() - 1);
-        }
-
-        @Override
-        public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            return ItemStack.EMPTY;
-        }
-
-        @Override
-        public int getSlotLimit(int slot) {
-            return 1;
-        }
-
-        @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            return targetSlot(stack) >= 0;
-        }
-
-        /** L'emplacement de parcelle libre qui attend cet item, ou -1. */
-        private int targetSlot(ItemStack stack) {
-            if (stack.isEmpty()) return -1;
-
-            Item item = stack.getItem();
-            int kind;
-            if (Crops.of(item) != null) kind = CROP;
-            else if (Crops.all().values().stream().anyMatch(crop -> crop.accepts(item))) kind = SUBSTRATE;
-            else if (Crops.all().values().stream().anyMatch(crop -> crop.catalyst() == item)) kind = CATALYST;
-            else return -1;
-
-            for (int plot = 0; plot < plotCount(); plot++) {
-                int slot = plot * SLOTS_PER_PLOT + kind;
-                if (GreenhouseBlockEntity.this.plots.getStackInSlot(slot).isEmpty()) return slot;
-            }
-            return -1;
-        }
-    }
 
     /** Une sortie d'items, filtrée : ce qui ne passe pas le filtre est invisible par ce port. */
     private final class OutputPort implements IItemHandler {

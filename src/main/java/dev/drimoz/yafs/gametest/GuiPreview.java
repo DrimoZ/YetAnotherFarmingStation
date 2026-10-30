@@ -181,6 +181,9 @@ public final class GuiPreview {
         step(15, mc -> shot("greenhouse_t3_tabs_closed"));
         step(5, mc -> mc.setScreen(null));
 
+        // La serre elle-même, vue de l'extérieur : socle en béton, plantes posées dessus.
+        step(10, mc -> command(mc, "tp @s " + (big.getX() - 6) + " " + (ORIGIN.getY() + 4) + " " + (big.getZ() - 8) + " -35 25"));
+        step(40, mc -> shot("greenhouse_world"));
         step(10, Minecraft::stop);
     }
 

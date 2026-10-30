@@ -2,25 +2,25 @@
   "parent": "minecraft:block/block",
   "render_type": "minecraft:cutout",
   "textures": {
-    "particle": "minecraft:block/glass",
-    "glass": "minecraft:block/glass",
-    "base": "minecraft:block/oak_planks"
+    "particle": "minecraft:block/light_gray_concrete",
+    "base": "minecraft:block/light_gray_concrete",
+    "glass": "minecraft:block/glass"
   },
   "elements": [
     {
-      "from": [-16, 0, -16],
-      "to": [32, 2, 32],
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
       "faces": {
-        "down":  { "uv": [0, 0, 16, 16], "texture": "#base" },
+        "down":  { "uv": [0, 0, 16, 16], "texture": "#base", "cullface": "down" },
         "up":    { "uv": [0, 0, 16, 16], "texture": "#base" },
-        "north": { "uv": [0, 14, 16, 16], "texture": "#base" },
-        "south": { "uv": [0, 14, 16, 16], "texture": "#base" },
-        "west":  { "uv": [0, 14, 16, 16], "texture": "#base" },
-        "east":  { "uv": [0, 14, 16, 16], "texture": "#base" }
+        "north": { "uv": [0, 0, 16, 16], "texture": "#base" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#base" },
+        "west":  { "uv": [0, 0, 16, 16], "texture": "#base" },
+        "east":  { "uv": [0, 0, 16, 16], "texture": "#base" }
       }
     },
     {
-      "from": [-16, 2, -16],
+      "from": [-16, 16, -16],
       "to": [32, 32, 32],
       "faces": {
         "up":    { "uv": [0, 0, 16, 16], "texture": "#glass" },

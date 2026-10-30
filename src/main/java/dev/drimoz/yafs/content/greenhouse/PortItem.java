@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * L'item Port (YAF-050) : utilisé sur un bloc d'une serre, il en fait un port d'entrée d'items.
+ * L'item Port (YAF-050) : utilisé sur un bloc d'une serre, il en fait un port de sortie.
  * Réutilisé sur un port, il passe au mode suivant ; accroupi, il le retire et revient en main.
  * Une serre n'a pas plus de ports que son palier ne le permet.
  */
@@ -62,7 +62,7 @@ public class PortItem extends Item {
             if (player != null) player.displayClientMessage(Component.translatable("yafs.port.limit", greenhouse.tier().maxPorts()), true);
             return InteractionResult.FAIL;
         } else {
-            chosen = PortMode.ITEM_INPUT;
+            chosen = PortMode.OUTPUT_ALL;
             context.getItemInHand().consume(1, player);
         }
 

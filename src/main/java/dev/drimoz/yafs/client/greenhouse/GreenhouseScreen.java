@@ -382,9 +382,8 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.water", compact(this.menu.water()) + " mB",
                 this.menu.water() > 0 ? GuiTheme.TAB_VALUE : GuiTheme.Status.PROBLEM.tabColour);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.energy", compact(this.menu.energy()) + " FE", GuiTheme.TAB_VALUE);
-        // Sans port, ni câble ni tuyau ne se branche : en rouge, c'est la première chose à voir.
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.ports", this.menu.ports() + " / " + this.menu.tier().maxPorts(),
-                this.menu.ports() > 0 ? GuiTheme.TAB_VALUE : GuiTheme.Status.PROBLEM.tabColour);
+        // Le socle se branche de partout ; les ports ne servent qu'à spécialiser un bloc.
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.env.ports", this.menu.ports() + " / " + this.menu.tier().maxPorts(), GuiTheme.TAB_VALUE);
 
         int growing = 0;
         int problems = 0;

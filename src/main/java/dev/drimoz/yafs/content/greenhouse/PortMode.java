@@ -5,13 +5,13 @@ import net.minecraft.util.StringRepresentable;
 import java.util.Locale;
 
 /**
- * Ce que laisse passer un bloc de serre (YAF-050, YAF-051). {@link #NONE} : un mur, qui ne laisse
- * rien passer. Un port n'a qu'un mode ; les sorties d'items portent leur filtre dans le mode.
+ * Ce que laisse passer un bloc de serre (YAF-050, YAF-051). {@link #NONE} : pas de port, le bloc se
+ * comporte en socle ou en mur selon sa couche. Un port n'a qu'un mode ; les sorties d'items portent
+ * leur filtre dans le mode. Pas d'entrée d'items : rien n'entre en continu tant qu'il n'y a pas
+ * d'engrais (YAF-022).
  */
 public enum PortMode implements StringRepresentable {
     NONE,
-    /** Graines, substrats, catalyseurs : chacun vers la première parcelle qui l'attend. */
-    ITEM_INPUT,
     OUTPUT_ALL,
     /** Tout ce qui n'est pas une graine de culture connue. */
     OUTPUT_HARVEST,

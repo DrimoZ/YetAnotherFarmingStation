@@ -36,8 +36,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
- * Les ports (YAF-050, YAF-051). Serre P1 posée en (5, 2, 5) sur la plateforme ; le port des
- * tests est la partie (1, 0, 1), dans le coin du bas, au-dessus d'un bloc du sol.
+ * Le socle et les ports (YAF-050, YAF-051). Serre P1 posée en (5, 2, 5) sur la plateforme ;
+ * {@code PORT} et {@code WALL} sont deux blocs du socle, la couche du bas.
  */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -51,19 +51,42 @@ public class PortGameTests {
 
     // Tests (YAF-050)
 
-    /** Un hopper sous un mur ne tire rien ; sous un port de sortie, il tire la récolte. */
+    /** Un hopper sous le socle, sans aucun port, tire la récolte : le socle se branche de partout. */
     @GameTest(template = PLATFORM, timeoutTicks = 100)
-    public static void aHopperDrainsAnOutputPortButNotAWall(GameTestHelper helper) {
+    public static void aHopperDrainsTheBaseWithoutAnyPort(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.output().setStackInSlot(0, new ItemStack(Items.WHEAT, 4));
-        setPort(helper, PORT, PortMode.OUTPUT_ALL);
-        helper.setBlock(PORT.below(), Blocks.HOPPER);
         helper.setBlock(WALL.below(), Blocks.HOPPER);
 
-        helper.succeedWhen(() -> {
-            helper.assertTrue(((Container) helper.getBlockEntity(PORT.below())).countItem(Items.WHEAT) == 4, "Le hopper du port n'a pas tout tiré");
-            helper.assertTrue(((Container) helper.getBlockEntity(WALL.below())).isEmpty(), "Le hopper du mur a tiré quelque chose");
-        });
+        helper.succeedWhen(() -> helper.assertTrue(((Container) helper.getBlockEntity(WALL.below())).countItem(Items.WHEAT) == 4,
+                "Le hopper sous le socle n'a pas tout tiré"));
+    }
+
+    /** Le socle, maître compris, prend eau et énergie et rend la récolte, mais aucun item ; un mur au-dessus, rien. */
+    @GameTest(template = PLATFORM)
+    public static void theBaseTakesEverythingAndWallsNothing(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.water().setFluid(FluidStack.EMPTY);
+        greenhouse.output().setStackInSlot(0, new ItemStack(Items.WHEAT, 2));
+
+        for (BlockPos base : new BlockPos[]{WALL, MASTER}) {
+            BlockPos at = helper.absolutePos(base);
+            IItemHandler items = helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, at, Direction.DOWN);
+            IFluidHandler water = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, at, Direction.DOWN);
+            IEnergyStorage energy = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK, at, Direction.DOWN);
+            helper.assertTrue(items != null && water != null && energy != null, "Le socle en " + base + " ne se branche pas");
+        }
+
+        IItemHandler items = helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, helper.absolutePos(WALL), Direction.DOWN);
+        helper.assertTrue(items.insertItem(0, new ItemStack(Items.WHEAT_SEEDS), false).getCount() == 1, "Une graine est entrée par le socle");
+        helper.assertTrue(items.extractItem(0, 64, false).getCount() == 2, "La récolte ne sort pas");
+        helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, helper.absolutePos(WALL), Direction.DOWN)
+                .fill(new FluidStack(Fluids.WATER, 500), IFluidHandler.FluidAction.EXECUTE);
+        helper.assertTrue(greenhouse.water().getFluidAmount() == 500, "L'eau n'est pas entrée");
+
+        BlockPos wall = helper.absolutePos(MASTER.offset(-1, 1, -1));
+        helper.assertTrue(helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, wall, Direction.DOWN) == null, "Un mur expose quelque chose");
+        helper.succeed();
     }
 
     /** L'item Port : posé, il fait une entrée d'items ; réutilisé, il tourne ; accroupi, il revient. */
@@ -73,11 +96,11 @@ public class PortGameTests {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
 
         ItemStack stack = use(helper, player, PORT, new ItemStack(YafsItems.PORT.get()));
-        helper.assertTrue(mode(helper, PORT) == PortMode.ITEM_INPUT, "Mode " + mode(helper, PORT));
+        helper.assertTrue(mode(helper, PORT) == PortMode.OUTPUT_ALL, "Mode " + mode(helper, PORT));
         helper.assertTrue(stack.isEmpty(), "L'item n'a pas été posé");
 
         use(helper, player, PORT, new ItemStack(YafsItems.PORT.get()));
-        helper.assertTrue(mode(helper, PORT) == PortMode.OUTPUT_ALL, "Le port n'a pas tourné : " + mode(helper, PORT));
+        helper.assertTrue(mode(helper, PORT) == PortMode.OUTPUT_HARVEST, "Le port n'a pas tourné : " + mode(helper, PORT));
 
         player.setShiftKeyDown(true);
         use(helper, player, PORT, new ItemStack(YafsItems.PORT.get()));
@@ -107,7 +130,7 @@ public class PortGameTests {
     @GameTest(template = PLATFORM)
     public static void breakingReturnsEachPort(GameTestHelper helper) {
         place(helper);
-        setPort(helper, PORT, PortMode.ITEM_INPUT);
+        setPort(helper, PORT, PortMode.OUTPUT_SEEDS);
         setPort(helper, WALL, PortMode.FLUID_INPUT);
 
         helper.getLevel().destroyBlock(helper.absolutePos(PORT), true);
@@ -120,26 +143,6 @@ public class PortGameTests {
     }
 
     // Tests (YAF-051)
-
-    /** L'entrée d'items range graine, substrat et catalyseur chacun à sa place ; elle refuse le reste. */
-    @GameTest(template = PLATFORM)
-    public static void anItemInputSortsIntoPlots(GameTestHelper helper) {
-        GreenhouseBlockEntity greenhouse = place(helper);
-        setPort(helper, PORT, PortMode.ITEM_INPUT);
-        IItemHandler input = items(helper, PORT);
-
-        helper.assertTrue(input.insertItem(0, new ItemStack(Items.WHEAT_SEEDS, 3), false).getCount() == 2, "Plus d'une graine par parcelle");
-        input.insertItem(0, new ItemStack(Items.WHEAT_SEEDS), false);
-        input.insertItem(0, new ItemStack(Items.DIRT), false);
-
-        helper.assertTrue(greenhouse.plots().getStackInSlot(GreenhouseBlockEntity.CROP).is(Items.WHEAT_SEEDS), "Parcelle 0 sans graine");
-        helper.assertTrue(greenhouse.plots().getStackInSlot(GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.CROP).is(Items.WHEAT_SEEDS),
-                "La deuxième graine n'est pas allée à la parcelle 1");
-        helper.assertTrue(greenhouse.plots().getStackInSlot(GreenhouseBlockEntity.SUBSTRATE).is(Items.DIRT), "Le substrat n'est pas rangé");
-        helper.assertTrue(input.insertItem(0, new ItemStack(Items.STONE), false).getCount() == 1, "La pierre est entrée");
-        helper.assertTrue(input.extractItem(0, 1, false).isEmpty(), "On ressort par une entrée");
-        helper.succeed();
-    }
 
     /** Les filtres de sortie : récolte seule, graines seules. */
     @GameTest(template = PLATFORM)
@@ -187,7 +190,7 @@ public class PortGameTests {
     @GameTest(template = PLATFORM)
     public static void upgradingGivesPortsBack(GameTestHelper helper) {
         place(helper);
-        setPort(helper, PORT, PortMode.ITEM_INPUT);
+        setPort(helper, PORT, PortMode.OUTPUT_SEEDS);
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
 
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(YafsItems.GREENHOUSE_T2.get()));

@@ -71,15 +71,21 @@ public class GreenhouseBlock extends MultiblockBlock {
 
     // Interface (Ports, YAF-050)
 
-    /** Seuls les ports exposent quelque chose, et seulement ce que leur mode dit. */
+    /**
+     * Un port expose ce que son mode dit ; sans port, un bloc du socle expose tout (entrée,
+     * récolte, eau, énergie) ; les murs au-dessus n'exposent rien.
+     */
     @Nullable
     @Override
     public <T> T partCapability(BlockCapability<T, Direction> capability, Level level, BlockEntity master, BlockState part, @Nullable Direction side) {
         if (!(master instanceof GreenhouseBlockEntity greenhouse)) return null;
 
-        @SuppressWarnings("unchecked") // port() ne rend que le type de la capability demandée
-        T handler = (T) greenhouse.port(part.getValue(MultiblockPartBlock.PORT), capability);
-        return handler;
+        PortMode mode = part.getValue(MultiblockPartBlock.PORT);
+        Object handler = mode.isPort() ? greenhouse.port(mode, capability)
+                : part.getValue(MultiblockPartBlock.BASE) ? greenhouse.base(capability) : null;
+        @SuppressWarnings("unchecked") // port() et base() ne rendent que le type de la capability demandée
+        T typed = (T) handler;
+        return typed;
     }
 
     /** Les ports de la serre de ce maître. */

@@ -15,7 +15,6 @@
   "item.yafs.port": "Port de serre",
   "yafs.port.limit": "Cette serre a déjà ses %s ports",
   "yafs.port.mode.none": "Mur : rien ne passe",
-  "yafs.port.mode.item_input": "Port : entrée d'items",
   "yafs.port.mode.output_all": "Port : sortie, tout",
   "yafs.port.mode.output_harvest": "Port : sortie, récolte seule",
   "yafs.port.mode.output_seeds": "Port : sortie, graines en trop seules",
@@ -111,12 +110,12 @@
   "yafs.tooltip.module": "Module de serre",
   "yafs.tooltip.module.needs_energy": "À l'arrêt sans énergie.",
   "yafs.tooltip.module.stack": "Se pose dans l'onglet Modules ; jusqu'à %s par case, les effets se combinent.",
-  "yafs.tooltip.port.place": "Sur un mur de serre : en fait une entrée d'items.",
-  "yafs.tooltip.port.cycle": "Encore une fois : mode suivant (sortie, eau, énergie…).",
+  "yafs.tooltip.port.place": "Le socle prend déjà tout ; un port spécialise un bloc.",
+  "yafs.tooltip.port.cycle": "Sur un bloc de serre, puis encore pour le mode suivant (graines seules, eau…).",
   "yafs.tooltip.port.remove": "Accroupi : le retire.",
   "yafs.tooltip.port.limit": "2, 4 ou 6 ports selon le palier.",
   "yafs.tooltip.creative_only": "Créatif seulement",
   "yafs.tooltip.creative_energy_source": "Pousse une énergie sans fin dans ses six voisins.",
   "yafs.gui.env.ports": "Ports",
-  "yafs.gui.port_hint": "Câbles et tuyaux ne se branchent que sur un port. Port de serre sur un mur, puis encore jusqu'à : %s."
+  "yafs.gui.port_hint": "Branchez câbles et tuyaux sur le socle (la couche du bas). Un Port de serre spécialise un bloc, ex. : %s."
 }

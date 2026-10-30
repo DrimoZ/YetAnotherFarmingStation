@@ -1,11 +1,16 @@
 {
   "variants": {
-    "port=none": { "model": "minecraft:block/air" },
-    "port=item_input": { "model": "yafs:block/port_item_input" },
-    "port=output_all": { "model": "yafs:block/port_output_all" },
-    "port=output_harvest": { "model": "yafs:block/port_output_harvest" },
-    "port=output_seeds": { "model": "yafs:block/port_output_seeds" },
-    "port=fluid_input": { "model": "yafs:block/port_fluid_input" },
-    "port=energy_input": { "model": "yafs:block/port_energy_input" }
+    "base=false,port=none": { "model": "minecraft:block/air" },
+    "base=true,port=none": { "model": "yafs:block/greenhouse_base" },
+    "base=false,port=output_all": { "model": "yafs:block/port_output_all" },
+    "base=true,port=output_all": { "model": "yafs:block/port_output_all" },
+    "base=false,port=output_harvest": { "model": "yafs:block/port_output_harvest" },
+    "base=true,port=output_harvest": { "model": "yafs:block/port_output_harvest" },
+    "base=false,port=output_seeds": { "model": "yafs:block/port_output_seeds" },
+    "base=true,port=output_seeds": { "model": "yafs:block/port_output_seeds" },
+    "base=false,port=fluid_input": { "model": "yafs:block/port_fluid_input" },
+    "base=true,port=fluid_input": { "model": "yafs:block/port_fluid_input" },
+    "base=false,port=energy_input": { "model": "yafs:block/port_energy_input" },
+    "base=true,port=energy_input": { "model": "yafs:block/port_energy_input" }
   }
 }

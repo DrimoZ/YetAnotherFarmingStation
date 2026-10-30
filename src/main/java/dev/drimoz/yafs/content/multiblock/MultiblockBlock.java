@@ -52,6 +52,12 @@ public abstract class MultiblockBlock extends BaseEntityBlock {
         builder.add(FACING);
     }
 
+    /** Pas d'ombre ambiante sur les voisins, comme les parties : voir {@code MultiblockPartBlock}. */
+    @Override
+    protected float getShadeBrightness(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        return 1.0F;
+    }
+
     /** {@code BaseEntityBlock} rend invisible par défaut ; le maître a un modèle. */
     @Override
     protected RenderShape getRenderShape(BlockState state) {
@@ -100,7 +106,7 @@ public abstract class MultiblockBlock extends BaseEntityBlock {
         for (BlockPos pos : this.shape.positions(master, facing)) {
             if (pos.equals(master)) continue;
 
-            level.setBlock(pos, part, Block.UPDATE_ALL);
+            level.setBlock(pos, part.setValue(MultiblockPartBlock.BASE, pos.getY() == master.getY()), Block.UPDATE_ALL);
             if (level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity partEntity) {
                 partEntity.setMaster(master);
             }

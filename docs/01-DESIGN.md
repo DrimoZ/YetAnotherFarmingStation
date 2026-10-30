@@ -264,9 +264,15 @@ multiplie récolte, eau et énergie. Sans énergie, vitesse 1 et accélérateurs
 
 ## 8. Ports
 
-Un **port** est un bloc du mur que le joueur a désigné : on utilise l'item « Port » sur une partie
-de la serre. Le nombre de ports est plafonné par palier (§2.2). Les autres blocs **ne laissent rien
-passer**, ce qui permet de savoir d'un coup d'œil où brancher quoi.
+**Le socle** (décidé le 30/10/2026) : la couche du bas de la serre est un bloc plein, façon béton,
+et **chacun de ses blocs se branche de partout** : l'eau et l'énergie y entrent, la récolte en sort.
+Pas d'entrée d'items : graines, sols et catalyseurs se posent une fois, à la main, et restent ; une
+entrée reviendra avec ce qui se consomme en continu (l'engrais). Les plantes poussent posées dessus. Les
+murs au-dessus du socle ne laissent rien passer. Écarté : n'ouvrir que les ports, trop piégeux, un
+câble branché sur un mur ne se connectait à rien sans que rien ne le dise.
+
+Un **port** spécialise un bloc, du socle ou d'un mur : on utilise l'item « Port » sur une partie de
+la serre. Le nombre de ports est plafonné par palier (§2.2).
 
 | Mode | Capability exposée |
 |---|---|

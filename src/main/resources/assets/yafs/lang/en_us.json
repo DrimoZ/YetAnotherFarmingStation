@@ -15,7 +15,6 @@
   "item.yafs.port": "Greenhouse Port",
   "yafs.port.limit": "This greenhouse already has its %s ports",
   "yafs.port.mode.none": "Wall: nothing goes through",
-  "yafs.port.mode.item_input": "Port: item input",
   "yafs.port.mode.output_all": "Port: output, everything",
   "yafs.port.mode.output_harvest": "Port: output, harvest only",
   "yafs.port.mode.output_seeds": "Port: output, spare seeds only",
@@ -111,12 +110,12 @@
   "yafs.tooltip.module": "Greenhouse module",
   "yafs.tooltip.module.needs_energy": "Idle without energy.",
   "yafs.tooltip.module.stack": "Goes in the Modules tab; up to %s per slot, effects combine.",
-  "yafs.tooltip.port.place": "Use on a greenhouse wall: makes an item input.",
-  "yafs.tooltip.port.cycle": "Use again: next mode (output, water, energy…).",
+  "yafs.tooltip.port.place": "The base already takes everything; a port specialises one block.",
+  "yafs.tooltip.port.cycle": "Use on a greenhouse block, then again for the next mode (seeds only, water…).",
   "yafs.tooltip.port.remove": "Sneak-use: removes it.",
   "yafs.tooltip.port.limit": "2, 4 or 6 ports depending on the tier.",
   "yafs.tooltip.creative_only": "Creative only",
   "yafs.tooltip.creative_energy_source": "Pushes endless energy into its six neighbours.",
   "yafs.gui.env.ports": "Ports",
-  "yafs.gui.port_hint": "Cables and pipes only connect to a port. Use a Greenhouse Port on a wall, then again until: %s."
+  "yafs.gui.port_hint": "Plug cables and pipes into the base (the bottom layer). A Greenhouse Port specialises one block, e.g.: %s."
 }
