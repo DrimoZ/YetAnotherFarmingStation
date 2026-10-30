@@ -3,20 +3,16 @@ package dev.drimoz.yafs.gametest;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseMenu;
-import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
-import dev.drimoz.yafs.registry.YafsComponents;
 import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -80,10 +76,7 @@ public class ScreenGameTests {
         helper.assertTrue(menu.limiting(0) == Efficiency.Factor.LIGHT && menu.efficiency(0) == 0.1D,
                 "Dans le noir : " + menu.limiting(0) + " " + menu.efficiency(0));
 
-        ItemStack lamp = new ItemStack(YafsItems.MODULE.get());
-        lamp.set(YafsComponents.MODULE.get(), ResourceKey.create(ModuleDefinition.REGISTRY,
-                ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "grow_lamp")));
-        greenhouse.modules().setStackInSlot(0, lamp);
+        greenhouse.modules().setStackInSlot(0, new ItemStack(YafsItems.GROW_LAMP.get()));
         greenhouse.energy().receiveEnergy(1_000, false);
         greenhouse.grow(GreenhouseBlockEntity.STEP);
 

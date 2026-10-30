@@ -12,5 +12,5 @@
     "R": { "item": "minecraft:redstone" },
     "C": { "item": "minecraft:redstone_lamp" }
   },
-  "result": { "id": "yafs:module", "components": { "yafs:module": "yafs:grow_lamp" } }
+  "result": { "id": "yafs:grow_lamp" }
 }

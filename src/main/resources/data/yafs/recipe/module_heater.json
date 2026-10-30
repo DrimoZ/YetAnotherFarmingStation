@@ -12,5 +12,5 @@
     "R": { "item": "minecraft:redstone" },
     "C": { "item": "minecraft:furnace" }
   },
-  "result": { "id": "yafs:module", "components": { "yafs:module": "yafs:heater" } }
+  "result": { "id": "yafs:heater" }
 }

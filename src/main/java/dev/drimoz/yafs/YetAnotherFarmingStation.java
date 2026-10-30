@@ -5,7 +5,6 @@ import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.content.multiblock.MultiblockPartBlockEntity;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.registry.YafsBlocks;
-import dev.drimoz.yafs.registry.YafsComponents;
 import dev.drimoz.yafs.registry.YafsCreativeTabs;
 import dev.drimoz.yafs.registry.YafsItems;
 import dev.drimoz.yafs.registry.YafsMenus;
@@ -22,7 +21,6 @@ public class YetAnotherFarmingStation {
     public static final String MOD_ID = "yafs";
 
     public YetAnotherFarmingStation(IEventBus modEventBus, ModContainer modContainer) {
-        YafsComponents.COMPONENTS.register(modEventBus);
         YafsBlocks.BLOCKS.register(modEventBus);
         YafsBlocks.BLOCK_ENTITIES.register(modEventBus);
         YafsItems.ITEMS.register(modEventBus);

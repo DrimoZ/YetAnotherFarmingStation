@@ -1,12 +1,9 @@
 package dev.drimoz.yafs.gametest;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
-import dev.drimoz.yafs.content.module.ModuleDefinition;
-import dev.drimoz.yafs.registry.YafsComponents;
 import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -30,16 +27,15 @@ public class RecipeGameTests {
 
     private static final String PLATFORM = "platform";
 
+    /** Des outils de test, qui n'ont pas de recette par choix. */
+    private static final List<Item> CREATIVE_ONLY = List.of();
+
     @GameTest(template = PLATFORM)
     public static void everyItemIsCraftable(GameTestHelper helper) {
-        for (Item item : List.of(YafsItems.GREENHOUSE_T1.get(), YafsItems.GREENHOUSE_T2.get(), YafsItems.GREENHOUSE_T3.get(), YafsItems.PORT.get())) {
-            craftable(helper, recipeFor(helper, new ItemStack(item)), item.toString());
-        }
-        helper.getLevel().registryAccess().registryOrThrow(ModuleDefinition.REGISTRY).registryKeySet().forEach(key -> {
-            // Les modules livrés ; un module de datapack apporte sa recette avec lui.
-            if (!key.location().getNamespace().equals(YetAnotherFarmingStation.MOD_ID)) return;
-            craftable(helper, recipeFor(helper, module(key)), key.location().toString());
-        });
+        // Tout l'onglet créatif, sauf ce qui est réservé au créatif.
+        YafsItems.ITEMS.getEntries().stream().map(item -> item.get())
+                .filter(item -> !CREATIVE_ONLY.contains(item))
+                .forEach(item -> craftable(helper, recipeFor(helper, new ItemStack(item)), item.toString()));
         helper.succeed();
     }
 
@@ -66,9 +62,5 @@ public class RecipeGameTests {
         }
     }
 
-    private static ItemStack module(ResourceKey<ModuleDefinition> key) {
-        ItemStack stack = new ItemStack(YafsItems.MODULE.get());
-        stack.set(YafsComponents.MODULE.get(), key);
-        return stack;
-    }
+
 }

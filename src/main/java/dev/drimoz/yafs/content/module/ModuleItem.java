@@ -1,6 +1,6 @@
 package dev.drimoz.yafs.content.module;
 
-import dev.drimoz.yafs.registry.YafsComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
@@ -11,26 +11,22 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Un seul item pour tous les modules : son identité est le composant {@code yafs:module}, qui
- * pointe vers une {@link ModuleDefinition}. Un datapack ajoute un module sans écrire de code. Le
- * modèle de Portable Beacons pour ses augments.
+ * Un module de serre : un item par module, comme un bloc par palier. Ce qu'il fait vient de la
+ * {@link ModuleDefinition} de même identifiant ({@code yafs:heater} → {@code data/yafs/yafs/module/heater.json}),
+ * qu'un datapack peut retoucher.
  */
 public class ModuleItem extends Item {
 
     public ModuleItem(Properties properties) {
-        super(properties);
+        super(properties.stacksTo(16));
     }
 
+    /** La définition de ce module, nommée comme son item ; {@code null} si ce n'est pas un module. */
     @Nullable
     public static ResourceKey<ModuleDefinition> kind(ItemStack stack) {
-        return stack.get(YafsComponents.MODULE.get());
-    }
-
-    @Override
-    public Component getName(ItemStack stack) {
-        ResourceKey<ModuleDefinition> kind = kind(stack);
-        if (kind == null) return super.getName(stack);
-        return Component.translatable("module." + kind.location().getNamespace() + "." + kind.location().getPath());
+        return stack.getItem() instanceof ModuleItem
+                ? ResourceKey.create(ModuleDefinition.REGISTRY, BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                : null;
     }
 
     @Override

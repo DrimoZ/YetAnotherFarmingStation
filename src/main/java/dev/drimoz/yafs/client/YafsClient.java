@@ -10,6 +10,7 @@ import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.ItemLike;
 import dev.drimoz.yafs.registry.YafsMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -30,7 +31,7 @@ public final class YafsClient {
         event.registerBlockEntityRenderer(YafsBlocks.GREENHOUSE_ENTITY.get(), GreenhouseRenderer::new);
     }
 
-    /** La teinte d'un module vient de sa définition : un datapack choisit sa couleur sans texture. */
+    /** La teinte d'un module vient de sa définition : une texture commune, une couleur par module. */
     @SubscribeEvent
     public static void onRegisterItemColors(RegisterColorHandlersEvent.Item event) {
         event.register((stack, layer) -> {
@@ -41,7 +42,7 @@ public final class YafsClient {
                     .map(registry -> registry.get(kind))
                     .map(module -> 0xFF000000 | module.tint())
                     .orElse(0xFFFFFFFF);
-        }, YafsItems.MODULE.get());
+        }, YafsItems.modules().stream().map(item -> item.get()).toArray(ItemLike[]::new));
     }
 
     @SubscribeEvent

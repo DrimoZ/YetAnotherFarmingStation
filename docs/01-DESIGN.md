@@ -231,9 +231,13 @@ Plus tard : des résidus fluides (une « boue »), qui sortiraient par les ports
 
 ## 7. Modules
 
-Il n'y a qu'**un seul item** `yafs:module`, dont l'identité vient d'un composant qui pointe vers le
-registre datapack `yafs/module`. C'est le modèle des augments de Portable Beacons : un modpack ajoute
-un module sans écrire de code.
+**Un item par module**, comme un bloc par palier (`yafs:heater`, `yafs:grow_lamp`…). Ce que fait un
+module vient de la définition de même identifiant dans le registre datapack `yafs/module` : un
+modpack retouche les chiffres d'un module sans code, mais un nouveau module demande un item.
+
+Écarté : un seul item `yafs:module` à composant, sur le modèle des augments de Portable Beacons. Un
+modpack aurait pu ajouter un module sans code, mais des items distincts se lisent mieux dans JEI,
+les recettes et l'inventaire.
 
 | Module | Effet | Coût | Cumulable |
 |---|---|---|---|

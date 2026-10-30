@@ -6,10 +6,9 @@ import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
 import dev.drimoz.yafs.registry.YafsBlocks;
-import dev.drimoz.yafs.registry.YafsComponents;
-import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceKey;
@@ -100,7 +99,7 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Deux modules de la même sorte ne vont pas dans une serre ; un item qui n'est pas un module non plus. */
+    /** Deux modules de la même sorte ne vont pas dans une serre ; un item qui n'est pas un module non plus. Chaque module est son propre item. */
     @GameTest(template = PLATFORM)
     public static void oneModuleOfEachKind(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -117,9 +116,7 @@ public class ModuleGameTests {
     }
 
     private static ItemStack module(String name) {
-        ItemStack stack = new ItemStack(YafsItems.MODULE.get());
-        stack.set(YafsComponents.MODULE.get(), key(name));
-        return stack;
+        return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, name)));
     }
 
     private static GreenhouseBlockEntity place(GameTestHelper helper) {

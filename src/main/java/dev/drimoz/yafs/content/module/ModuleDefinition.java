@@ -8,7 +8,9 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Un module de serre (YAF-060), défini en datapack : {@code data/<ns>/yafs/module/*.json}.
+ * Ce que fait un module de serre (YAF-060), défini en datapack : {@code data/<ns>/yafs/module/*.json},
+ * du même identifiant que l'item {@link ModuleItem} qu'il décrit. Un datapack retouche un module
+ * existant ; une définition sans item ne fait rien.
  * Registre de datapack, synchronisé par le jeu ; il se recharge au lancement du monde, pas au
  * {@code /reload}, ce qui suffit pour un contenu qu'on ne retouche pas en jouant.
  *
