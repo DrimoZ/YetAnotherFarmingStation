@@ -15,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.fluids.FluidUtil;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -63,6 +64,9 @@ public class GreenhouseBlock extends MultiblockBlock {
     // ponytail: interaction provisoire pour voir pousser en jeu, remplacée par l'écran (YAF-031, YAF-032).
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        // Un seau d'eau remplit la réserve ; vanilla et NeoForge font tout le travail.
+        if (FluidUtil.interactWithFluidHandler(player, hand, level, pos, null)) return ItemInteractionResult.sidedSuccess(level.isClientSide);
+
         if (!(stack.getItem() instanceof BlockItem item) || stack.is(asItem())
                 || !(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;

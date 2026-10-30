@@ -31,6 +31,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
 import java.util.List;
@@ -246,6 +250,65 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
+    /** La verrue veut de la chaleur : à 20 °C, elle pousse au plancher ; à 40 °C, à pleine vitesse, même dans le noir. */
+    @GameTest(template = PLATFORM)
+    public static void netherWartWantsHeatNotLight(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.NETHER_WART));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.SOUL_SAND));
+
+        greenhouse.setEnvironment(new Conditions(0, 20D, 1D));
+        greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS / 2);
+        float temperate = greenhouse.growth(0).progress();
+
+        greenhouse.setEnvironment(new Conditions(0, 40D, 1D));
+        greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS / 2);
+        float hot = greenhouse.growth(0).progress() - temperate;
+
+        helper.assertTrue(Math.abs(temperate - 0.05F) < 0.002F, "À 20 °C : " + temperate);
+        helper.assertTrue(Math.abs(hot - 0.5F) < 0.002F, "À 40 °C dans le noir : " + hot);
+        helper.succeed();
+    }
+
+    // Tests (Eau)
+
+    /** Sans eau, rien ne pousse, et le statut le dit. */
+    @GameTest(template = PLATFORM)
+    public static void withoutWaterNothingGrows(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+        greenhouse.water().setFluid(FluidStack.EMPTY);
+
+        greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
+
+        helper.assertTrue(greenhouse.status(0) == PlotStatus.PROBLEM, "Statut " + greenhouse.status(0));
+        helper.assertTrue(greenhouse.growth(0).progress() == 0F, "Un blé a poussé sans eau");
+        helper.succeed();
+    }
+
+    /** Une croissance complète boit WATER_PER_CYCLE mB, et la réserve se remplit par n'importe quel bloc. */
+    @GameTest(template = PLATFORM)
+    public static void growingDrinksTheReserveFilledThroughAnyBlock(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+        greenhouse.water().setFluid(FluidStack.EMPTY);
+
+        IFluidHandler part = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK,
+                helper.absolutePos(MASTER.offset(1, 2, 1)), Direction.UP);
+        helper.assertTrue(part != null, "Une partie ne relaie pas la réserve");
+        part.fill(new FluidStack(Fluids.WATER, 1_000), IFluidHandler.FluidAction.EXECUTE);
+        helper.assertTrue(greenhouse.water().getFluidAmount() == 1_000, "Réserve " + greenhouse.water().getFluidAmount());
+
+        for (int step = 0; step < GreenhouseBlockEntity.BASE_TICKS / GreenhouseBlockEntity.STEP + 1; step++) {
+            greenhouse.grow(GreenhouseBlockEntity.STEP);
+        }
+        int drunk = 1_000 - greenhouse.water().getFluidAmount();
+        helper.assertTrue(Math.abs(drunk - GreenhouseBlockEntity.WATER_PER_CYCLE) <= 2, drunk + " mB bus pour une croissance");
+        helper.succeed();
+    }
+
     /** Une culture que la serre ne sait pas faire pousser est un problème, pas une attente. */
     @GameTest(template = PLATFORM)
     public static void anUnsupportedCropIsAProblem(GameTestHelper helper) {
@@ -269,6 +332,7 @@ public class GreenhouseGameTests {
 
         GreenhouseBlockEntity greenhouse = (GreenhouseBlockEntity) helper.getBlockEntity(MASTER);
         greenhouse.setEnvironment(IDEAL);
+        greenhouse.water().fill(new FluidStack(Fluids.WATER, GreenhouseBlockEntity.TANK_CAPACITY), IFluidHandler.FluidAction.EXECUTE);
         return greenhouse;
     }
 

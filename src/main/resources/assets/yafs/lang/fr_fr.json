@@ -8,5 +8,6 @@
   "yafs.gui.status.waiting": "En attente",
   "yafs.gui.status.blocked": "Bloquée : la sortie est pleine",
   "yafs.gui.status.problem": "Ne peut pas pousser ici",
-  "yafs.gui.status.off": "Éteinte"
+  "yafs.gui.status.off": "Éteinte",
+  "yafs.gui.water": "Eau : %s / %s mB"
 }

@@ -55,8 +55,8 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiSprites.panel(graphics, left, top, this.imageWidth, this.imageHeight);
         GuiSprites.statusLight(graphics, theme(this.menu.worstStatus()), left + GuiMetrics.LED_X, top + GuiMetrics.LED_Y);
 
-        // ponytail: jauge pleine tant que l'eau est illimitée ; la réserve arrive avec YAF-021.
-        GuiSprites.gauge(graphics, left + GuiMetrics.GAUGE_X, top + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, GAUGE_HEIGHT, 1F);
+        GuiSprites.gauge(graphics, left + GuiMetrics.GAUGE_X, top + GuiMetrics.CONTENT_TOP, GuiMetrics.GAUGE_WIDTH, GAUGE_HEIGHT,
+                this.menu.water() / (float) GreenhouseBlockEntity.TANK_CAPACITY);
 
         for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
             renderPlot(graphics, plot, left + plotX(plot), top + plotY(plot));
@@ -92,6 +92,13 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     }
 
     private void renderPlotTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        int gaugeX = this.leftPos + GuiMetrics.GAUGE_X;
+        int gaugeY = this.topPos + GuiMetrics.CONTENT_TOP;
+        if (mouseX >= gaugeX && mouseX < gaugeX + GuiMetrics.GAUGE_WIDTH && mouseY >= gaugeY && mouseY < gaugeY + GAUGE_HEIGHT) {
+            graphics.renderTooltip(this.font, Component.translatable("yafs.gui.water", this.menu.water(), GreenhouseBlockEntity.TANK_CAPACITY), mouseX, mouseY);
+            return;
+        }
+
         for (int plot = 0; plot < GreenhouseBlockEntity.PLOTS; plot++) {
             int x = this.leftPos + plotX(plot);
             int y = this.topPos + plotY(plot);

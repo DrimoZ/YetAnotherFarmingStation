@@ -1,5 +1,6 @@
 package dev.drimoz.yafs.content.crop;
 
+import dev.drimoz.yafs.core.Efficiency.Requirements;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -12,9 +13,10 @@ import java.util.Set;
  * substrats qu'elle accepte.
  *
  * @param age        la propriété d'âge du bloc ; son maximum est l'état mûr
- * @param substrates les items de substrat acceptés, tels que la détection les a trouvés
+ * @param substrates   les items de substrat acceptés, tels que la détection les a trouvés
+ * @param requirements ce que la culture attend de l'environnement
  */
-public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substrates) {
+public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substrates, Requirements requirements) {
 
     public int maxAge() {
         return this.age.getPossibleValues().stream().mapToInt(Integer::intValue).max().orElse(0);

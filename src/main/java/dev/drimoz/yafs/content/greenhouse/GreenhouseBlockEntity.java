@@ -6,7 +6,6 @@ import dev.drimoz.yafs.content.crop.Crops;
 import dev.drimoz.yafs.core.Climate;
 import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
-import dev.drimoz.yafs.core.Efficiency.Requirements;
 import dev.drimoz.yafs.core.PlotGrowth;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
@@ -19,12 +18,17 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
@@ -72,6 +76,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     public static final int VISIBLE_STAGES = 8;
 
+    /** Huit seaux : 48 minutes d'autonomie pour une serre P1 pleine. */
+    public static final int TANK_CAPACITY = 8_000;
+    /** L'eau d'une croissance complète d'un plant, en mB. */
+    public static final int WATER_PER_CYCLE = 500;
+
     private static final Codec<List<PlotGrowth>> GROWTH_CODEC = PlotGrowth.CODEC.listOf();
 
     /** Le client voit ce que contiennent les parcelles : c'est ce qu'il dessine. */
@@ -89,6 +98,16 @@ public class GreenhouseBlockEntity extends BlockEntity {
             setChanged();
         }
     };
+
+    private final FluidTank water = new FluidTank(TANK_CAPACITY, fluid -> fluid.is(FluidTags.WATER)) {
+        @Override
+        protected void onContentsChanged() {
+            setChanged();
+        }
+    };
+
+    /** L'eau bue, en fractions de mB : un pas de croissance en boit moins d'un. */
+    private double thirst;
 
     private final PlotGrowth[] growth = new PlotGrowth[PLOTS];
     private final PlotStatus[] status = new PlotStatus[PLOTS];
@@ -112,6 +131,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     public ItemStackHandler output() {
         return this.output;
+    }
+
+    public FluidTank water() {
+        return this.water;
     }
 
     public PlotGrowth growth(int plot) {
@@ -144,6 +167,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return new ContainerData() {
             @Override
             public int get(int index) {
+                if (index == GreenhouseMenu.WATER_DATA) return GreenhouseBlockEntity.this.water.getFluidAmount();
+
                 int plot = index / GreenhouseMenu.DATA_PER_PLOT;
                 return index % GreenhouseMenu.DATA_PER_PLOT == 0
                         ? Math.round(GreenhouseBlockEntity.this.growth[plot].progress() * GreenhouseMenu.PROGRESS_SCALE)
@@ -157,7 +182,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
             @Override
             public int getCount() {
-                return PLOTS * GreenhouseMenu.DATA_PER_PLOT;
+                return GreenhouseMenu.DATA_SIZE;
             }
         };
     }
@@ -187,8 +212,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         int light = this.level.getRawBrightness(roof, this.level.getSkyDarken());
         double temperature = Climate.celsius(this.level.getBiome(this.worldPosition).value().getBaseTemperature());
 
-        // ponytail: eau illimitée jusqu'à la réserve (YAF-021).
-        this.environment = new Conditions(light, temperature, 1D);
+        this.environment = new Conditions(light, temperature, waterCoverage());
         this.raining = this.level.isRainingAt(roof);
     }
 
@@ -197,14 +221,37 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
+        // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
+        this.environment = new Conditions(this.environment.light(), this.environment.temperature(), waterCoverage());
+
         boolean visibleChange = false;
         for (int plot = 0; plot < PLOTS; plot++) {
-            int before = visibleStage(this.growth[plot]);
+            PlotGrowth before = this.growth[plot];
             this.status[plot] = growPlot(serverLevel, plot, elapsed);
-            visibleChange |= visibleStage(this.growth[plot]) != before;
+            visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
+            drink(before, this.growth[plot]);
         }
         setChanged();
         if (visibleChange) syncToClient();
+    }
+
+    /**
+     * La réserve couvre la consommation tant qu'il reste une goutte : le manque est tout ou rien.
+     * Une couverture partielle supposerait de connaître la consommation avant de pousser.
+     */
+    private double waterCoverage() {
+        return this.water.isEmpty() ? 0D : 1D;
+    }
+
+    /** L'eau suit la croissance réellement faite, × densité ; une récolte ne boit rien de plus. */
+    private void drink(PlotGrowth before, PlotGrowth after) {
+        double grown = after.progress() >= before.progress() ? after.progress() - before.progress() : 1D - before.progress() + after.progress();
+        this.thirst += grown * WATER_PER_CYCLE * after.density();
+
+        int drained = (int) Math.min(this.thirst, this.water.getFluidAmount());
+        if (drained <= 0) return;
+        this.water.drain(drained, IFluidHandler.FluidAction.EXECUTE);
+        this.thirst -= drained;
     }
 
     private static int visibleStage(PlotGrowth growth) {
@@ -231,9 +278,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         Crop known = Crops.of(crop.getItem());
         ItemStack substrate = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE);
         if (known == null || !known.accepts(substrate.getItem())) return PlotStatus.PROBLEM;
+        if (this.environment.water() <= 0D && !this.growth[plot].isMature()) return PlotStatus.PROBLEM;
 
-        // ponytail: exigences tolérantes pour tout le monde, jusqu'aux exigences par culture (YAF-016).
-        double efficiency = Efficiency.evaluate(Requirements.TOLERANT, this.environment).value();
+        double efficiency = Efficiency.evaluate(known.requirements(), this.environment).value();
         PlotGrowth current = this.growth[plot].advance(efficiency * elapsed / BASE_TICKS);
         this.growth[plot] = current;
         if (!current.isMature()) return PlotStatus.WORKING;
@@ -269,6 +316,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return true;
     }
 
+    // Capabilities
+
+    // ponytail: la réserve est ouverte sur toutes les faces, de chaque bloc, jusqu'aux ports (YAF-050).
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, YafsBlocks.GREENHOUSE_ENTITY.get(), (greenhouse, side) -> greenhouse.water);
+    }
+
     // Casse
 
     /** Tout ce que contient la serre tombe au sol : parcelles et sortie. */
@@ -287,6 +341,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         super.saveAdditional(tag, registries);
         tag.put("plots", this.plots.serializeNBT(registries));
         tag.put("output", this.output.serializeNBT(registries));
+        tag.put("water", this.water.writeToNBT(registries, new CompoundTag()));
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
     }
 
@@ -310,6 +365,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.plots.deserializeNBT(registries, tag.getCompound("plots"));
         // Absente du paquet de synchronisation : le client garde sa sortie vide plutôt que de la vider.
         if (tag.contains("output")) this.output.deserializeNBT(registries, tag.getCompound("output"));
+        if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
 
         // Une croissance illisible repart de zéro : on perd au pire une récolte, jamais un item.
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());

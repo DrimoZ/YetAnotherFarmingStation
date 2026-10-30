@@ -38,6 +38,9 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
     public static final int DATA_PER_PLOT = 2;
+    /** Après les parcelles : la réserve d'eau, en mB. */
+    public static final int WATER_DATA = GreenhouseBlockEntity.PLOTS * DATA_PER_PLOT;
+    public static final int DATA_SIZE = WATER_DATA + 1;
 
     private static final int OUTPUT_SLOTS = GreenhouseBlockEntity.OUTPUT_SLOTS;
     private static final int PLAYER_SLOTS = 36;
@@ -55,7 +58,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     /** Côté client : la position suffit, le reste arrive par la synchronisation du menu. */
     public GreenhouseMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
         this(id, inventory, buffer.readBlockPos(), new ItemStackHandler(OUTPUT_SLOTS),
-                new SimpleContainerData(GreenhouseBlockEntity.PLOTS * DATA_PER_PLOT), ContainerLevelAccess.NULL);
+                new SimpleContainerData(DATA_SIZE), ContainerLevelAccess.NULL);
     }
 
     private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, IItemHandler output, ContainerData data, ContainerLevelAccess access) {
@@ -91,6 +94,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     public BlockPos pos() {
         return this.pos;
+    }
+
+    public int water() {
+        return this.data.get(WATER_DATA);
     }
 
     public float progress(int plot) {

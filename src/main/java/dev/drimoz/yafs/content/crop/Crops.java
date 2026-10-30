@@ -6,7 +6,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.BlockItem;
+import dev.drimoz.yafs.core.Efficiency.Requirements;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -72,6 +74,24 @@ public final class Crops {
         }
     }
 
+    /**
+     * Les exigences des cultures vanilla, livrées avec le mod (YAF-016). Les cultures vanilla n'en
+     * ont pas dans le jeu : ce sont des choix, calés sur ce que la plante évoque et sur
+     * {@link dev.drimoz.yafs.core.Climate} (plaines 20 °C, taïga 11 °C, désert 40 °C). Toute autre
+     * culture est {@link Requirements#TOLERANT}.
+     *
+     * <p>La verrue ne demande pas de lumière : en vanilla, elle pousse dans le noir.
+     */
+    // ponytail: en dur jusqu'aux surcharges datapack (YAF-014), qui reprendront ces valeurs en JSON.
+    private static final Map<Item, Requirements> VANILLA = Map.of(
+            Items.WHEAT_SEEDS, new Requirements(9, 10D, 30D),
+            Items.CARROT, new Requirements(9, 5D, 25D),
+            Items.POTATO, new Requirements(9, 5D, 25D),
+            Items.BEETROOT_SEEDS, new Requirements(9, 0D, 22D),
+            Items.SWEET_BERRIES, new Requirements(9, -10D, 14D),
+            Items.TORCHFLOWER_SEEDS, new Requirements(9, 15D, 35D),
+            Items.NETHER_WART, new Requirements(0, 35D, 60D));
+
     @Nullable
     private static Map<Item, Crop> crops;
 
@@ -125,7 +145,9 @@ public final class Crops {
                     substrates.add(soil.asItem());
                 }
             }
-            if (!substrates.isEmpty()) found.put(item, new Crop(item, bush, age, Set.copyOf(substrates)));
+            if (!substrates.isEmpty()) {
+                found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), VANILLA.getOrDefault(item, Requirements.TOLERANT)));
+            }
         }
 
         LOGGER.info("{} cultures reconnues en {} ms", found.size(), (System.nanoTime() - start) / 1_000_000);
