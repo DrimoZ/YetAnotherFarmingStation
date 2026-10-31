@@ -102,7 +102,7 @@ un monde).
 |---|---|---|---|---|
 | ~~YAF-080~~ | ✅ | M | **JEI** — **fait, vu sur capture** : une page par culture reconnue (graine, sols, catalyseur, récolte tirée au serveur puis synchronisée, exigences, durée, eau, énergie) ; les trois serres en catalyseurs. JEI : catégorie cultures (substrats, catalyseur, exigences, récolte). | lancé sans JEI : rien ne casse |
 | ~~YAF-081~~ | ✅ | S | **Jade** — **fait, vu sur capture** (`compat/jade`, chargé par Jade seul) : au survol de n'importe quel bloc, état de la serre, parcelles qui poussent, facteur limitant, FE/t. Jade : statut et facteur limitant au survol. | idem sans Jade |
-| YAF-082 | P1 | S | Mystical Agriculture : surcharges des cruxes. | une graine à crux pousse avec son catalyseur, pas sans |
+| ~~YAF-082~~ | ✅ | S | **Mystical Agriculture** — **fait** (`compat/mysticalagriculture`, par l'API de MA, lue seulement si MA est chargé) : chaque graine à crux exige son crux en catalyseur, sauf si un datapack dit autre chose. MA seul n'a pas de crux : ils viennent de Mystical Agradditions, vérifié avec lui. Mystical Agriculture : surcharges des cruxes. | une graine à crux pousse avec son catalyseur, pas sans |
 | ❄️ YAF-083 | P3 | S | Serene Seasons : la saison décale la température. | deuxième version |
 | ❄️ YAF-084 | P3 | M | Agricraft : statistiques des graines. | deuxième version |
 

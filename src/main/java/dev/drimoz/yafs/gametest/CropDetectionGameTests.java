@@ -1,6 +1,7 @@
 package dev.drimoz.yafs.gametest;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
+import dev.drimoz.yafs.compat.mysticalagriculture.MysticalCruxes;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
 import com.google.gson.JsonElement;
@@ -11,6 +12,7 @@ import dev.drimoz.yafs.content.crop.CropOverride;
 import dev.drimoz.yafs.content.crop.ItemMatch;
 import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.core.Efficiency.Requirements;
+import net.neoforged.fml.ModList;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.RegistryOps;
@@ -110,6 +112,20 @@ public class CropDetectionGameTests {
             CropData.set(shipped, substrates);
         }
         helper.assertTrue(known(helper, Items.CARROT).accepts(Items.DIRT), "La détection n'est pas revenue");
+        helper.succeed();
+    }
+
+    /** Mystical Agriculture (YAF-082) : une graine à crux est reconnue et exige son crux. Sans MA, rien à vérifier. */
+    @GameTest(template = PLATFORM)
+    public static void aCruxSeedNeedsItsCrux(GameTestHelper helper) {
+        if (!ModList.get().isLoaded(MysticalCruxes.MOD_ID)) {
+            helper.succeed();
+            return;
+        }
+        Item[] pair = MysticalCruxes.anyCruxSeed();
+        helper.assertTrue(pair != null, "Aucune graine à crux activée : " + MysticalCruxes.census());
+        Crop crop = known(helper, pair[0]);
+        helper.assertTrue(crop.catalysedBy(pair[1]) && !crop.catalysedBy(Items.AIR), pair[0] + " pousse sans son crux " + pair[1]);
         helper.succeed();
     }
 

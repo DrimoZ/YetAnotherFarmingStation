@@ -87,6 +87,7 @@ dependencies {
     // Soft dependency: compiled against, never required.
     compileOnly "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
     compileOnly "maven.modrinth:jade:${jade_version}"
+    compileOnly "maven.modrinth:mystical-agriculture:${mystical_agriculture_version}"
     // Through the run folder, not the run classpath: FML only registers mods it finds in mods/.
     devMods "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
     // De quoi essayer la serre au milieu d'autres mods : énergie et tuyaux (Mekanism), tuyaux
@@ -95,6 +96,9 @@ dependencies {
     devMods "maven.modrinth:mekanism:${mekanism_version}"
     devMods "maven.modrinth:pipez:${pipez_version}"
     devMods "maven.modrinth:jade:${jade_version}"
+    devMods "maven.modrinth:mystical-agriculture:${mystical_agriculture_version}"
+    devMods "maven.modrinth:cucumber:${cucumber_version}"
+    devMods "maven.modrinth:mystical-agradditions:${mystical_agradditions_version}"
     devMods "maven.modrinth:cooking-for-blockheads:${cooking_for_blockheads_version}"
     devMods "maven.modrinth:balm:${balm_version}"
     devMods "maven.modrinth:chunk-loaders:${chunk_loaders_version}"

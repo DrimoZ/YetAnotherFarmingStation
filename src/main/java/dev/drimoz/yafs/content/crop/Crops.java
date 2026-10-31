@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.BlockItem;
+import dev.drimoz.yafs.compat.mysticalagriculture.MysticalCruxes;
 import dev.drimoz.yafs.content.crop.Crop.Cost;
 import dev.drimoz.yafs.core.Efficiency.Requirements;
 import net.minecraft.world.item.Item;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.util.TriState;
 import org.slf4j.Logger;
 
@@ -134,6 +136,9 @@ public final class Crops {
                 found.put(item, new Crop(item, bush, age, Set.copyOf(substrates), Requirements.TOLERANT, null, null, Cost.DEFAULT));
             }
         }
+
+        // Mystical Agriculture : une graine à crux exige son crux ; un datapack peut encore dire autre chose.
+        if (ModList.get().isLoaded("mysticalagriculture")) MysticalCruxes.apply(found);
 
         for (CropOverride override : CropData.overrides()) {
             Crop crop = found.get(override.seed());
