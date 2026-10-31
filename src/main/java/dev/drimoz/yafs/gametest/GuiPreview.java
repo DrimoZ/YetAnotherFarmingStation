@@ -178,6 +178,10 @@ public final class GuiPreview {
         step(5, mc -> clickGui(mc, 169 - 5, 20 + 4));
         step(5, mc -> clickTab(mc, 1));
         step(15, mc -> shot("greenhouse_t3_operations"));
+        // L'infobulle de l'énergie : d'où vient le besoin.
+        step(5, mc -> hoverTab(mc, 1, 20, 2 * 10 + 4));
+        step(10, mc -> shot("greenhouse_t3_energy_tooltip"));
+        step(5, mc -> hover(mc, 0.0, 0.0));
         step(5, mc -> clickTab(mc, 3));
         step(15, mc -> shot("greenhouse_t3_control"));
         step(5, mc -> clickTab(mc, 1));
@@ -294,6 +298,15 @@ public final class GuiPreview {
         double scale = minecraft.getWindow().getGuiScale();
         hover(minecraft, (screen.getGuiLeft() + x) * scale / minecraft.getWindow().getScreenWidth(),
                 (screen.getGuiTop() + y) * scale / minecraft.getWindow().getScreenHeight());
+    }
+
+    /** Survole le contenu du n-ième onglet, en coordonnées de ce contenu. */
+    static void hoverTab(Minecraft minecraft, int index, int x, int y) {
+        if (!(minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen)) return;
+        var area = screen.tabAreas().get(index);
+        double scale = minecraft.getWindow().getGuiScale();
+        hover(minecraft, (area.getX() + 6 + x) * scale / minecraft.getWindow().getScreenWidth(),
+                (area.getY() + 22 + y) * scale / minecraft.getWindow().getScreenHeight());
     }
 
     /** Place le curseur, en fraction de la fenêtre : les infobulles suivent la vraie souris. */

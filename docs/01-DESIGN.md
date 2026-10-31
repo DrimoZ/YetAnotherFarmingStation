@@ -45,11 +45,11 @@ On reprend le cadre multibloc de FactoryIO (`docs/12` §2) :
 
 ### 2.2 Paliers
 
-| Palier | Volume (l×h×p) | Parcelles | Emplacements de module | Densité max |
-|---|---|---|---|---|
-| P1 | 3×3×3 | 4 (2×2) | 2 | ×2 |
-| P2 | 5×4×5 | 9 (3×3) | 4 | ×3 |
-| P3 | 7×5×7 | 16 (4×4) | 6 | ×4 |
+| Palier | Volume (l×h×p) | Parcelles | Emplacements de module |
+|---|---|---|---|
+| P1 | 3×3×3 | 4 (2×2) | 2 |
+| P2 | 5×4×5 | 9 (3×3) | 4 |
+| P3 | 7×5×7 | 16 (4×4) | 6 |
 
 Un palier ne donne **jamais de vitesse**. Il donne de la place : plus de parcelles et de modules.
 
@@ -85,7 +85,9 @@ parcelle n'est pas un vrai bloc du monde et ne reçoit pas de *random ticks*.
 
 Une parcelle densifiée représente N plants. **Tout** est multiplié par N : la récolte, l'eau,
 l'engrais, les résidus et l'énergie des modules. Le joueur gagne de la place et de la
-simplicité, pas des ressources gratuites. Le plafond dépend du palier (§2.2).
+simplicité, pas des ressources gratuites. Les modules de densité s'additionnent (Densité I/II/III :
++1/+2/+3 plants chacun) ; aucun plafond de palier (décidé le 31/10/2026), seul le maximum de chaque
+module borne.
 
 Écarté : un « parallélisme » qui multiplie la sortie sans multiplier le coût. C'était un module de
 vitesse déguisé, qui aurait rendu les paliers inutiles.
@@ -255,7 +257,8 @@ les recettes et l'inventaire.
 | Accélérateur | + vitesse | FE + eau, proportionnels | oui, coût croissant |
 | Composteur | résidus → engrais | — | non |
 | Capacité | piles plus grandes dans les réserves | — | non |
-| Densité | augmente la densité des parcelles jusqu'au plafond du palier | tout × densité | non |
+| Batterie | + 1 000 000 FE de réserve | — | oui |
+| Densité | + plants par parcelle (+1/+2/+3) | tout × plants | oui |
 
 **Règle du mod : aucun bonus n'est gratuit.** Tout ce qui accélère multiplie aussi ce qu'il
 consomme.
@@ -264,8 +267,13 @@ consomme.
 plus vite (×2, réglable en config) pour un coût de base par parcelle (10 FE/t, réglable). Les
 modules d'augment **multiplient** : la vitesse (Accélérateur I/II/III : ×2/×4/×8), et en même temps
 l'énergie (×4/×16/×64) et l'eau (×2/×4/×8). Trois accélérateurs et le bonus de base font ×128 : on
-peut aller absurdement vite, à un prix absurde. La densité (×2/×3/×4 plants, bornée par le palier)
-multiplie récolte, eau et énergie. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
+peut aller absurdement vite, à un prix absurde. La densité
+(+1/+2/+3 plants par module, cumulables) multiplie récolte, eau et énergie.
+
+**Empilement** (décidé le 31/10/2026) : une serre prend jusqu'à 16 modules d'une même sorte par
+défaut, et leurs bonus s'additionnent ; chaque module fixe son maximum dans son JSON (`max_stack`,
+jusqu'à 64). Seule la lampe reste à 1 : la lumière 15 est déjà le plafond. Une pile au-delà de son
+maximum (vieille sauvegarde) ne compte que jusqu'à lui, et l'écran l'affiche en rouge. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
 
 ---
 
@@ -370,8 +378,7 @@ C'est le premier chantier à mesurer, avec un budget versionné comme dans `Fact
 - **Ticks** : la serre avance par pas de 20 ticks. L'environnement de base (biome, ciel, pluie)
   est recalculé toutes les 100 ticks et à chaque changement de module. Pas de `stream()` ni
   d'allocation dans `tick()`.
-- **Config serveur** : un multiplicateur global de vitesse, les résidus activables ou non, le
-  plafond de densité.
+- **Config serveur** : un multiplicateur global de vitesse, les résidus activables ou non.
 
 ---
 

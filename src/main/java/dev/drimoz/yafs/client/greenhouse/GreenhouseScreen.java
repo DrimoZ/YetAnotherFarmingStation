@@ -56,9 +56,9 @@ import java.util.Locale;
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
     private static final int ENV_TAB_WIDTH = 120;
-    /** Environnement : trois conditions et un verdict ; Fonctionnement : sept relevés et un verdict. */
+    /** Environnement : trois conditions et un verdict ; Fonctionnement : neuf relevés et un verdict. */
     private static final int ENV_ROWS = 4;
-    private static final int OPS_ROWS = 8;
+    private static final int OPS_ROWS = 10;
 
     /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
     private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
@@ -126,7 +126,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiSprites.panel(graphics, left, top, this.imageWidth, this.imageHeight);
         GuiSprites.statusLight(graphics, theme(this.menu.worstStatus()), left + GuiMetrics.LED_X, top + GuiMetrics.LED_Y);
         GuiSprites.gauge(graphics, left + GuiMetrics.GAUGE_X, top + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight(),
-                this.menu.energy() / (float) GreenhouseBlockEntity.ENERGY_CAPACITY);
+                this.menu.energy() / (float) Math.max(1, this.menu.capacity()));
 
         if (this.menu.selected() < 0) {
             renderHeaders(graphics, left, top);
@@ -190,12 +190,15 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         int plot = this.menu.selected();
 
         GuiSprites.inset(graphics, x, y, DETAIL_RIGHT - DETAIL_LEFT, top + this.menu.contentBottom() - y);
-        graphics.drawString(this.font, Component.translatable("yafs.gui.plot.title", plot + 1), x + 3, y + 2, GuiTheme.TEXT, false);
+        // Le titre porte la culture : toute la largeur du détail, un nom long n'y est pas coupé.
+        Crop crop = Crops.of(crop(plot).getItem());
+        Component title = crop == null ? Component.translatable("yafs.gui.plot.title", plot + 1)
+                : Component.translatable("yafs.gui.plot.title_crop", plot + 1, crop(plot).getHoverName());
+        graphics.drawString(this.font, this.font.plainSubstrByWidth(title.getString(), DETAIL_RIGHT - DETAIL_LEFT - CLOSE_SIZE - 6), x + 3, y + 2, GuiTheme.TEXT, false);
         graphics.drawString(this.font, "×", left + DETAIL_RIGHT - CLOSE_SIZE, y + 1, GuiTheme.TEXT, false);
 
         int textX = left + DETAIL_TEXT_X;
         int lineY = top + GreenhouseMenu.DETAIL_SLOTS_Y;
-        Crop crop = Crops.of(crop(plot).getItem());
         if (crop == null) {
             for (FormattedCharSequence line : this.font.split(Component.translatable("yafs.gui.plot.choose"), DETAIL_RIGHT - DETAIL_TEXT_X - 4)) {
                 graphics.drawString(this.font, line, textX, lineY, GuiTheme.TEXT_MUTED, false);
@@ -204,22 +207,24 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             return;
         }
 
-        graphics.drawString(this.font, this.font.plainSubstrByWidth(crop(plot).getHoverName().getString(), DETAIL_RIGHT - DETAIL_TEXT_X - 2),
-                textX, lineY, GuiTheme.TEXT, false);
-
         Requirements requires = crop.requirements();
         int light = this.menu.light();
         double temperature = this.menu.temperature();
         boolean lit = light >= requires.minLight();
         boolean warm = temperature >= requires.minTemperature() && temperature <= requires.maxTemperature();
         graphics.drawString(this.font, Component.translatable("yafs.gui.requires.light", requires.minLight(), light),
-                textX, lineY + GuiTheme.LINE, lit ? GuiTheme.TEXT : GuiTheme.TEXT_PROBLEM, false);
+                textX, lineY, lit ? GuiTheme.TEXT : GuiTheme.TEXT_PROBLEM, false);
         graphics.drawString(this.font, Component.translatable("yafs.gui.requires.temperature",
                         number(requires.minTemperature()), number(requires.maxTemperature()), number(temperature)),
-                textX, lineY + 2 * GuiTheme.LINE, warm ? GuiTheme.TEXT : GuiTheme.TEXT_PROBLEM, false);
+                textX, lineY + GuiTheme.LINE, warm ? GuiTheme.TEXT : GuiTheme.TEXT_PROBLEM, false);
 
         graphics.drawString(this.font, Component.translatable("yafs.gui.plot.growth", Math.round(this.menu.progress(plot) * 100)),
-                textX, lineY + 3 * GuiTheme.LINE, GuiTheme.TEXT_MUTED, false);
+                textX, lineY + 2 * GuiTheme.LINE, GuiTheme.TEXT_MUTED, false);
+        double cycle = cycleTicks(plot);
+        if (cycle > 0D) {
+            graphics.drawString(this.font, Component.translatable("yafs.gui.plot.cycle_short", duration(cycle)),
+                    textX, lineY + 3 * GuiTheme.LINE, GuiTheme.TEXT_MUTED, false);
+        }
 
         // En bas, sur toute la largeur : ce qui se passe, et quoi faire si ça coince.
         PlotStatus status = this.menu.status(plot);
@@ -312,6 +317,28 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
             renderOperations(graphics, x, y);
         }
+
+        /** Sur les trois lignes d'énergie : d'où vient le besoin, et ce qui se passe quand il n'est pas couvert. */
+        @Override
+        protected List<Component> contentTooltip(int x, int y, double mouseX, double mouseY) {
+            if (mouseX < x || mouseX >= x + ENV_CONTENT_WIDTH || mouseY < y || mouseY >= y + 3 * GuiTheme.LINE) return List.of();
+            return energyTooltip();
+        }
+    }
+
+    private List<Component> energyTooltip() {
+        int modules = this.menu.moduleDemand();
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.translatable("yafs.gui.ops.demand.plots", compact(this.menu.demand() - modules)));
+        lines.add(Component.translatable("yafs.gui.ops.demand.modules", compact(modules)));
+        lines.add(Component.translatable("yafs.gui.ops.demand.input", compact(this.menu.input())).withStyle(ChatFormatting.GRAY));
+        if (starved()) {
+            lines.add(Component.translatable("yafs.gui.ops.demand.missing", compact(Math.max(0, this.menu.demand() - this.menu.input())))
+                    .withStyle(ChatFormatting.RED));
+            lines.add(Component.translatable("yafs.gui.ops.demand.starved").withStyle(ChatFormatting.GRAY));
+        }
+        lines.add(Component.translatable("yafs.gui.ops.demand.battery").withStyle(ChatFormatting.DARK_AQUA));
+        return lines;
     }
 
     /** L'onglet bleu : les emplacements (slots du menu, cachés quand l'onglet est replié), puis leur bilan. */
@@ -336,12 +363,13 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             return MODULE_CONTENT_WIDTH;
         }
 
-        /** Les slots, un filet, puis le bilan : une ligne par effet (ou « Aucun module »), le besoin en énergie, l'alerte. */
+        /**
+         * Les slots, puis chaque module posé avec son plafond par serre. Rien d'autre : ce que les
+         * modules font ensemble se lit dans Fonctionnement, l'effet d'un module dans son infobulle.
+         */
         @Override
         protected int contentHeight() {
-            int installed = installedModules().size();
-            int rows = installed + (installed > 0 ? 1 : 0) + Math.max(1, moduleEffects().size()) + (menu.demand() > 0 ? 1 : 0) + (starved() ? 1 : 0);
-            return moduleRows() * GuiMetrics.SLOT + 6 + rows * GuiTheme.LINE;
+            return moduleRows() * GuiMetrics.SLOT + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE;
         }
 
         @Override
@@ -349,40 +377,20 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             int lineY = y + moduleRows() * GuiMetrics.SLOT + 6;
             graphics.fill(x, lineY - 3, x + MODULE_CONTENT_WIDTH, lineY - 2, 0x40FFFFFF);
 
-            // Chaque module posé et son plafond par serre : on voit d'un coup d'œil ce qu'on peut encore ajouter.
             List<ItemStack> installed = installedModules();
+            if (installed.isEmpty()) {
+                GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.none"), x, lineY, GuiTheme.TAB_MUTED);
+                return;
+            }
+            // Au plafond : grisé, on n'en ajoute plus. Au-delà (une vieille sauvegarde) : rouge, le surplus ne compte pas.
             for (ItemStack stack : installed) {
                 int max = ModuleItem.maxStack(stack, minecraft.level.registryAccess());
                 String count = stack.getCount() + "/" + max;
+                int colour = stack.getCount() > max ? GuiTheme.Status.PROBLEM.tabColour : stack.getCount() == max ? GuiTheme.TAB_MUTED : GuiTheme.TAB_VALUE;
                 int room = MODULE_CONTENT_WIDTH - font.width(count) - 4;
                 GuiTheme.tabLabel(graphics, font, Component.literal(font.plainSubstrByWidth(stack.getHoverName().getString(), room)), x, lineY);
-                GuiTheme.tabValue(graphics, font, Component.literal(count), x + MODULE_CONTENT_WIDTH - font.width(count), lineY,
-                        stack.getCount() >= max ? GuiTheme.TAB_MUTED : GuiTheme.TAB_VALUE);
+                GuiTheme.tabValue(graphics, font, Component.literal(count), x + MODULE_CONTENT_WIDTH - font.width(count), lineY, colour);
                 lineY += GuiTheme.LINE;
-            }
-            if (!installed.isEmpty()) {
-                lineY += GuiTheme.LINE;
-                graphics.fill(x, lineY - 8, x + MODULE_CONTENT_WIDTH, lineY - 7, 0x40FFFFFF);
-            }
-
-            List<Effect> effects = new ArrayList<>(moduleEffects());
-            if (effects.isEmpty()) {
-                GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.none"), x, lineY, GuiTheme.TAB_MUTED);
-                lineY += GuiTheme.LINE;
-            }
-            // Ce que la serre demande : en rouge quand la réserve ne tient pas un pas.
-            if (menu.demand() > 0) {
-                effects.add(new Effect("yafs.gui.modules.demand", compact(menu.demand()) + " FE/t",
-                        starved() ? GuiTheme.Status.PROBLEM.tabColour : GuiTheme.TAB_VALUE));
-            }
-            for (Effect effect : effects) {
-                GuiTheme.tabLabel(graphics, font, Component.translatable(effect.label()), x, lineY);
-                GuiTheme.tabValue(graphics, font, Component.literal(effect.value()),
-                        x + MODULE_CONTENT_WIDTH - font.width(effect.value()), lineY, effect.colour());
-                lineY += GuiTheme.LINE;
-            }
-            if (starved()) {
-                GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.unpowered"), x, lineY, GuiTheme.Status.PROBLEM.tabColour);
             }
         }
 
@@ -493,12 +501,16 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             longest = Math.max(longest, cycle);
         }
 
+        // L'énergie d'abord, dans l'ordre où elle se lit : ce qu'on a, ce qui entre, ce qu'il faut.
         int row = y;
-        row(graphics, x, row, "yafs.gui.ops.energy", compact(this.menu.energy()) + " FE", GuiTheme.TAB_VALUE);
+        row(graphics, x, row, "yafs.gui.ops.energy", compact(this.menu.energy()) + " / " + compact(this.menu.capacity()), GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.input", compact(this.menu.input()) + " FE/t", GuiTheme.TAB_VALUE);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.demand", compact(this.menu.demand()) + " FE/t",
                 starved() ? GuiTheme.Status.PROBLEM.tabColour : GuiTheme.TAB_VALUE);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.water", compact(this.menu.waterUse()) + " mB/min", GuiTheme.TAB_VALUE);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.speed", "×" + number(fastest), fastest > 1D ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
+        int plants = plantsPerPlot();
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.plants", String.valueOf(plants), plants > 1 ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
         String cycle = growing == 0 ? "—" : longest - shortest < 1D ? duration(longest) : duration(shortest) + " – " + duration(longest);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.cycle", cycle, GuiTheme.TAB_VALUE);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.harvests", number(Math.round(harvests * 10) / 10D), GuiTheme.TAB_VALUE);
@@ -539,15 +551,25 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiTheme.tabValue(graphics, this.font, Component.literal(value), x + ENV_CONTENT_WIDTH - this.font.width(value), y, colour);
     }
 
-    /** Une ligne du bilan des modules : un gain en vert, un coût en orange. */
-    private record Effect(String label, String value, int colour) {}
-
     /**
-     * La réserve ne tient pas un pas de croissance au rythme demandé : les parcelles retombent à
-     * vitesse 1, les accélérateurs ne font rien. Sans le dire, on croirait les modules cassés.
+     * Le besoin n'est pas couvert, dit le serveur : des parcelles retombent à vitesse 1, des modules
+     * s'arrêtent. Sans le dire, on croirait les modules cassés.
      */
     private boolean starved() {
-        return this.menu.demand() > 0 && (long) this.menu.energy() < (long) this.menu.demand() * GreenhouseBlockEntity.STEP;
+        return this.menu.starved();
+    }
+
+    /** Les plants de chaque parcelle : un, plus ce qu'ajoutent les modules de densité, comme au serveur. */
+    private int plantsPerPlot() {
+        if (this.minecraft == null || this.minecraft.level == null) return 1;
+        Registry<ModuleDefinition> registry = this.minecraft.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
+        int plants = 1;
+        for (ItemStack stack : installedModules()) {
+            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
+            ModuleDefinition module = registry == null || kind == null ? null : registry.get(kind);
+            if (module != null) plants += module.extraPlants() * Math.min(stack.getCount(), module.maxStack());
+        }
+        return plants;
     }
 
     private List<ItemStack> installedModules() {
@@ -560,48 +582,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return installed;
     }
 
-    /** Ce que les modules posés font ensemble, lu dans le registre que le jeu a synchronisé. */
-    private List<Effect> moduleEffects() {
-        List<Effect> lines = new ArrayList<>();
-        if (this.minecraft == null || this.minecraft.level == null) return lines;
-        Registry<ModuleDefinition> registry = this.minecraft.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
-        if (registry == null) return lines;
-
-        double speed = 1D;
-        double energy = 1D;
-        double water = 1D;
-        int density = 1;
-        int lightFloor = 0;
-        double shift = 0D;
-        int rain = 0;
-        for (int slot = 0; slot < this.menu.moduleSlots(); slot++) {
-            ItemStack stack = this.menu.slots.get(GreenhouseBlockEntity.OUTPUT_SLOTS + slot).getItem();
-            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
-            ModuleDefinition module = kind == null ? null : registry.get(kind);
-            if (module == null) continue;
-            // Le même calcul que la serre : une pile additionne, des modules différents se multiplient.
-            int count = stack.getCount();
-            speed *= ModuleDefinition.stacked(module.speedMultiplier(), count);
-            energy *= ModuleDefinition.stacked(module.energyMultiplier(), count);
-            water *= ModuleDefinition.stacked(module.waterMultiplier(), count);
-            density = Math.max(density, module.density());
-            lightFloor = Math.max(lightFloor, module.lightFloor());
-            shift += module.temperatureShift() * count;
-            rain += module.rainCollection() * count;
-        }
-        density = Math.min(density, this.menu.tier().maxDensity());
-
-        int gain = GuiTheme.Status.WORKING.tabColour;
-        int cost = GuiTheme.Status.BLOCKED.tabColour;
-        if (speed > 1D) lines.add(new Effect("yafs.gui.modules.speed", "×" + number(speed), gain));
-        if (density > 1) lines.add(new Effect("yafs.gui.modules.density", "×" + density, gain));
-        if (energy > 1D) lines.add(new Effect("yafs.gui.modules.energy", "×" + number(energy), cost));
-        if (water > 1D) lines.add(new Effect("yafs.gui.modules.water", "×" + number(water), cost));
-        if (lightFloor > 0) lines.add(new Effect("yafs.gui.modules.light", lightFloor + "+", gain));
-        if (shift != 0D) lines.add(new Effect("yafs.gui.modules.temperature", (shift > 0 ? "+" : "") + number(shift) + " °C", gain));
-        if (rain > 0) lines.add(new Effect("yafs.gui.modules.rain", rain + " mB", gain));
-        return lines;
-    }
     // Clics
 
     /** Une case ouvre son détail ; la croix le referme. Le serveur l'apprend par un bouton de menu. */
@@ -644,7 +624,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     private void renderOwnTooltips(GuiGraphics graphics, int mouseX, int mouseY) {
         if (within(mouseX, mouseY, this.leftPos + GuiMetrics.GAUGE_X, this.topPos + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
             graphics.renderComponentTooltip(this.font, List.of(
-                    Component.translatable("yafs.gui.energy", this.menu.energy(), GreenhouseBlockEntity.ENERGY_CAPACITY),
+                    Component.translatable("yafs.gui.energy", compact(this.menu.energy()), compact(this.menu.capacity())),
                     Component.translatable("yafs.gui.energy.help").withStyle(ChatFormatting.GRAY),
                     Component.translatable("yafs.gui.base_hint").withStyle(ChatFormatting.DARK_AQUA)),
                     mouseX, mouseY);

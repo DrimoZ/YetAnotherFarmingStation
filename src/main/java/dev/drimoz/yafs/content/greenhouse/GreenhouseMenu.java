@@ -68,7 +68,16 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     /** Le besoin en énergie, FE/t, en deux moitiés comme la réserve. */
     public static final int DEMAND_HIGH = 10;
     public static final int DEMAND_LOW = 11;
-    private static final int SHARED_DATA = 12;
+    /** La capacité de la réserve, ce qui entre par tick, la part des modules dans le besoin : en deux moitiés. */
+    public static final int CAPACITY_HIGH = 12;
+    public static final int CAPACITY_LOW = 13;
+    public static final int INPUT_HIGH = 14;
+    public static final int INPUT_LOW = 15;
+    public static final int MODULE_DEMAND_HIGH = 16;
+    public static final int MODULE_DEMAND_LOW = 17;
+    /** Le besoin n'était pas couvert au dernier pas. */
+    public static final int STARVED = 18;
+    private static final int SHARED_DATA = 19;
 
     /** Boutons de menu de l'onglet Contrôle, au-dessus des rangs de parcelle (0 à 15) et de CLOSE_DETAIL. */
     public static final int SWITCH_OFF = 300;
@@ -256,6 +265,27 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     public int waterUse() {
         return this.data.get(waterData(this.tier) + WATER_USE);
+    }
+
+    public int capacity() {
+        return halves(CAPACITY_HIGH, CAPACITY_LOW);
+    }
+
+    public int input() {
+        return halves(INPUT_HIGH, INPUT_LOW);
+    }
+
+    public int moduleDemand() {
+        return halves(MODULE_DEMAND_HIGH, MODULE_DEMAND_LOW);
+    }
+
+    public boolean starved() {
+        return this.data.get(waterData(this.tier) + STARVED) != 0;
+    }
+
+    /** Un entier passé en deux moitiés de 16 bits : un DataSlot n'en porte pas plus. */
+    private int halves(int high, int low) {
+        return (this.data.get(waterData(this.tier) + high) << 16) | (this.data.get(waterData(this.tier) + low) & 0xFFFF);
     }
 
     public int demand() {

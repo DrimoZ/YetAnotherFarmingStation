@@ -134,8 +134,20 @@ public class GreenhouseBlockEntity extends BlockEntity {
         @Override
         public int receiveEnergy(int toReceive, boolean simulate) {
             int received = super.receiveEnergy(toReceive, simulate);
-            if (received > 0 && !simulate) setChanged();
+            if (received > 0 && !simulate) {
+                GreenhouseBlockEntity.this.received += received;
+                setChanged();
+            }
             return received;
+        }
+
+        /**
+         * La capacité suit les Batteries posées ; l'entrée aussi, un dixième de la réserve par tick.
+         * Une réserve plus pleine que sa nouvelle capacité garde son énergie : rien ne se perd.
+         */
+        void resize(int capacity) {
+            this.capacity = capacity;
+            this.maxReceive = Math.max(100_000, capacity / 10);
         }
 
         /** Tout ou rien : le montant entier, ou rien n'est pris. */
@@ -193,6 +205,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private long demand;
     /** Ce que la serre prélève vraiment, en FE/t, d'un pas au suivant : la part du besoin qu'elle peut payer. */
     private long drain;
+    /** La part des modules dans le besoin, en FE/t ; le reste vient des parcelles. */
+    private long moduleDemand;
+    /** FE reçus depuis le dernier pas, et leur moyenne par tick sur ce pas : ce qui entre. */
+    private long received;
+    private long input;
+    /** Le besoin n'était pas couvert au dernier pas. */
+    private boolean starved;
     /** Pendant un pas : ce qui reste de la réserve une fois réservé ce qui a été accordé. */
     private long budget;
     private int lightFloor;
@@ -218,6 +237,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             @Override
             protected void onContentsChanged(int slot) {
                 setChanged();
+                updateCapacity();
             }
 
             @Override
@@ -321,7 +341,39 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** Le besoin n'est pas couvert : des parcelles ou des modules tournent sans leur énergie. */
     public boolean starved() {
-        return this.drain < this.demand;
+        return this.starved;
+    }
+
+    public long moduleDemand() {
+        return this.moduleDemand;
+    }
+
+    /** FE reçus par tick, en moyenne sur le dernier pas. */
+    public long input() {
+        return this.input;
+    }
+
+    /**
+     * La capacité de la réserve : la base, plus ce qu'ajoutent les Batteries posées. Refaite quand
+     * les modules changent, et au chargement, une fois le registre des modules accessible.
+     */
+    private void updateCapacity() {
+        if (this.level == null) return;
+        Registry<ModuleDefinition> registry = this.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
+        long capacity = ENERGY_CAPACITY;
+        for (int slot = 0; registry != null && slot < this.modules.getSlots(); slot++) {
+            ItemStack stack = this.modules.getStackInSlot(slot);
+            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
+            ModuleDefinition module = kind != null ? registry.get(kind) : null;
+            if (module != null) capacity += (long) module.energyCapacity() * Math.min(stack.getCount(), module.maxStack());
+        }
+        this.energy.resize((int) Math.min(Integer.MAX_VALUE, capacity));
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        updateCapacity();
     }
 
     /**
@@ -406,6 +458,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         case GreenhouseMenu.DEMAND_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) >>> 16);
                         case GreenhouseMenu.DEMAND_LOW -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) & 0xFFFF);
                         case GreenhouseMenu.WATER_USE -> GreenhouseBlockEntity.this.waterUse;
+                        case GreenhouseMenu.CAPACITY_HIGH -> GreenhouseBlockEntity.this.energy.getMaxEnergyStored() >>> 16;
+                        case GreenhouseMenu.CAPACITY_LOW -> GreenhouseBlockEntity.this.energy.getMaxEnergyStored() & 0xFFFF;
+                        case GreenhouseMenu.INPUT_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.input, Integer.MAX_VALUE) >>> 16);
+                        case GreenhouseMenu.INPUT_LOW -> (int) (Math.min(GreenhouseBlockEntity.this.input, Integer.MAX_VALUE) & 0xFFFF);
+                        case GreenhouseMenu.MODULE_DEMAND_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.moduleDemand, Integer.MAX_VALUE) >>> 16);
+                        case GreenhouseMenu.MODULE_DEMAND_LOW -> (int) (Math.min(GreenhouseBlockEntity.this.moduleDemand, Integer.MAX_VALUE) & 0xFFFF);
+                        case GreenhouseMenu.STARVED -> GreenhouseBlockEntity.this.starved ? 1 : 0;
                         default -> 0;
                     };
                 }
@@ -483,6 +542,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private void process(int elapsed) {
         this.drain = 0;
         this.budget = this.energy.getEnergyStored();
+        // Ce qui est entré pendant le pas qui s'achève, ramené par tick.
+        this.input = this.received / elapsed;
+        this.received = 0;
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
@@ -492,6 +554,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
             Arrays.fill(this.verdicts, null);
             Arrays.fill(this.speeds, 0D);
             this.demand = 0;
+            this.moduleDemand = 0;
+            this.starved = false;
             this.waterUse = 0;
             return;
         }
@@ -516,6 +580,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
         drink(drunk);
         this.waterUse = (int) Math.min(Short.MAX_VALUE, Math.round(drunk * 1_200 / elapsed));
+        this.starved = this.drain < this.demand;
         setChanged();
         if (visibleChange) syncToClient();
     }
@@ -534,6 +599,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     private void runModules(int elapsed) {
         this.demand = 0;
+        this.moduleDemand = 0;
         this.lightFloor = 0;
         this.temperatureShift = 0D;
         this.speedMultiplier = 1D;
@@ -549,16 +615,20 @@ public class GreenhouseBlockEntity extends BlockEntity {
             ItemStack stack = this.modules.getStackInSlot(slot);
             ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
             ModuleDefinition module = kind != null ? registry.get(kind) : null;
-            int count = stack.getCount();
-            if (module == null || !afford((long) module.energyPerTick() * count, elapsed)) continue;
+            if (module == null) continue;
+            // Une pile au-delà du plafond (une vieille sauvegarde) ne compte que jusqu'au plafond.
+            int count = Math.min(stack.getCount(), module.maxStack());
+            long cost = (long) module.energyPerTick() * count;
+            this.demand += cost;
+            this.moduleDemand += cost;
+            if (!afford(cost, elapsed)) continue;
 
             this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
             this.temperatureShift += module.temperatureShift() * count;
             this.speedMultiplier *= ModuleDefinition.stacked(module.speedMultiplier(), count);
             this.energyMultiplier *= ModuleDefinition.stacked(module.energyMultiplier(), count);
             this.waterMultiplier *= ModuleDefinition.stacked(module.waterMultiplier(), count);
-            this.demand += (long) module.energyPerTick() * count;
-            this.density = Math.min(Math.max(this.density, module.density()), this.tier.maxDensity());
+            this.density += module.extraPlants() * count;
             // rain_collection est en mB par seconde : on reporte les fractions d'un pas à l'autre.
             if (this.raining && module.rainCollection() > 0) {
                 this.rainfall += (double) module.rainCollection() * count * elapsed / STEP;

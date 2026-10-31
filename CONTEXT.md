@@ -27,8 +27,8 @@ Un item placé dans une serre qui corrige son environnement ou accélère ses pa
 _Éviter_ : upgrade, augment, amélioration, addon
 
 **Densité** :
-Le nombre de plants qu'une parcelle représente ; tout ce qu'elle produit et consomme est
-multiplié d'autant.
+Le nombre de plants qu'une parcelle représente : un, plus ce qu'ajoutent les modules de densité ;
+tout ce qu'elle produit et consomme est multiplié d'autant.
 _Éviter_ : parallélisme, multiplicateur, stack, batch
 
 **Parcelle** :

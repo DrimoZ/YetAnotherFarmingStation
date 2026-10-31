@@ -22,7 +22,7 @@ public class ModuleItem extends Item {
 
 
     public ModuleItem(Properties properties) {
-        super(properties.stacksTo(16));
+        super(properties.stacksTo(64));
     }
 
     /** Combien de ce module une serre accepte, d'après sa définition ; 1 si on ne la trouve pas. */
@@ -74,19 +74,21 @@ public class ModuleItem extends Item {
             context.registries().lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind)).ifPresent(holder -> {
                 ModuleDefinition module = holder.value();
                 if (module.speedMultiplier() > 1D) gain(tooltip, "yafs.module.speed", times(module.speedMultiplier()));
-                if (module.density() > 1) gain(tooltip, "yafs.module.density", module.density());
+                if (module.extraPlants() > 0) gain(tooltip, "yafs.module.density", module.extraPlants());
+                if (module.energyCapacity() > 0) gain(tooltip, "yafs.module.energy_capacity", String.format(java.util.Locale.ROOT, "%,d", module.energyCapacity()).replace(',', ' '));
                 if (module.lightFloor() > 0) gain(tooltip, "yafs.module.light_floor", module.lightFloor());
                 if (module.temperatureShift() != 0) gain(tooltip, "yafs.module.temperature_shift", String.format("%+.0f", module.temperatureShift()));
                 if (module.rainCollection() > 0) gain(tooltip, "yafs.module.rain_collection", module.rainCollection());
                 if (module.energyMultiplier() > 1D) cost(tooltip, "yafs.module.energy_cost", times(module.energyMultiplier()));
                 if (module.waterMultiplier() > 1D) cost(tooltip, "yafs.module.water_cost", times(module.waterMultiplier()));
                 if (module.energyPerTick() > 0) cost(tooltip, "yafs.module.energy_per_tick", module.energyPerTick());
+                // Chaque plant boit et consomme comme une parcelle : la densité multiplie les deux.
+                if (module.extraPlants() > 0) cost(tooltip, "yafs.module.per_plant", module.extraPlants());
                 if (module.speedMultiplier() > 1D || module.energyPerTick() > 0) {
                     tooltip.add(Component.translatable("yafs.tooltip.module.needs_energy").withStyle(ChatFormatting.DARK_GRAY));
                 }
                 tooltip.add(Component.translatable(module.maxStack() > 1 ? "yafs.tooltip.module.stack" : "yafs.tooltip.module.single", module.maxStack())
                         .withStyle(ChatFormatting.GRAY));
-                if (module.density() > 1) tooltip.add(Component.translatable("yafs.tooltip.module.one_density").withStyle(ChatFormatting.GRAY));
                 if (module.lightFloor() > 0) tooltip.add(Component.translatable("yafs.tooltip.module.one_light").withStyle(ChatFormatting.GRAY));
             });
         }

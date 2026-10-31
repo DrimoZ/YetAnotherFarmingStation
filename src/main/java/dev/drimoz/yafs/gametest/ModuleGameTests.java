@@ -117,9 +117,9 @@ public class ModuleGameTests {
         helper.assertTrue(greenhouse.modules().isItemValid(1, module("cooler")), "Refroidisseur refusé");
         helper.assertTrue(!greenhouse.modules().isItemValid(1, new ItemStack(Items.DIRT)), "De la terre acceptée en module");
 
-        // Densité et lumière gardent le plus fort : un second module du même effet ne ferait rien.
+        // Les densités s'additionnent : plusieurs sortes vont ensemble. La lumière garde la plus forte : une seule lampe.
         greenhouse.modules().setStackInSlot(0, module("density_1"));
-        helper.assertTrue(!greenhouse.modules().isItemValid(1, module("density_3")), "Deux modules de densité acceptés");
+        helper.assertTrue(greenhouse.modules().isItemValid(1, module("density_3")), "Une deuxième densité refusée");
         helper.assertTrue(greenhouse.modules().insertItem(1, module("grow_lamp").copyWithCount(4), false).getCount() == 3, "Plus d'une lampe acceptée");
         helper.succeed();
     }
@@ -164,7 +164,7 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Une pile additionne : deux Accélérateurs I, vitesse ×3 et énergie ×7 ; une case n'en prend que 4. */
+    /** Une pile additionne : deux Accélérateurs I, vitesse ×3 et énergie ×7 ; une serre n'en prend que 16. */
     @GameTest(template = PLATFORM)
     public static void stackedModulesCombine(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -182,11 +182,9 @@ public class ModuleGameTests {
         int spent = Crop.Cost.DEFAULT.energy() * GreenhouseBlockEntity.STEP * 7;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
 
-        ItemStack many = module("accelerator_1");
-        many.setCount(16);
-        ItemStack left = greenhouse.modules().insertItem(1, many, true);
-        helper.assertTrue(left.getCount() == 16, "Une deuxième case a pris des Accélérateurs I");
-        helper.assertTrue(greenhouse.modules().insertItem(0, many, true).getCount() == 14, "La case n'est pas bornée à 4");
+        ItemStack many = module("accelerator_1").copyWithCount(20);
+        helper.assertTrue(greenhouse.modules().insertItem(1, many, true).getCount() == 20, "Une deuxième case a pris des Accélérateurs I");
+        helper.assertTrue(greenhouse.modules().insertItem(0, many, true).getCount() == 6, "La serre n'est pas bornée à 16");
         helper.succeed();
     }
 
@@ -204,12 +202,16 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Densité ×2 en P1 : deux plants par parcelle, deux fois la récolte et l'eau ; ×3 est borné à ×2. */
+    /**
+     * Les densités s'additionnent, sans plafond de palier : deux Densité I (+1 chacune) et une
+     * Densité II (+2), cinq plants par parcelle en P1 ; cinq fois la récolte et l'eau.
+     */
     @GameTest(template = PLATFORM)
-    public static void densityDoublesHarvestAndWaterUpToTheTierCap(GameTestHelper helper) {
+    public static void densityAddsPlantsWithoutATierCap(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
         plantWheat(greenhouse, 0);
-        greenhouse.modules().setStackInSlot(0, module("density_2"));
+        greenhouse.modules().setStackInSlot(0, module("density_1").copyWithCount(2));
+        greenhouse.modules().setStackInSlot(1, module("density_2"));
         int water = greenhouse.water().getFluidAmount();
 
         for (int step = 0; step <= GreenhouseBlockEntity.BASE_TICKS / GreenhouseBlockEntity.STEP; step++) {
@@ -217,9 +219,23 @@ public class ModuleGameTests {
         }
 
         int wheat = greenhouse.output().getStackInSlot(0).is(Items.WHEAT) ? greenhouse.output().getStackInSlot(0).getCount() : -1;
-        helper.assertTrue(wheat == 2, wheat + " blés pour une densité bornée à ×2");
+        helper.assertTrue(wheat == 5, wheat + " blés pour cinq plants");
         int drunk = water - greenhouse.water().getFluidAmount();
-        helper.assertTrue(Math.abs(drunk - 2 * GreenhouseBlockEntity.WATER_PER_CYCLE) <= 25, drunk + " mB bus pour deux plants");
+        helper.assertTrue(Math.abs(drunk - 5 * GreenhouseBlockEntity.WATER_PER_CYCLE) <= 60, drunk + " mB bus pour cinq plants");
+        helper.succeed();
+    }
+
+    /** Une Batterie agrandit la réserve ; une pile trop grosse (vieille sauvegarde) ne compte que jusqu'au plafond. */
+    @GameTest(template = PLATFORM)
+    public static void batteriesGrowTheReserveUpToTheirCap(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(2));
+        int two = greenhouse.energy().getMaxEnergyStored();
+        helper.assertTrue(two == GreenhouseBlockEntity.ENERGY_CAPACITY + 2_000_000, "Capacité " + two);
+
+        greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(40));
+        int capped = greenhouse.energy().getMaxEnergyStored();
+        helper.assertTrue(capped == GreenhouseBlockEntity.ENERGY_CAPACITY + 16_000_000, "Capacité au-delà du plafond " + capped);
         helper.succeed();
     }
 

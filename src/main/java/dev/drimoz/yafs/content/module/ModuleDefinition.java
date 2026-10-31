@@ -25,15 +25,22 @@ import net.minecraft.resources.ResourceLocation;
  * @param speedMultiplier   vitesse d'une parcelle alimentée, multipliée ; sans énergie, rien
  * @param energyMultiplier  coût en énergie de chaque parcelle alimentée, multiplié
  * @param waterMultiplier   eau bue par une parcelle alimentée, multipliée
- * @param density           plants par parcelle ; le plus haut des modules, borné par le palier
- * @param maxStack          combien de ce module une case accepte ; leurs effets s'additionnent
+ * @param density           plants par parcelle quand il est seul ; chaque module ajoute {@code density - 1} plants
+ * @param maxStack          combien de ce module une serre accepte ; leurs effets s'additionnent
+ * @param energyCapacity    FE de réserve en plus, par module
  */
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
-                               double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack) {
+                               double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack,
+                               int energyCapacity) {
 
-    /** Deux modules dont seul le plus fort compterait : deux densités, deux lumières. */
+    /** Deux modules dont seul le plus fort compterait : deux lumières. Le reste s'additionne. */
     public boolean excludes(ModuleDefinition other) {
-        return (this.density > 1 && other.density > 1) || (this.lightFloor > 0 && other.lightFloor > 0);
+        return this.lightFloor > 0 && other.lightFloor > 0;
+    }
+
+    /** Les plants que ce module ajoute à chaque parcelle. */
+    public int extraPlants() {
+        return this.density - 1;
     }
 
     /**
@@ -56,6 +63,7 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
             Codec.doubleRange(1D, 1_000D).optionalFieldOf("energy_multiplier", 1D).forGetter(ModuleDefinition::energyMultiplier),
             Codec.doubleRange(1D, 64D).optionalFieldOf("water_multiplier", 1D).forGetter(ModuleDefinition::waterMultiplier),
             Codec.intRange(1, 16).optionalFieldOf("density", 1).forGetter(ModuleDefinition::density),
-            Codec.intRange(1, 64).optionalFieldOf("max_stack", 1).forGetter(ModuleDefinition::maxStack)
+            Codec.intRange(1, 64).optionalFieldOf("max_stack", 16).forGetter(ModuleDefinition::maxStack),
+            Codec.intRange(0, 100_000_000).optionalFieldOf("energy_capacity", 0).forGetter(ModuleDefinition::energyCapacity)
     ).apply(instance, ModuleDefinition::new));
 }

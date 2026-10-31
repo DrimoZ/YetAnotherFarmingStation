@@ -42,10 +42,11 @@ public final class YafsItems {
     public static final DeferredItem<ModuleItem> DENSITY_1 = ITEMS.registerItem("density_1", ModuleItem::new);
     public static final DeferredItem<ModuleItem> DENSITY_2 = ITEMS.registerItem("density_2", ModuleItem::new);
     public static final DeferredItem<ModuleItem> DENSITY_3 = ITEMS.registerItem("density_3", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> BATTERY = ITEMS.registerItem("battery", ModuleItem::new);
 
     /** Les modules, pour ce qui les traite tous pareil (teinte, onglet). */
     public static List<DeferredItem<ModuleItem>> modules() {
-        return List.of(GROW_LAMP, HEATER, COOLER, RAIN_COLLECTOR, ACCELERATOR_1, ACCELERATOR_2, ACCELERATOR_3, DENSITY_1, DENSITY_2, DENSITY_3);
+        return List.of(GROW_LAMP, HEATER, COOLER, RAIN_COLLECTOR, ACCELERATOR_1, ACCELERATOR_2, ACCELERATOR_3, DENSITY_1, DENSITY_2, DENSITY_3, BATTERY);
     }
     private YafsItems() {}
 }
