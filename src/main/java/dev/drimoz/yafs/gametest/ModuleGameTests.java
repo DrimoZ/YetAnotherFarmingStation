@@ -8,6 +8,7 @@ import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
+import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -231,11 +232,11 @@ public class ModuleGameTests {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(2));
         int two = greenhouse.energy().getMaxEnergyStored();
-        helper.assertTrue(two == GreenhouseBlockEntity.ENERGY_CAPACITY + 2_000_000, "Capacité " + two);
+        helper.assertTrue(two == GreenhouseBlockEntity.ENERGY_CAPACITY + 20_000_000, "Capacité " + two);
 
-        greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(40));
+        greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(100));
         int capped = greenhouse.energy().getMaxEnergyStored();
-        helper.assertTrue(capped == GreenhouseBlockEntity.ENERGY_CAPACITY + 16_000_000, "Capacité au-delà du plafond " + capped);
+        helper.assertTrue(capped == GreenhouseBlockEntity.ENERGY_CAPACITY + 640_000_000, "Capacité au-delà du plafond " + capped);
         helper.succeed();
     }
 
@@ -250,6 +251,26 @@ public class ModuleGameTests {
 
     private static ItemStack module(String name) {
         return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, name)));
+    }
+
+    /**
+     * Payée tick par tick : une réserve de 1 M FE fait tourner une serre qui demande ~500 k FE/t,
+     * tant qu'une source la remplit à chaque tick. L'ancien modèle voulait 10 ticks d'avance en
+     * stock (5 M), et la déclarait à court pour toujours.
+     */
+    @GameTest(template = PLATFORM, timeoutTicks = 100)
+    public static void aSmallReserveRunsAHungryGreenhouseFedEveryTick(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        plantWheat(greenhouse, 0);
+        greenhouse.modules().setStackInSlot(0, module("accelerator_3").copyWithCount(16));
+        greenhouse.modules().setStackInSlot(1, module("accelerator_1").copyWithCount(16));
+        helper.setBlock(MASTER.offset(2, 0, 0), YafsBlocks.CREATIVE_ENERGY_SOURCE.get());
+
+        helper.succeedWhen(() -> {
+            helper.assertTrue(greenhouse.demand() > GreenhouseBlockEntity.ENERGY_CAPACITY / GreenhouseBlockEntity.PROCESS_INTERVAL,
+                    "Besoin trop faible pour le test : " + greenhouse.demand());
+            helper.assertTrue(!greenhouse.starved() && greenhouse.status(0) == PlotStatus.WORKING, "À court d'énergie, besoin " + greenhouse.demand());
+        });
     }
 
     private static GreenhouseBlockEntity place(GameTestHelper helper) {

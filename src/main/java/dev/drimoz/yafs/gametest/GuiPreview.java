@@ -179,7 +179,7 @@ public final class GuiPreview {
         step(5, mc -> clickTab(mc, 1));
         step(15, mc -> shot("greenhouse_t3_operations"));
         // L'infobulle de l'énergie : d'où vient le besoin.
-        step(5, mc -> hoverTab(mc, 1, 20, 2 * 10 + 4));
+        step(5, mc -> hoverTab(mc, 1, 20, 10 + 4));
         step(10, mc -> shot("greenhouse_t3_energy_tooltip"));
         step(5, mc -> hover(mc, 0.0, 0.0));
         step(5, mc -> clickTab(mc, 3));

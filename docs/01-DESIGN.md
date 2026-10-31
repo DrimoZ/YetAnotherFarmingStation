@@ -257,7 +257,7 @@ les recettes et l'inventaire.
 | Accélérateur | + vitesse | FE + eau, proportionnels | oui, coût croissant |
 | Composteur | résidus → engrais | — | non |
 | Capacité | piles plus grandes dans les réserves | — | non |
-| Batterie | + 1 000 000 FE de réserve | — | oui |
+| Batterie | + 10 000 000 FE de réserve (64 au plus) | — | oui |
 | Densité | + plants par parcelle (+1/+2/+3) | tout × plants | oui |
 
 **Règle du mod : aucun bonus n'est gratuit.** Tout ce qui accélère multiplie aussi ce qu'il
@@ -274,6 +274,12 @@ peut aller absurdement vite, à un prix absurde. La densité
 défaut, et leurs bonus s'additionnent ; chaque module fixe son maximum dans son JSON (`max_stack`,
 jusqu'à 64). Seule la lampe reste à 1 : la lumière 15 est déjà le plafond. Une pile au-delà de son
 maximum (vieille sauvegarde) ne compte que jusqu'à lui, et l'écran l'affiche en rouge. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
+
+**Paiement tick par tick** (décidé le 31/10/2026). À chaque tick, la serre prélève tout son besoin
+(modules et parcelles qui poussent), ou rien. Au pas suivant, la part des ticks payés donne la part
+du bonus : 7 ticks sur 10 payés, 70 % de l'accélération. La réserve n'a donc qu'à tenir un tick de
+besoin, et l'entrée n'est bornée que par la place libre. Écarté : réserver tout le pas d'avance, qui
+exigeait dix ticks de besoin en stock et bloquait une serre gourmande même alimentée sans limite.
 
 ---
 

@@ -128,7 +128,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
     public final class Battery extends EnergyStorage {
 
         Battery() {
-            super(ENERGY_CAPACITY, 100_000, 0);
+            // Pas de limite d'entrée : seule la place dans la réserve borne ce qui entre.
+            super(ENERGY_CAPACITY, Integer.MAX_VALUE, 0);
         }
 
         @Override
@@ -142,12 +143,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
 
         /**
-         * La capacité suit les Batteries posées ; l'entrée aussi, un dixième de la réserve par tick.
+         * La capacité suit les Batteries posées.
          * Une réserve plus pleine que sa nouvelle capacité garde son énergie : rien ne se perd.
          */
         void resize(int capacity) {
             this.capacity = capacity;
-            this.maxReceive = Math.max(100_000, capacity / 10);
         }
 
         /** Tout ou rien : le montant entier, ou rien n'est pris. */
@@ -170,7 +170,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private double thirst;
     /** L'eau que boit la parcelle qu'on vient de faire pousser, en mB. */
     private double thirstOfStep;
-    /** L'eau bue au dernier pas, ramenée en mB par minute, pour l'écran. */
+    /** L'eau bue au dernier pas, en dixièmes de mB par tick, pour l'écran. */
     private int waterUse;
     /** Le signal redstone reçu par le volume ; -1 tant qu'un voisin a changé depuis la dernière lecture. */
     private int signal = -1;
@@ -201,10 +201,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** La pluie recueillie, en fractions de mB, pas encore versée dans la réserve. */
     private double rainfall;
 
-    /** Ce que la serre voudrait consommer, en FE/t, au dernier pas : modules et parcelles alimentées. */
+    /** Ce que la serre demande à chaque tick du pas en cours : modules et parcelles qui poussent. Prélevé tout ou rien. */
     private long demand;
-    /** Ce que la serre prélève vraiment, en FE/t, d'un pas au suivant : la part du besoin qu'elle peut payer. */
-    private long drain;
     /** La part des modules dans le besoin, en FE/t ; le reste vient des parcelles. */
     private long moduleDemand;
     /** FE reçus depuis le dernier pas, et leur moyenne par tick sur ce pas : ce qui entre. */
@@ -212,8 +210,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private long input;
     /** Le besoin n'était pas couvert au dernier pas. */
     private boolean starved;
-    /** Pendant un pas : ce qui reste de la réserve une fois réservé ce qui a été accordé. */
-    private long budget;
+    /** Les ticks du pas en cours, et ceux dont la serre a payé tout le besoin : le bonus suit leur rapport. */
+    private int elapsedTicks;
+    private int paidTicks;
     private int lightFloor;
     private double temperatureShift;
     // Les modules d'augment : tout se multiplie, la vitesse comme ce qu'elle coûte.
@@ -457,7 +456,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
                         case GreenhouseMenu.SIGNAL -> signal();
                         case GreenhouseMenu.DEMAND_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) >>> 16);
                         case GreenhouseMenu.DEMAND_LOW -> (int) (Math.min(GreenhouseBlockEntity.this.demand, Integer.MAX_VALUE) & 0xFFFF);
-                        case GreenhouseMenu.WATER_USE -> GreenhouseBlockEntity.this.waterUse;
+                        case GreenhouseMenu.WATER_USE_HIGH -> GreenhouseBlockEntity.this.waterUse >>> 16;
+                        case GreenhouseMenu.WATER_USE_LOW -> GreenhouseBlockEntity.this.waterUse & 0xFFFF;
                         case GreenhouseMenu.CAPACITY_HIGH -> GreenhouseBlockEntity.this.energy.getMaxEnergyStored() >>> 16;
                         case GreenhouseMenu.CAPACITY_LOW -> GreenhouseBlockEntity.this.energy.getMaxEnergyStored() & 0xFFFF;
                         case GreenhouseMenu.INPUT_HIGH -> (int) (Math.min(GreenhouseBlockEntity.this.input, Integer.MAX_VALUE) >>> 16);
@@ -503,10 +503,16 @@ public class GreenhouseBlockEntity extends BlockEntity {
     public void serverTick() {
         this.ticks++;
         if (this.environment == null || this.ticks % SAMPLE_INTERVAL == 0) sampleEnvironment();
+        // L'énergie s'écoule à chaque tick, tout ou rien ; le pas compte ensuite les ticks payés.
+        this.elapsedTicks++;
+        if (this.demand > 0 && this.energy.spend(this.demand)) this.paidTicks++;
         // Décalé selon la position : les serres d'une base ne travaillent pas toutes au même tick.
-        if (Math.floorMod(this.ticks + this.worldPosition.hashCode(), PROCESS_INTERVAL) == 0) process(PROCESS_INTERVAL);
-        // L'énergie, elle, s'écoule à chaque tick : le pas l'a réservée, la réserve la contient.
-        if (this.drain > 0) this.energy.spend(Math.min(this.drain, this.energy.getEnergyStored()));
+        if (Math.floorMod(this.ticks + this.worldPosition.hashCode(), PROCESS_INTERVAL) == 0) {
+            double powered = this.elapsedTicks == 0 ? 0D : (double) this.paidTicks / this.elapsedTicks;
+            process(PROCESS_INTERVAL, powered);
+            this.paidTicks = 0;
+            this.elapsedTicks = 0;
+        }
     }
 
     /**
@@ -526,25 +532,29 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /**
-     * Fait avancer chaque parcelle de {@code elapsed} ticks, énergie payée d'un coup. Pour les
-     * GameTests, qui n'attendent pas 24 minutes ; en jeu, {@link #serverTick} étale le paiement.
+     * Fait avancer chaque parcelle de {@code elapsed} ticks, l'énergie payée d'un coup, tout ou
+     * rien. Pour les GameTests, qui n'attendent pas 24 minutes ; en jeu, {@link #serverTick} paie
+     * tick par tick.
      */
     public void grow(int elapsed) {
-        process(elapsed);
-        this.energy.spend(this.drain * elapsed);
-        this.drain = 0;
+        if (this.level == null) return;
+        if (this.environment == null) sampleEnvironment();
+        this.received = 0;
+        runModules(0, 1D);
+        this.demand = isRunning() ? this.moduleDemand + plotDemand() : 0;
+        process(elapsed, this.demand > 0 && this.energy.spend(this.demand * elapsed) ? 1D : 0D);
     }
 
     /**
-     * Un pas de {@code elapsed} ticks : décide ce qui tourne selon l'énergie en réserve, et fixe
-     * {@link #drain}, ce qu'il faudra prélever à chaque tick jusqu'au pas suivant.
+     * Un pas de {@code elapsed} ticks, dont la part {@code powered} a été payée : les parcelles
+     * poussent d'autant plus vite, les modules d'autant plus. Puis fixe {@link #demand}, ce que le
+     * pas suivant demandera à chaque tick.
      */
-    private void process(int elapsed) {
-        this.drain = 0;
-        this.budget = this.energy.getEnergyStored();
+    private void process(int elapsed, double powered) {
         // Ce qui est entré pendant le pas qui s'achève, ramené par tick.
         this.input = this.received / elapsed;
         this.received = 0;
+        this.starved = this.demand > 0 && powered < 1D;
         if (!(this.level instanceof ServerLevel serverLevel)) return;
         if (this.environment == null) sampleEnvironment();
 
@@ -560,7 +570,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             return;
         }
 
-        runModules(elapsed);
+        runModules(elapsed, powered);
         collectRain();
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
@@ -574,13 +584,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
             PlotGrowth before = this.growth[plot];
             this.verdicts[plot] = null;
             this.speeds[plot] = 0D;
-            this.status[plot] = growPlot(serverLevel, plot, elapsed);
+            this.status[plot] = growPlot(serverLevel, plot, elapsed, powered);
             visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
             drunk += this.thirstOfStep;
         }
         drink(drunk);
-        this.waterUse = (int) Math.min(Short.MAX_VALUE, Math.round(drunk * 1_200 / elapsed));
-        this.starved = this.drain < this.demand;
+        this.waterUse = (int) Math.min(Integer.MAX_VALUE, Math.round(drunk * 10 / elapsed));
+        this.demand = this.moduleDemand + plotDemand();
         setChanged();
         if (visibleChange) syncToClient();
     }
@@ -593,12 +603,14 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /**
-     * Chaque pile de modules tourne si elle a son énergie pour le pas entier, sinon elle ne fait
-     * rien. Une pile additionne ses effets (deux Accélérateurs I : vitesse ×3, énergie ×7) ; des
-     * modules différents se multiplient entre eux. Lumière et densité gardent la plus haute valeur.
+     * Ce que font les modules posés, et ce qu'ils coûtent par tick. Une pile additionne ses effets
+     * (deux Accélérateurs I : vitesse ×3, énergie ×7) ; des modules différents se multiplient entre
+     * eux ; la densité s'additionne ; la lumière garde la plus haute valeur.
+     *
+     * <p>Un module qui consomme (lampe, chauffage) n'agit que si la serre a été payée au moins la
+     * moitié du pas. ponytail: tout ou rien à 50 %, un effet proportionnel si quelqu'un le remarque.
      */
-    private void runModules(int elapsed) {
-        this.demand = 0;
+    private void runModules(int elapsed, double powered) {
         this.moduleDemand = 0;
         this.lightFloor = 0;
         this.temperatureShift = 0D;
@@ -618,13 +630,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             if (module == null) continue;
             // Une pile au-delà du plafond (une vieille sauvegarde) ne compte que jusqu'au plafond.
             int count = Math.min(stack.getCount(), module.maxStack());
-            long cost = (long) module.energyPerTick() * count;
-            this.demand += cost;
-            this.moduleDemand += cost;
-            if (!afford(cost, elapsed)) continue;
-
-            this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
-            this.temperatureShift += module.temperatureShift() * count;
+            this.moduleDemand += (long) module.energyPerTick() * count;
             this.speedMultiplier *= ModuleDefinition.stacked(module.speedMultiplier(), count);
             this.energyMultiplier *= ModuleDefinition.stacked(module.energyMultiplier(), count);
             this.waterMultiplier *= ModuleDefinition.stacked(module.waterMultiplier(), count);
@@ -633,6 +639,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
             if (this.raining && module.rainCollection() > 0) {
                 this.rainfall += (double) module.rainCollection() * count * elapsed / STEP;
             }
+            if (module.energyPerTick() > 0 && powered < 0.5D) continue;
+            this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
+            this.temperatureShift += module.temperatureShift() * count;
         }
     }
 
@@ -696,15 +705,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * pendant ce pas : une culture plus rapide que le pas donne plusieurs récoltes à la fois, sans
      * rien perdre. L'eau que ça boit est laissée dans {@link #thirstOfStep}.
      */
-    private PlotStatus growPlot(ServerLevel level, int plot, int elapsed) {
+    private PlotStatus growPlot(ServerLevel level, int plot, int elapsed, double powered) {
         this.thirstOfStep = 0D;
-        ItemStack crop = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CROP);
-        if (crop.isEmpty()) return PlotStatus.WAITING;
-
-        Crop known = Crops.of(crop.getItem());
-        ItemStack substrate = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE);
-        ItemStack catalyst = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CATALYST);
-        if (known == null || !known.accepts(substrate.getItem()) || !known.catalysedBy(catalyst.getItem())) return PlotStatus.PROBLEM;
+        Crop known = growable(plot);
+        if (known == null) return this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CROP).isEmpty() ? PlotStatus.WAITING : PlotStatus.PROBLEM;
         PlotGrowth before = this.growth[plot];
         if (this.environment.water() <= 0D && !before.isMature()) return PlotStatus.PROBLEM;
 
@@ -715,10 +719,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
         // Mûre et bloquée : elle attend la place, sans rien coûter.
         double total = 1D;
         if (!before.isMature()) {
-            this.speeds[plot] = poweredSpeed(cost.energy(), elapsed);
+            // La part payée du pas donne la part du bonus : 7 ticks sur 10 payés, 70 % de l'accélération.
+            this.speeds[plot] = 1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered;
             // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
             total = Math.min(before.progress() + verdict.value() * this.speeds[plot] * elapsed / cost.ticks(), MAX_CYCLES_PER_STEP);
-            double water = this.speeds[plot] > 1D ? this.waterMultiplier : 1D;
+            double water = 1D + (this.waterMultiplier - 1D) * powered;
             this.thirstOfStep = (total - before.progress()) * cost.water() * this.density * water;
         }
         if (total < 1D) {
@@ -732,24 +737,29 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return harvested == 0 ? PlotStatus.BLOCKED : PlotStatus.WORKING;
     }
 
-    /**
-     * Une parcelle qui a son énergie pour le pas pousse {@link YafsConfig#ENERGIZED_SPEED} fois plus
-     * vite, et les accélérateurs multiplient encore. Le prix suit : coût de la culture ×
-     * multiplicateurs × densité. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
-     */
-    private double poweredSpeed(int energy, int elapsed) {
-        long perTick = Math.round(energy * this.energyMultiplier * this.density);
-        this.demand += perTick;
-        if (!afford(perTick, elapsed)) return 1D;
-        return YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier;
+    /** La culture de cette parcelle, si elle a tout ce qu'il lui faut pour pousser (graine, sol, catalyseur). */
+    @Nullable
+    private Crop growable(int plot) {
+        Crop known = Crops.of(this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CROP).getItem());
+        if (known == null) return null;
+        Item substrate = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE).getItem();
+        Item catalyst = this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + CATALYST).getItem();
+        return known.accepts(substrate) && known.catalysedBy(catalyst) ? known : null;
     }
 
-    /** Réserve {@code perTick} FE/t pour tout le pas, si la réserve les contient ; tout ou rien. */
-    private boolean afford(long perTick, int elapsed) {
-        if (perTick * elapsed > this.budget) return false;
-        this.budget -= perTick * elapsed;
-        this.drain += perTick;
-        return true;
+    /**
+     * Ce que les parcelles qui poussent demanderont à chaque tick du pas suivant : le coût de leur
+     * culture × multiplicateurs × plants. Une parcelle mûre, bloquée ou à sec ne demande rien.
+     */
+    private long plotDemand() {
+        if (this.environment == null || this.environment.water() <= 0D) return 0;
+        long total = 0;
+        for (int plot = 0; plot < this.growth.length; plot++) {
+            Crop known = growable(plot);
+            if (known == null || this.growth[plot].isMature()) continue;
+            total += Math.round(known.cost().energy() * this.energyMultiplier * this.density);
+        }
+        return total;
     }
 
     /**
@@ -908,7 +918,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("energy", this.energy.serializeNBT(registries));
         tag.put("modules", this.modules.serializeNBT(registries));
         tag.putBoolean("switchedOn", this.switchedOn);
-        tag.putLong("drain", this.drain);
         tag.putInt("redstoneMode", this.condition.mode().ordinal());
         tag.putInt("redstoneThreshold", this.condition.threshold());
         tag.put("growth", GROWTH_CODEC.encodeStart(NbtOps.INSTANCE, List.of(this.growth)).getOrThrow());
@@ -938,7 +947,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
         if (tag.contains("modules")) copyInto(this.modules, registries, tag.getCompound("modules"));
         if (tag.contains("switchedOn")) this.switchedOn = tag.getBoolean("switchedOn");
-        this.drain = Math.max(0L, tag.getLong("drain"));
         if (tag.contains("redstoneMode")) {
             this.condition = new RedstoneCondition(RedstoneCondition.Mode.byOrdinal(tag.getInt("redstoneMode")), tag.getInt("redstoneThreshold"));
         }

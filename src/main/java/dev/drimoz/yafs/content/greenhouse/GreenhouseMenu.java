@@ -64,7 +64,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int REDSTONE_THRESHOLD = 7;
     public static final int SIGNAL = 8;
     /** L'eau bue, en mB par minute, au rythme du dernier pas. */
-    public static final int WATER_USE = 9;
+    public static final int WATER_USE_HIGH = 9;
     /** Le besoin en énergie, FE/t, en deux moitiés comme la réserve. */
     public static final int DEMAND_HIGH = 10;
     public static final int DEMAND_LOW = 11;
@@ -77,7 +77,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int MODULE_DEMAND_LOW = 17;
     /** Le besoin n'était pas couvert au dernier pas. */
     public static final int STARVED = 18;
-    private static final int SHARED_DATA = 19;
+    public static final int WATER_USE_LOW = 19;
+    private static final int SHARED_DATA = 20;
 
     /** Boutons de menu de l'onglet Contrôle, au-dessus des rangs de parcelle (0 à 15) et de CLOSE_DETAIL. */
     public static final int SWITCH_OFF = 300;
@@ -263,8 +264,9 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.data.get(waterData(this.tier) + SIGNAL);
     }
 
-    public int waterUse() {
-        return this.data.get(waterData(this.tier) + WATER_USE);
+    /** L'eau bue, en mB par tick, comme les tuyaux la comptent. */
+    public double waterUse() {
+        return halves(WATER_USE_HIGH, WATER_USE_LOW) / 10D;
     }
 
     public int capacity() {

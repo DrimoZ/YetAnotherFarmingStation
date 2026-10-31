@@ -56,9 +56,9 @@ import java.util.Locale;
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
     private static final int ENV_TAB_WIDTH = 120;
-    /** Environnement : trois conditions et un verdict ; Fonctionnement : neuf relevés et un verdict. */
+    /** Environnement : trois conditions et un verdict ; Fonctionnement : trois groupes sous leur titre, et un verdict. */
     private static final int ENV_ROWS = 4;
-    private static final int OPS_ROWS = 10;
+    private static final int OPS_ROWS = 9;
 
     /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
     private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
@@ -310,7 +310,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
         @Override
         protected int contentHeight() {
-            return OPS_ROWS * GuiTheme.LINE + 5;
+            return OPS_ROWS * GuiTheme.LINE + 11;
         }
 
         @Override
@@ -318,10 +318,10 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             renderOperations(graphics, x, y);
         }
 
-        /** Sur les trois lignes d'énergie : d'où vient le besoin, et ce qui se passe quand il n'est pas couvert. */
+        /** Sur la ligne d'énergie : d'où vient le besoin, et ce qui se passe quand il n'est pas couvert. */
         @Override
         protected List<Component> contentTooltip(int x, int y, double mouseX, double mouseY) {
-            if (mouseX < x || mouseX >= x + ENV_CONTENT_WIDTH || mouseY < y || mouseY >= y + 3 * GuiTheme.LINE) return List.of();
+            if (mouseX < x || mouseX >= x + ENV_CONTENT_WIDTH || mouseY < y + GuiTheme.LINE || mouseY >= y + 2 * GuiTheme.LINE) return List.of();
             return energyTooltip();
         }
     }
@@ -477,43 +477,38 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     }
 
     /**
-     * Ce que la serre consomme et produit au rythme actuel : chaque parcelle paie sa culture, la
-     * serre fait la somme. Puis ce qui l'empêche de tourner, s'il y a quelque chose.
+     * Trois groupes, chacun sous son titre : ce que la serre consomme (par tick, comme les câbles et
+     * les tuyaux le comptent), ce que les modules font à chaque parcelle, puis les parcelles. Ce qui
+     * dépend d'une parcelle (sa culture, son cycle) se lit sur elle, pas ici.
      */
     private void renderOperations(GuiGraphics graphics, int x, int y) {
         int growing = 0;
         int problems = 0;
         int blocked = 0;
-        double harvests = 0D;
-        double fastest = 0D;
-        double shortest = Double.MAX_VALUE;
-        double longest = 0D;
+        double fastest = 1D;
         for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
             PlotStatus status = this.menu.status(plot);
             if (status == PlotStatus.PROBLEM) problems++;
             if (status == PlotStatus.BLOCKED) blocked++;
-            double cycle = cycleTicks(plot);
-            if (cycle <= 0D) continue;
+            if (this.menu.limiting(plot) == null) continue;
             growing++;
-            harvests += TICKS_PER_MINUTE / cycle;
             fastest = Math.max(fastest, this.menu.speed(plot));
-            shortest = Math.min(shortest, cycle);
-            longest = Math.max(longest, cycle);
         }
 
-        // L'énergie d'abord, dans l'ordre où elle se lit : ce qu'on a, ce qui entre, ce qu'il faut.
         int row = y;
-        row(graphics, x, row, "yafs.gui.ops.energy", compact(this.menu.energy()) + " / " + compact(this.menu.capacity()), GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.input", compact(this.menu.input()) + " FE/t", GuiTheme.TAB_VALUE);
+        header(graphics, x, row, "yafs.gui.ops.section.consumption");
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.demand", compact(this.menu.demand()) + " FE/t",
                 starved() ? GuiTheme.Status.PROBLEM.tabColour : GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.water", compact(this.menu.waterUse()) + " mB/min", GuiTheme.TAB_VALUE);
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.water", number(this.menu.waterUse()) + " mB/t", GuiTheme.TAB_VALUE);
+
+        separator(graphics, x, row += GuiTheme.LINE + 3);
+        header(graphics, x, row, "yafs.gui.ops.section.modules");
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.speed", "×" + number(fastest), fastest > 1D ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
         int plants = plantsPerPlot();
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.plants", String.valueOf(plants), plants > 1 ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
-        String cycle = growing == 0 ? "—" : longest - shortest < 1D ? duration(longest) : duration(shortest) + " – " + duration(longest);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.cycle", cycle, GuiTheme.TAB_VALUE);
-        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.harvests", number(Math.round(harvests * 10) / 10D), GuiTheme.TAB_VALUE);
+
+        separator(graphics, x, row += GuiTheme.LINE + 3);
+        header(graphics, x, row, "yafs.gui.ops.section.plots");
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.growing", growing + " / " + this.menu.tier().plots(), GuiTheme.TAB_VALUE);
 
         Component verdict;
@@ -537,8 +532,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             verdict = Component.translatable("yafs.gui.ops.running");
             colour = GuiTheme.Status.WORKING.tabColour;
         }
-        separator(graphics, x, row += GuiTheme.LINE + 3);
-        GuiTheme.tabValue(graphics, this.font, verdict, x, row, colour);
+        GuiTheme.tabValue(graphics, this.font, verdict, x, row + GuiTheme.LINE, colour);
+    }
+
+    /** Le titre d'un groupe de lignes, en retrait de couleur. */
+    private void header(GuiGraphics graphics, int x, int y, String key) {
+        GuiTheme.tabValue(graphics, this.font, Component.translatable(key), x, y, GuiTheme.TAB_MUTED);
     }
 
     private static void separator(GuiGraphics graphics, int x, int y) {
