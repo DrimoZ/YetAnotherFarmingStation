@@ -116,5 +116,8 @@
   "yafs.gui.modules.demand": "Besoin",
   "yafs.tooltip.module.single": "Un seul par serre.",
   "yafs.tooltip.module.one_density": "Un seul module de densité par serre : seul le plus fort compterait.",
-  "yafs.tooltip.module.one_light": "Un seul module de lumière par serre : seul le plus fort compterait."
+  "yafs.tooltip.module.one_light": "Un seul module de lumière par serre : seul le plus fort compterait.",
+  "config.jade.plugin_yafs.greenhouse": "Serre",
+  "yafs.jade.growing": "Poussent : %s / %s parcelles",
+  "yafs.jade.energy": "Énergie : %s FE/t"
 }

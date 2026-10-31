@@ -86,6 +86,7 @@ configurations {
 dependencies {
     // Soft dependency: compiled against, never required.
     compileOnly "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
+    compileOnly "maven.modrinth:jade:${jade_version}"
     // Through the run folder, not the run classpath: FML only registers mods it finds in mods/.
     devMods "mezz.jei:jei-${jei_minecraft_version}-neoforge:${jei_version}"
     // De quoi essayer la serre au milieu d'autres mods : énergie et tuyaux (Mekanism), tuyaux

@@ -116,5 +116,8 @@
   "yafs.gui.modules.demand": "Needs",
   "yafs.tooltip.module.single": "One per greenhouse.",
   "yafs.tooltip.module.one_density": "Only one density module per greenhouse: only the strongest would count.",
-  "yafs.tooltip.module.one_light": "Only one light module per greenhouse: only the brightest would count."
+  "yafs.tooltip.module.one_light": "Only one light module per greenhouse: only the brightest would count.",
+  "config.jade.plugin_yafs.greenhouse": "Greenhouse",
+  "yafs.jade.growing": "Growing: %s / %s plots",
+  "yafs.jade.energy": "Energy: %s FE/t"
 }

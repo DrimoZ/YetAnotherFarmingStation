@@ -185,6 +185,9 @@ public final class GuiPreview {
         step(15, mc -> shot("greenhouse_t3_tabs_closed"));
         step(5, mc -> mc.setScreen(null));
 
+        // Jade : le viseur sur le socle de la P3, l'infobulle doit dire ce que fait la serre.
+        step(10, mc -> command(mc, "tp @s " + (big.getX() + 0.5) + " " + (ORIGIN.getY() + 0.5) + " " + (big.getZ() - 5.5) + " 0 10"));
+        step(40, mc -> shot("greenhouse_jade"));
         // La serre elle-même, vue de l'extérieur : socle en béton, plantes posées dessus.
         step(10, mc -> command(mc, "tp @s " + (big.getX() - 6) + " " + (ORIGIN.getY() + 4) + " " + (big.getZ() - 8) + " -35 25"));
         step(40, mc -> shot("greenhouse_world"));

@@ -314,6 +314,16 @@ public class GreenhouseBlockEntity extends BlockEntity {
         return this.switchedOn && this.condition.allows(signal());
     }
 
+    /** Ce que la serre voudrait consommer, en FE/t, au dernier pas. */
+    public long demand() {
+        return this.demand;
+    }
+
+    /** Le besoin n'est pas couvert : des parcelles ou des modules tournent sans leur énergie. */
+    public boolean starved() {
+        return this.drain < this.demand;
+    }
+
     /**
      * Ce qu'expose un bloc du socle : l'eau et l'énergie y entrent, toute la récolte en
      * sort. Pas d'entrée d'items : graines, sols et catalyseurs se posent une fois, à la main, et
