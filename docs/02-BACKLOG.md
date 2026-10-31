@@ -14,7 +14,7 @@ Colonne « ✓ » = critère d'acceptation. `~~YAF-xxx~~ ✅` = fait. `❄️` =
 2. **Une parcelle de blé qui pousse et se récolte** — B (sauf détection complète), C minimal.
 3. **Le risque n°1 tout de suite** : voir 4 plantes pousser dans la serre — E.
 4. **L'écran** — D.
-5. Ensuite, dans l'ordre : détection complète, ports, modules, paliers supérieurs, intégrations.
+5. Ensuite, dans l'ordre : détection complète, socle, modules, paliers supérieurs, intégrations.
 
 Règle : un ticket n'est fait qu'avec son test (JUnit pour `core/`, GameTest pour ce qui demande
 un monde).
@@ -85,7 +85,7 @@ un monde).
 | ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
 | ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
 | ~~YAF-063~~ | ✅ | S | **Accélérateurs I, II, III** — **fait** : vitesse ×2/×4/×8, énergie ×4/×16/×64, eau ×2/×4/×8, tout se multiplie entre modules et avec le bonus d'énergie de base (×2 réglable). Inactifs sans énergie. | GameTest : vitesse et coûts multipliés, inactifs sans énergie |
-| 🟡 YAF-064 | P2 | S | Densité et Capacité — **densité faite** (I, II, III : ×2/×3/×4 plants, bornés par le palier). **Capacité reste** : le format des piles plafonne à 99, il faudra des emplacements de sortie en plus plutôt que des piles plus grosses. | GameTest : densité ×2 double la récolte **et** la consommation |
+| 🟡 YAF-064 | P2 | S | Densité et Capacité — **densité faite** : additive (+1/+2/+3 plants par module, jusqu'à 16 de chacun), sans plafond de palier. **Batterie faite** : +1 M FE de réserve chacune, 64 au plus. **Capacité de sortie reste** : le format des piles plafonne à 99, il faudra des emplacements de sortie en plus plutôt que des piles plus grosses. | GameTests : densité additive, batteries |
 | YAF-065 | P2 | S | Composteur (résidus → engrais). | GameTest : la boucle tourne seule |
 
 ## Épic H — Progression
@@ -93,7 +93,7 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-070~~ | ✅ | S | Recettes : paliers, port, modules — **fait**, en JSON écrits à la main plutôt qu'en datagen (huit recettes ne valent pas l'outillage). P3 demande du melon scintillant. | `RecipeGameTests` : tout se fabrique en survie |
-| 🟡 YAF-071 | P2 | XS | Config serveur — **commencée** : vitesse sous énergie (`energizedSpeed`, ×2) et coût par parcelle (`energyPerPlot`, 10 FE/t). Restent résidus on/off et plafond de densité. | — |
+| 🟡 YAF-071 | P2 | XS | Config serveur — **commencée** : vitesse sous énergie (`energizedSpeed`, ×2). Le coût d'énergie, la durée et l'eau sont passés par culture (JSON), et la densité n'a plus de plafond de palier. Reste : résidus on/off. | — |
 | ~~YAF-072~~ | ✅ | XS | **Source d'énergie créative** — **faite** : pousse sans limite vers ses six voisins ; sans recette. | — |
 
 ## Épic I — Intégrations

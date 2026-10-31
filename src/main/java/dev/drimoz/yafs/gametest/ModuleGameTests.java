@@ -7,6 +7,7 @@ import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.content.multiblock.MultiblockBlock;
+import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.Efficiency.Conditions;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.registry.YafsBlocks;
@@ -143,7 +144,7 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Trois accélérateurs : 2 × 4 × 8 = ×64 de plus, et l'énergie × 4 × 16 × 64, l'eau × 2 × 4 × 8. */
+    /** Trois accélérateurs : 2 × 4 × 8 = ×64 de plus, et l'énergie × 4 × 16 × 64 ; l'eau suit la vitesse, sans multiplicateur en plus. */
     @GameTest(template = PLATFORM)
     public static void acceleratorsMultiplySpeedAndCost(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -160,7 +161,7 @@ public class ModuleGameTests {
         helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - speed * step) < 1e-5, "Progression " + greenhouse.growth(0).progress());
         int spent = Crop.Cost.DEFAULT.energy() * GreenhouseBlockEntity.STEP * 4 * 16;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
-        double drunk = speed * step * GreenhouseBlockEntity.WATER_PER_CYCLE * 2 * 4;
+        double drunk = speed * step * GreenhouseBlockEntity.WATER_PER_CYCLE;
         helper.assertTrue(Math.abs(water - greenhouse.water().getFluidAmount() - drunk) <= 1, "Eau bue " + (water - greenhouse.water().getFluidAmount()));
         helper.succeed();
     }
@@ -232,11 +233,11 @@ public class ModuleGameTests {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(2));
         int two = greenhouse.energy().getMaxEnergyStored();
-        helper.assertTrue(two == GreenhouseBlockEntity.ENERGY_CAPACITY + 20_000_000, "Capacité " + two);
+        helper.assertTrue(two == GreenhouseBlockEntity.ENERGY_CAPACITY + 2_000_000, "Capacité " + two);
 
         greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(100));
         int capped = greenhouse.energy().getMaxEnergyStored();
-        helper.assertTrue(capped == GreenhouseBlockEntity.ENERGY_CAPACITY + 640_000_000, "Capacité au-delà du plafond " + capped);
+        helper.assertTrue(capped == GreenhouseBlockEntity.ENERGY_CAPACITY + 64_000_000, "Capacité au-delà du plafond " + capped);
         helper.succeed();
     }
 
@@ -270,6 +271,25 @@ public class ModuleGameTests {
             helper.assertTrue(greenhouse.demand() > GreenhouseBlockEntity.ENERGY_CAPACITY / GreenhouseBlockEntity.PROCESS_INTERVAL,
                     "Besoin trop faible pour le test : " + greenhouse.demand());
             helper.assertTrue(!greenhouse.starved() && greenhouse.status(0) == PlotStatus.WORKING, "À court d'énergie, besoin " + greenhouse.demand());
+        });
+    }
+
+    /**
+     * Bue tick par tick : une serre gourmande avec presque pas d'eau est freinée par l'eau, au lieu
+     * de pousser à plein en accumulant une dette que le prochain seau effacerait.
+     */
+    @GameTest(template = PLATFORM, timeoutTicks = 200)
+    public static void aShortWaterSupplySlowsGrowthInsteadOfOwing(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        plantWheat(greenhouse, 0);
+        greenhouse.modules().setStackInSlot(0, module("accelerator_3").copyWithCount(16));
+        helper.setBlock(MASTER.offset(2, 0, 0), YafsBlocks.CREATIVE_ENERGY_SOURCE.get());
+        greenhouse.water().setFluid(new FluidStack(Fluids.WATER, 30));
+
+        helper.succeedWhen(() -> {
+            var verdict = greenhouse.verdict(0);
+            helper.assertTrue(verdict != null && verdict.limiting() == Efficiency.Factor.WATER && verdict.value() < 1D,
+                    "L'eau ne freine pas : " + verdict);
         });
     }
 

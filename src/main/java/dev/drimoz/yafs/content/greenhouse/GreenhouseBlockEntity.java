@@ -172,6 +172,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private double thirstOfStep;
     /** L'eau bue au dernier pas, en dixièmes de mB par tick, pour l'écran. */
     private int waterUse;
+    /** Ce que la serre boit à chaque tick : ce que le pas précédent a bu, ramené par tick. */
+    private double waterPerTick;
+    /** Pendant le pas : l'eau voulue, et celle que la réserve a vraiment donnée. Leur rapport freine la croissance. */
+    private double waterNeeded;
+    private double waterDelivered;
+    /** L'eau que le dernier pas a fait boire, en mB. */
+    private double lastDrunk;
     /** Le signal redstone reçu par le volume ; -1 tant qu'un voisin a changé depuis la dernière lecture. */
     private int signal = -1;
 
@@ -506,10 +513,15 @@ public class GreenhouseBlockEntity extends BlockEntity {
         // L'énergie s'écoule à chaque tick, tout ou rien ; le pas compte ensuite les ticks payés.
         this.elapsedTicks++;
         if (this.demand > 0 && this.energy.spend(this.demand)) this.paidTicks++;
+        drinkTick();
         // Décalé selon la position : les serres d'une base ne travaillent pas toutes au même tick.
         if (Math.floorMod(this.ticks + this.worldPosition.hashCode(), PROCESS_INTERVAL) == 0) {
             double powered = this.elapsedTicks == 0 ? 0D : (double) this.paidTicks / this.elapsedTicks;
-            process(PROCESS_INTERVAL, powered);
+            double watered = this.waterNeeded > 0D ? Math.min(1D, this.waterDelivered / this.waterNeeded) : waterCoverage();
+            process(PROCESS_INTERVAL, powered, watered);
+            this.waterPerTick = this.lastDrunk / PROCESS_INTERVAL;
+            this.waterNeeded = 0D;
+            this.waterDelivered = 0D;
             this.paidTicks = 0;
             this.elapsedTicks = 0;
         }
@@ -542,7 +554,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.received = 0;
         runModules(0, 1D);
         this.demand = isRunning() ? this.moduleDemand + plotDemand() : 0;
-        process(elapsed, this.demand > 0 && this.energy.spend(this.demand * elapsed) ? 1D : 0D);
+        process(elapsed, this.demand > 0 && this.energy.spend(this.demand * elapsed) ? 1D : 0D, waterCoverage());
+        drink(this.lastDrunk);
     }
 
     /**
@@ -550,7 +563,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * poussent d'autant plus vite, les modules d'autant plus. Puis fixe {@link #demand}, ce que le
      * pas suivant demandera à chaque tick.
      */
-    private void process(int elapsed, double powered) {
+    private void process(int elapsed, double powered, double watered) {
         // Ce qui est entré pendant le pas qui s'achève, ramené par tick.
         this.input = this.received / elapsed;
         this.received = 0;
@@ -567,6 +580,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             this.moduleDemand = 0;
             this.starved = false;
             this.waterUse = 0;
+            this.lastDrunk = 0D;
             return;
         }
 
@@ -574,7 +588,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         collectRain();
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
-        this.environment = new Conditions(this.environment.light(), this.environment.temperature(), waterCoverage());
+        this.environment = new Conditions(this.environment.light(), this.environment.temperature(), watered);
         this.effective = new Conditions(Math.max(this.environment.light(), this.lightFloor),
                 this.environment.temperature() + this.temperatureShift, this.environment.water());
 
@@ -588,7 +602,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             visibleChange |= visibleStage(this.growth[plot]) != visibleStage(before);
             drunk += this.thirstOfStep;
         }
-        drink(drunk);
+        this.lastDrunk = drunk;
         this.waterUse = (int) Math.min(Integer.MAX_VALUE, Math.round(drunk * 10 / elapsed));
         this.demand = this.moduleDemand + plotDemand();
         setChanged();
@@ -651,6 +665,21 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     private double waterCoverage() {
         return this.water.isEmpty() ? 0D : 1D;
+    }
+
+    /**
+     * Boit à chaque tick ce que le pas précédent a bu par tick, comme l'énergie : la réserve n'a qu'à
+     * tenir un tick, un tuyau la remplit au fur et à mesure. Ce qui manque ne devient pas une dette :
+     * la croissance du pas ralentit d'autant (« Limité par l'eau »).
+     */
+    private void drinkTick() {
+        if (this.waterPerTick <= 0D) return;
+        this.thirst += this.waterPerTick;
+        int drained = (int) Math.min(this.thirst, this.water.getFluidAmount());
+        if (drained > 0) this.water.drain(drained, IFluidHandler.FluidAction.EXECUTE);
+        this.waterNeeded += this.waterPerTick;
+        this.waterDelivered += drained;
+        this.thirst = Math.min(this.thirst - drained, 1D);
     }
 
     /** Boit {@code amount} mB ; les fractions attendent le pas suivant. */
