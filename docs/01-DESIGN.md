@@ -275,6 +275,13 @@ défaut, et leurs bonus s'additionnent ; chaque module fixe son maximum dans son
 jusqu'à 64). Seule la lampe reste à 1 : la lumière 15 est déjà le plafond. Une pile au-delà de son
 maximum (vieille sauvegarde) ne compte que jusqu'à lui, et l'écran l'affiche en rouge. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
 
+**L'eau suit la racine de la vitesse** (décidé le 31/10/2026). Une parcelle accélérée finit plus de
+cycles par tick ; si chaque cycle buvait autant, l'eau par tick croîtrait comme la vitesse
+(~3 000 mB/t pour une serre P3 poussée à fond, injouable). L'eau par cycle est donc divisée par la
+racine du bonus de vitesse : ×4 en vitesse, un cycle boit moitié moins ; le même rendement coûte
+moins d'eau que sans accélération, mais l'eau par tick croît quand même (comme la racine).
+Sans accélération, rien ne change. La densité reste linéaire : chaque plant boit.
+
 **Paiement tick par tick** (décidé le 31/10/2026). À chaque tick, la serre prélève tout son besoin
 (modules et parcelles qui poussent), ou rien. Au pas suivant, la part des ticks payés donne la part
 du bonus : 7 ticks sur 10 payés, 70 % de l'accélération. La réserve n'a donc qu'à tenir un tick de

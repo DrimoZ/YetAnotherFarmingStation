@@ -144,7 +144,7 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Trois accélérateurs : 2 × 4 × 8 = ×64 de plus, et l'énergie × 4 × 16 × 64 ; l'eau suit la vitesse, sans multiplicateur en plus. */
+    /** Trois accélérateurs : 2 × 4 × 8 = ×64 de plus, et l'énergie × 4 × 16 × 64 ; l'eau croît comme la racine de la vitesse. */
     @GameTest(template = PLATFORM)
     public static void acceleratorsMultiplySpeedAndCost(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -161,7 +161,7 @@ public class ModuleGameTests {
         helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - speed * step) < 1e-5, "Progression " + greenhouse.growth(0).progress());
         int spent = Crop.Cost.DEFAULT.energy() * GreenhouseBlockEntity.STEP * 4 * 16;
         helper.assertTrue(greenhouse.energy().getEnergyStored() == 100_000 - spent, "Énergie " + greenhouse.energy().getEnergyStored());
-        double drunk = speed * step * GreenhouseBlockEntity.WATER_PER_CYCLE;
+        double drunk = speed * step * GreenhouseBlockEntity.WATER_PER_CYCLE / Math.sqrt(speed);
         helper.assertTrue(Math.abs(water - greenhouse.water().getFluidAmount() - drunk) <= 1, "Eau bue " + (water - greenhouse.water().getFluidAmount()));
         helper.succeed();
     }

@@ -752,7 +752,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
             this.speeds[plot] = 1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered;
             // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
             total = Math.min(before.progress() + verdict.value() * this.speeds[plot] * elapsed / cost.ticks(), MAX_CYCLES_PER_STEP);
-            double water = 1D + (this.waterMultiplier - 1D) * powered;
+            // Un cycle accéléré boit moins : l'eau par cycle est divisée par la racine du bonus de vitesse.
+            // Sans accélération (vitesse 1), rien ne change ; ×4 en vitesse, un cycle boit moitié moins.
+            double water = (1D + (this.waterMultiplier - 1D) * powered) / Math.sqrt(Math.max(1D, this.speeds[plot]));
             this.thirstOfStep = (total - before.progress()) * cost.water() * this.density * water;
         }
         if (total < 1D) {

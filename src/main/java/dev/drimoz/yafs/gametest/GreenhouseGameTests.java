@@ -1,5 +1,6 @@
 package dev.drimoz.yafs.gametest;
 
+import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.crop.CropData;
 import dev.drimoz.yafs.content.crop.CropOverride;
@@ -216,7 +217,9 @@ public class GreenhouseGameTests {
             int water = greenhouse.water().getFluidAmount();
             greenhouse.grow(100);
             helper.assertTrue(count(greenhouse.output(), Items.WHEAT) == 10, count(greenhouse.output(), Items.WHEAT) + " blés pour 10 cycles");
-            helper.assertTrue(water - greenhouse.water().getFluidAmount() == 300, (water - greenhouse.water().getFluidAmount()) + " mB bus pour 10 cycles");
+            // 10 cycles à 30 mB, à la vitesse de l'énergie : l'eau par cycle est divisée par sa racine.
+            double expected = 10 * 30 / Math.sqrt(YafsConfig.ENERGIZED_SPEED.get());
+            helper.assertTrue(Math.abs(water - greenhouse.water().getFluidAmount() - expected) <= 2, (water - greenhouse.water().getFluidAmount()) + " mB bus pour 10 cycles, attendu " + expected);
             helper.assertTrue(greenhouse.energy().getEnergyStored() == 10_000 - 3 * 100, "Énergie " + greenhouse.energy().getEnergyStored());
         } finally {
             CropData.set(shipped, substrates);
