@@ -769,7 +769,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     }
 
     /** Sans décimale quand il n'y en a pas (×16 plutôt que ×16.0), abrégé quand c'est grand (×12.8k). */
-    private static String number(double value) {
+    public static String number(double value) {
         if (value >= 10_000D) return compact((long) value);
         return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
     }
@@ -794,7 +794,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     }
 
     /** 0.4 s, 12 s, 3 min 20, 1 h 05 : la précision qui compte à cette échelle. */
-    private static String duration(double ticks) {
+    public static String duration(double ticks) {
         double seconds = ticks / 20D;
         if (seconds < 10D) return String.format(Locale.ROOT, "%.1f s", seconds);
         if (seconds < 60D) return Math.round(seconds) + " s";

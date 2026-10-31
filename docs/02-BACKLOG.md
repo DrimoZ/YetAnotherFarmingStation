@@ -100,7 +100,7 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-080 | P1 | M | JEI : catégorie cultures (substrats, catalyseur, exigences, récolte). | lancé sans JEI : rien ne casse |
+| ~~YAF-080~~ | ✅ | M | **JEI** — **fait, vu sur capture** : une page par culture reconnue (graine, sols, catalyseur, récolte tirée au serveur puis synchronisée, exigences, durée, eau, énergie) ; les trois serres en catalyseurs. JEI : catégorie cultures (substrats, catalyseur, exigences, récolte). | lancé sans JEI : rien ne casse |
 | ~~YAF-081~~ | ✅ | S | **Jade** — **fait, vu sur capture** (`compat/jade`, chargé par Jade seul) : au survol de n'importe quel bloc, état de la serre, parcelles qui poussent, facteur limitant, FE/t. Jade : statut et facteur limitant au survol. | idem sans Jade |
 | YAF-082 | P1 | S | Mystical Agriculture : surcharges des cruxes. | une graine à crux pousse avec son catalyseur, pas sans |
 | ❄️ YAF-083 | P3 | S | Serene Seasons : la saison décale la température. | deuxième version |

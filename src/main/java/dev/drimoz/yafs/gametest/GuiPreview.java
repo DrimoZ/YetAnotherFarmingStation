@@ -191,6 +191,11 @@ public final class GuiPreview {
         // La serre elle-même, vue de l'extérieur : socle en béton, plantes posées dessus.
         step(10, mc -> command(mc, "tp @s " + (big.getX() - 6) + " " + (ORIGIN.getY() + 4) + " " + (big.getZ() - 8) + " -35 25"));
         step(40, mc -> shot("greenhouse_world"));
+        // JEI : les pages de cultures, graine, sols, récolte, exigences et coûts.
+        step(5, mc -> {
+            if (net.neoforged.fml.ModList.get().isLoaded("jei")) dev.drimoz.yafs.client.compat.jei.YafsJeiPlugin.showCrops();
+        });
+        step(30, mc -> shot("jei_crops"));
         step(10, Minecraft::stop);
     }
 

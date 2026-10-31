@@ -2,25 +2,65 @@ package dev.drimoz.yafs.client.compat.jei;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.client.greenhouse.GreenhouseScreen;
+import dev.drimoz.yafs.content.crop.Crop;
+import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.registry.YafsItems;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
+import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
+import mezz.jei.api.registration.IRecipeCatalystRegistration;
+import mezz.jei.api.registration.IRecipeCategoryRegistration;
+import mezz.jei.api.registration.IRecipeRegistration;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * JEI ne recouvre pas les onglets de la serre. Chargée par JEI seul : sans JEI, la classe n'est
- * jamais lue, et le mod tourne pareil. Les pages de cultures viendront avec YAF-080.
+ * jamais lue, et le mod tourne pareil. Une page par culture (YAF-080), voir {@link CropCategory}.
  */
 @JeiPlugin
 public class YafsJeiPlugin implements IModPlugin {
 
+    private static IJeiRuntime runtime;
+
     @Override
     public ResourceLocation getPluginUid() {
         return ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "jei");
+    }
+
+    @Override
+    public void onRuntimeAvailable(IJeiRuntime available) {
+        runtime = available;
+    }
+
+    /** Ouvre les pages de cultures ; pour l'aperçu d'écran, qui veut les voir sans jouer. */
+    public static void showCrops() {
+        if (runtime != null) runtime.getRecipesGui().showTypes(List.of(CropCategory.TYPE));
+    }
+
+    @Override
+    public void registerCategories(IRecipeCategoryRegistration registration) {
+        registration.addRecipeCategories(new CropCategory(registration.getJeiHelpers().getGuiHelper()));
+    }
+
+    /** Toutes les cultures reconnues, détection et datapacks compris, triées par graine. */
+    @Override
+    public void registerRecipes(IRecipeRegistration registration) {
+        List<Crop> crops = new ArrayList<>(Crops.all().values());
+        crops.sort(Comparator.comparing(crop -> BuiltInRegistries.ITEM.getKey(crop.seed())));
+        registration.addRecipes(CropCategory.TYPE, crops);
+    }
+
+    @Override
+    public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
+        registration.addRecipeCatalysts(CropCategory.TYPE, YafsItems.GREENHOUSE_T1.get(), YafsItems.GREENHOUSE_T2.get(), YafsItems.GREENHOUSE_T3.get());
     }
 
     @Override

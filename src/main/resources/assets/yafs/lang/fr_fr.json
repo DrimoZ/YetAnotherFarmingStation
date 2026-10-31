@@ -119,5 +119,8 @@
   "yafs.tooltip.module.one_light": "Un seul module de lumière par serre : seul le plus fort compterait.",
   "config.jade.plugin_yafs.greenhouse": "Serre",
   "yafs.jade.growing": "Poussent : %s / %s parcelles",
-  "yafs.jade.energy": "Énergie : %s FE/t"
+  "yafs.jade.energy": "Énergie : %s FE/t",
+  "yafs.jei.crops": "Cultures de serre",
+  "yafs.jei.requirements": "Lumière %s+ · %s–%s °C",
+  "yafs.jei.cost": "%s · %s mB · %s FE/t"
 }
