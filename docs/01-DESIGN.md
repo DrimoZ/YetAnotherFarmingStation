@@ -256,7 +256,8 @@ les recettes et l'inventaire.
 | Collecteur de pluie | + eau quand il pleut, ciel visible requis | — | non |
 | Accélérateur | + vitesse | FE + eau, proportionnels | oui, coût croissant |
 | Composteur | résidus → engrais | — | non |
-| Capacité | piles plus grandes dans les réserves | — | non |
+| Obscurité | lumière à 0 (pour une culture qui exige le noir, `max_light`) ; exclut la lampe | FE | non |
+| Capacité | + 256 items par case de sortie, jusqu'à 64 modules | — | oui |
 | Batterie | + 10 000 000 FE de réserve (64 au plus) | — | oui |
 | Densité | + plants par parcelle (+1/+2/+3) | tout × plants | oui |
 

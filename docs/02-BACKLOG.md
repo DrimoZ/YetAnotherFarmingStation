@@ -85,7 +85,7 @@ un monde).
 | ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
 | ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
 | ~~YAF-063~~ | ✅ | S | **Accélérateurs I, II, III** — **fait** : vitesse ×2/×4/×8, énergie ×4/×16/×64, eau ×2/×4/×8, tout se multiplie entre modules et avec le bonus d'énergie de base (×2 réglable). Inactifs sans énergie. | GameTest : vitesse et coûts multipliés, inactifs sans énergie |
-| 🟡 YAF-064 | P2 | S | Densité et Capacité — **densité faite** : additive (+1/+2/+3 plants par module, jusqu'à 16 de chacun), sans plafond de palier. **Batterie faite** : +1 M FE de réserve chacune, 64 au plus. **Capacité de sortie reste** : le format des piles plafonne à 99, il faudra des emplacements de sortie en plus plutôt que des piles plus grosses. | GameTests : densité additive, batteries |
+| ~~YAF-064~~ | ✅ | S | **Densité, Batterie, Capacité — faits** : densité additive (+1/+2/+3 plants par module), Batterie (+1 M FE, 64 au plus), Capacité (+256 items par case de sortie, 64 au plus, sauvegarde faite à la main car le format vanilla borne les piles à 99). | GameTests : densité additive, batteries, capacité |
 | YAF-065 | P2 | S | Composteur (résidus → engrais). | GameTest : la boucle tourne seule |
 
 ## Épic H — Progression

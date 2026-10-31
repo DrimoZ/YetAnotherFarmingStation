@@ -125,5 +125,12 @@
   "yafs.gui.ops.demand.battery": "Batteries add storage.",
   "yafs.gui.ops.section.consumption": "Consumption, per tick",
   "yafs.gui.ops.section.modules": "Modules",
-  "yafs.gui.ops.section.plots": "Plots"
+  "yafs.gui.ops.section.plots": "Plots",
+  "item.yafs.blackout": "Blackout",
+  "item.yafs.capacity": "Capacity",
+  "yafs.module.light_cap": "Light never above %s",
+  "yafs.module.output_capacity": "+%s items per output slot",
+  "yafs.tooltip.module.one_dark": "Lit or dark, not both: a greenhouse takes a Grow Lamp or a Blackout, not one of each.",
+  "yafs.gui.requires.light_range": "Light %s–%s (%s)",
+  "yafs.jei.requirements_dark": "Light %s–%s · %s–%s °C"
 }

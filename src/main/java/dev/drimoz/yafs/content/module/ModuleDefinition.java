@@ -28,14 +28,20 @@ import net.minecraft.resources.ResourceLocation;
  * @param density           plants par parcelle quand il est seul ; chaque module ajoute {@code density - 1} plants
  * @param maxStack          combien de ce module une serre accepte ; leurs effets s'additionnent
  * @param energyCapacity    FE de réserve en plus, par module
+
+ * @param lightCap          la lumière ne monte pas au-dessus de ce niveau tant que le module tourne (15 : sans effet)
+ * @param outputCapacity   items en plus que chaque case de sortie accepte, par module
  */
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
                                double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack,
-                               int energyCapacity) {
+                               int energyCapacity, int lightCap, int outputCapacity) {
 
-    /** Deux modules dont seul le plus fort compterait : deux lumières. Le reste s'additionne. */
+    /** Une serre est éclairée ou plongée dans le noir, pas les deux ; et deux lumières, seule la plus forte compterait. */
     public boolean excludes(ModuleDefinition other) {
-        return this.lightFloor > 0 && other.lightFloor > 0;
+        boolean lights = this.lightFloor > 0 && other.lightFloor > 0;
+        boolean darks = this.lightCap < 15 && other.lightCap < 15;
+        boolean opposed = (this.lightFloor > 0 && other.lightCap < 15) || (this.lightCap < 15 && other.lightFloor > 0);
+        return lights || darks || opposed;
     }
 
     /** Les plants que ce module ajoute à chaque parcelle. */
@@ -64,6 +70,8 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
             Codec.doubleRange(1D, 64D).optionalFieldOf("water_multiplier", 1D).forGetter(ModuleDefinition::waterMultiplier),
             Codec.intRange(1, 16).optionalFieldOf("density", 1).forGetter(ModuleDefinition::density),
             Codec.intRange(1, 64).optionalFieldOf("max_stack", 16).forGetter(ModuleDefinition::maxStack),
-            Codec.intRange(0, 100_000_000).optionalFieldOf("energy_capacity", 0).forGetter(ModuleDefinition::energyCapacity)
+            Codec.intRange(0, 100_000_000).optionalFieldOf("energy_capacity", 0).forGetter(ModuleDefinition::energyCapacity),
+            Codec.intRange(0, 15).optionalFieldOf("light_cap", 15).forGetter(ModuleDefinition::lightCap),
+            Codec.intRange(0, 100_000).optionalFieldOf("output_capacity", 0).forGetter(ModuleDefinition::outputCapacity)
     ).apply(instance, ModuleDefinition::new));
 }

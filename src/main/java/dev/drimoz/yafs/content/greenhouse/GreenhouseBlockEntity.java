@@ -19,12 +19,14 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.Containers;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
@@ -94,8 +96,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
      */
     public static final int VISIBLE_STAGES = 8;
 
-    /** Huit seaux : 48 minutes d'autonomie pour une serre P1 pleine. */
-    public static final int TANK_CAPACITY = 8_000;
+    /** Seize seaux : un tampon, pas une provision ; une serre qui boit plus que ça veut un tuyau. */
+    public static final int TANK_CAPACITY = 16_000;
     /** L'eau d'une croissance complète d'un plant sans surcharge, en mB. */
     public static final int WATER_PER_CYCLE = Crop.Cost.DEFAULT.water();
 
@@ -106,12 +108,70 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** Le client voit ce que contiennent les parcelles : c'est ce qu'il dessine. */
     private final ItemStackHandler plots;
 
-    private final ItemStackHandler output = new ItemStackHandler(OUTPUT_SLOTS) {
+    /**
+     * La sortie : 64 par case, plus ce qu'ajoutent les modules de capacité. La limite passe devant celle
+     * de l'item (64, 16, 1) : c'est tout l'intérêt, un blé s'empile alors bien au-delà de 64.
+     */
+    private final class OutputStore extends ItemStackHandler {
+
+        int extra;
+
+        OutputStore() {
+            super(OUTPUT_SLOTS);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64 + this.extra;
+        }
+
+        @Override
+        protected int getStackLimit(int slot, ItemStack stack) {
+            return stack.getMaxStackSize() > 1 ? getSlotLimit(slot) : 1;
+        }
+
+        /**
+         * Sauvegardée à la main : le format des piles de vanilla refuse plus de 99, et une case de
+         * sortie en accepte bien plus. Chaque case garde son item (compte 1) et son compte entier.
+         */
+        CompoundTag save(HolderLookup.Provider registries) {
+            ListTag list = new ListTag();
+            for (int slot = 0; slot < getSlots(); slot++) {
+                ItemStack stack = getStackInSlot(slot);
+                if (stack.isEmpty()) continue;
+                CompoundTag entry = new CompoundTag();
+                entry.putInt("Slot", slot);
+                entry.putInt("Count", stack.getCount());
+                entry.put("Stack", stack.copyWithCount(1).save(registries));
+                list.add(entry);
+            }
+            CompoundTag tag = new CompoundTag();
+            tag.put("Stacks", list);
+            return tag;
+        }
+
+        void load(HolderLookup.Provider registries, CompoundTag tag) {
+            // Une sauvegarde d'avant : le format de l'ItemStackHandler.
+            if (!tag.contains("Stacks")) {
+                deserializeNBT(registries, tag);
+                return;
+            }
+            for (int slot = 0; slot < getSlots(); slot++) setStackInSlot(slot, ItemStack.EMPTY);
+            for (Tag raw : tag.getList("Stacks", Tag.TAG_COMPOUND)) {
+                CompoundTag entry = (CompoundTag) raw;
+                int slot = entry.getInt("Slot");
+                if (slot < 0 || slot >= getSlots()) continue;
+                ItemStack.parse(registries, entry.get("Stack")).ifPresent(stack -> setStackInSlot(slot, stack.copyWithCount(Math.max(1, entry.getInt("Count")))));
+            }
+        }
+
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
         }
-    };
+    }
+
+    private final OutputStore output = new OutputStore();
 
     private final FluidTank water = new FluidTank(TANK_CAPACITY, fluid -> fluid.is(FluidTags.WATER)) {
         @Override
@@ -221,6 +281,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private int elapsedTicks;
     private int paidTicks;
     private int lightFloor;
+    /** La lumière ne monte pas au-dessus : 15 sans module d'obscurité. */
+    private int lightCap = 15;
     private double temperatureShift;
     // Les modules d'augment : tout se multiplie, la vitesse comme ce qu'elle coûte.
     private double speedMultiplier = 1D;
@@ -367,13 +429,18 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (this.level == null) return;
         Registry<ModuleDefinition> registry = this.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
         long capacity = ENERGY_CAPACITY;
+        long extra = 0;
         for (int slot = 0; registry != null && slot < this.modules.getSlots(); slot++) {
             ItemStack stack = this.modules.getStackInSlot(slot);
             ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
             ModuleDefinition module = kind != null ? registry.get(kind) : null;
-            if (module != null) capacity += (long) module.energyCapacity() * Math.min(stack.getCount(), module.maxStack());
+            if (module == null) continue;
+            int count = Math.min(stack.getCount(), module.maxStack());
+            capacity += (long) module.energyCapacity() * count;
+            extra += (long) module.outputCapacity() * count;
         }
         this.energy.resize((int) Math.min(Integer.MAX_VALUE, capacity));
+        this.output.extra = (int) Math.min(1_000_000L, extra);
     }
 
     @Override
@@ -589,7 +656,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
         this.environment = new Conditions(this.environment.light(), this.environment.temperature(), watered);
-        this.effective = new Conditions(Math.max(this.environment.light(), this.lightFloor),
+        this.effective = new Conditions(Math.min(Math.max(this.environment.light(), this.lightFloor), this.lightCap),
                 this.environment.temperature() + this.temperatureShift, this.environment.water());
 
         double drunk = 0D;
@@ -627,6 +694,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private void runModules(int elapsed, double powered) {
         this.moduleDemand = 0;
         this.lightFloor = 0;
+        this.lightCap = 15;
         this.temperatureShift = 0D;
         this.speedMultiplier = 1D;
         this.energyMultiplier = 1D;
@@ -655,6 +723,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             }
             if (module.energyPerTick() > 0 && powered < 0.5D) continue;
             this.lightFloor = Math.max(this.lightFloor, module.lightFloor());
+            this.lightCap = Math.min(this.lightCap, module.lightCap());
             this.temperatureShift += module.temperatureShift() * count;
         }
     }
@@ -842,7 +911,8 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * les précédentes.
      */
     private boolean fits(List<ItemStack> drops) {
-        ItemStackHandler trial = new ItemStackHandler(OUTPUT_SLOTS);
+        OutputStore trial = new OutputStore();
+        trial.extra = this.output.extra;
         for (int slot = 0; slot < OUTPUT_SLOTS; slot++) {
             trial.setStackInSlot(slot, this.output.getStackInSlot(slot).copy());
         }
@@ -933,7 +1003,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
     public void dropContents(Level level, BlockPos pos) {
         for (ItemStackHandler handler : List.of(this.plots, this.output, this.modules)) {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
-                Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), handler.getStackInSlot(slot));
+                // Par piles de taille normale : une case de sortie peut tenir des milliers d'items.
+                ItemStack stack = handler.getStackInSlot(slot).copy();
+                while (!stack.isEmpty()) {
+                    level.addFreshEntity(new ItemEntity(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+                            stack.split(Math.min(stack.getCount(), stack.getMaxStackSize()))));
+                }
             }
         }
     }
@@ -944,7 +1019,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.put("plots", this.plots.serializeNBT(registries));
-        tag.put("output", this.output.serializeNBT(registries));
+        tag.put("output", this.output.save(registries));
         tag.put("water", this.water.writeToNBT(registries, new CompoundTag()));
         tag.put("energy", this.energy.serializeNBT(registries));
         tag.put("modules", this.modules.serializeNBT(registries));
@@ -973,7 +1048,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         super.loadAdditional(tag, registries);
         loadPlots(registries, tag.getCompound("plots"));
         // Absente du paquet de synchronisation : le client garde sa sortie vide plutôt que de la vider.
-        if (tag.contains("output")) this.output.deserializeNBT(registries, tag.getCompound("output"));
+        if (tag.contains("output")) this.output.load(registries, tag.getCompound("output"));
         if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
         if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
         if (tag.contains("modules")) copyInto(this.modules, registries, tag.getCompound("modules"));

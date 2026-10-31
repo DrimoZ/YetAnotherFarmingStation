@@ -210,9 +210,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         Requirements requires = crop.requirements();
         int light = this.menu.light();
         double temperature = this.menu.temperature();
-        boolean lit = light >= requires.minLight();
+        boolean lit = light >= requires.minLight() && light <= requires.maxLight();
         boolean warm = temperature >= requires.minTemperature() && temperature <= requires.maxTemperature();
-        graphics.drawString(this.font, Component.translatable("yafs.gui.requires.light", requires.minLight(), light),
+        graphics.drawString(this.font, requires.maxLight() < 15
+                        ? Component.translatable("yafs.gui.requires.light_range", requires.minLight(), requires.maxLight(), light)
+                        : Component.translatable("yafs.gui.requires.light", requires.minLight(), light),
                 textX, lineY, lit ? GuiTheme.TEXT : GuiTheme.TEXT_PROBLEM, false);
         graphics.drawString(this.font, Component.translatable("yafs.gui.requires.temperature",
                         number(requires.minTemperature()), number(requires.maxTemperature()), number(temperature)),

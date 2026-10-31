@@ -77,6 +77,8 @@ public class ModuleItem extends Item {
                 if (module.extraPlants() > 0) gain(tooltip, "yafs.module.density", module.extraPlants());
                 if (module.energyCapacity() > 0) gain(tooltip, "yafs.module.energy_capacity", String.format(java.util.Locale.ROOT, "%,d", module.energyCapacity()).replace(',', ' '));
                 if (module.lightFloor() > 0) gain(tooltip, "yafs.module.light_floor", module.lightFloor());
+                if (module.lightCap() < 15) gain(tooltip, "yafs.module.light_cap", module.lightCap());
+                if (module.outputCapacity() > 0) gain(tooltip, "yafs.module.output_capacity", module.outputCapacity());
                 if (module.temperatureShift() != 0) gain(tooltip, "yafs.module.temperature_shift", String.format("%+.0f", module.temperatureShift()));
                 if (module.rainCollection() > 0) gain(tooltip, "yafs.module.rain_collection", module.rainCollection());
                 if (module.energyMultiplier() > 1D) cost(tooltip, "yafs.module.energy_cost", times(module.energyMultiplier()));
@@ -90,6 +92,7 @@ public class ModuleItem extends Item {
                 tooltip.add(Component.translatable(module.maxStack() > 1 ? "yafs.tooltip.module.stack" : "yafs.tooltip.module.single", module.maxStack())
                         .withStyle(ChatFormatting.GRAY));
                 if (module.lightFloor() > 0) tooltip.add(Component.translatable("yafs.tooltip.module.one_light").withStyle(ChatFormatting.GRAY));
+                if (module.lightCap() < 15) tooltip.add(Component.translatable("yafs.tooltip.module.one_dark").withStyle(ChatFormatting.GRAY));
             });
         }
     }

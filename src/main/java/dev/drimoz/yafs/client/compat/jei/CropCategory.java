@@ -98,8 +98,11 @@ public class CropCategory implements IRecipeCategory<Crop> {
         this.arrow.draw(graphics, TEXT_X, 1 + ROW);
 
         Requirements needs = crop.requirements();
-        graphics.drawString(font, Component.translatable("yafs.jei.requirements", needs.minLight(),
-                GreenhouseScreen.number(needs.minTemperature()), GreenhouseScreen.number(needs.maxTemperature())), TEXT_X, 5, 0xFF404040, false);
+        graphics.drawString(font, needs.maxLight() < 15
+                ? Component.translatable("yafs.jei.requirements_dark", needs.minLight(), needs.maxLight(),
+                        GreenhouseScreen.number(needs.minTemperature()), GreenhouseScreen.number(needs.maxTemperature()))
+                : Component.translatable("yafs.jei.requirements", needs.minLight(),
+                        GreenhouseScreen.number(needs.minTemperature()), GreenhouseScreen.number(needs.maxTemperature())), TEXT_X, 5, 0xFF404040, false);
         Crop.Cost cost = crop.cost();
         graphics.drawString(font, Component.translatable("yafs.jei.cost", GreenhouseScreen.duration(cost.ticks()), cost.water(), cost.energy()),
                 TEXT_X, 5 + 2 * ROW, 0xFF404040, false);

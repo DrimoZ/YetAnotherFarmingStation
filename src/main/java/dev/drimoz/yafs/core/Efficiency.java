@@ -24,10 +24,15 @@ public final class Efficiency {
     public enum Factor { LIGHT, WATER, TEMPERATURE }
 
     /** Ce qu'une culture attend. */
-    public record Requirements(int minLight, double minTemperature, double maxTemperature) {
+    public record Requirements(int minLight, int maxLight, double minTemperature, double maxTemperature) {
+
+        /** Sans plafond de lumière : celui qu'on suppose presque partout. */
+        public Requirements(int minLight, double minTemperature, double maxTemperature) {
+            this(minLight, 15, minTemperature, maxTemperature);
+        }
 
         /** Ce qu'on suppose d'une culture dont on ne sait rien : lumière vanilla, large plage. */
-        public static final Requirements TOLERANT = new Requirements(9, 0D, 35D);
+        public static final Requirements TOLERANT = new Requirements(9, 15, 0D, 35D);
 
         /**
          * Borné ; une plage inversée est refusée en {@code DataResult}, pas levée ni retournée. Les
@@ -36,15 +41,19 @@ public final class Efficiency {
          */
         public static final Codec<Requirements> CODEC = RecordCodecBuilder.<double[]>create(instance -> instance.group(
                 Codec.intRange(0, 15).optionalFieldOf("min_light", TOLERANT.minLight()).forGetter(raw -> (int) raw[0]),
-                Codec.doubleRange(-100D, 100D).optionalFieldOf("min_temperature", TOLERANT.minTemperature()).forGetter(raw -> raw[1]),
-                Codec.doubleRange(-100D, 100D).optionalFieldOf("max_temperature", TOLERANT.maxTemperature()).forGetter(raw -> raw[2])
-        ).apply(instance, (light, min, max) -> new double[]{light, min, max})).flatXmap(
-                raw -> raw[1] > raw[2]
-                        ? DataResult.error(() -> "Plage de température inversée : " + raw[1] + " > " + raw[2])
-                        : DataResult.success(new Requirements((int) raw[0], raw[1], raw[2])),
-                requirements -> DataResult.success(new double[]{requirements.minLight(), requirements.minTemperature(), requirements.maxTemperature()}));
+                Codec.intRange(0, 15).optionalFieldOf("max_light", TOLERANT.maxLight()).forGetter(raw -> (int) raw[1]),
+                Codec.doubleRange(-100D, 100D).optionalFieldOf("min_temperature", TOLERANT.minTemperature()).forGetter(raw -> raw[2]),
+                Codec.doubleRange(-100D, 100D).optionalFieldOf("max_temperature", TOLERANT.maxTemperature()).forGetter(raw -> raw[3])
+        ).apply(instance, (minLight, maxLight, min, max) -> new double[]{minLight, maxLight, min, max})).flatXmap(
+                raw -> raw[2] > raw[3]
+                        ? DataResult.error(() -> "Plage de température inversée : " + raw[2] + " > " + raw[3])
+                        : raw[0] > raw[1]
+                        ? DataResult.error(() -> "Plage de lumière inversée : " + (int) raw[0] + " > " + (int) raw[1])
+                        : DataResult.success(new Requirements((int) raw[0], (int) raw[1], raw[2], raw[3])),
+                requirements -> DataResult.success(new double[]{requirements.minLight(), requirements.maxLight(), requirements.minTemperature(), requirements.maxTemperature()}));
 
         public Requirements {
+            if (minLight > maxLight) throw new IllegalArgumentException("Plage de lumière inversée : " + minLight + " > " + maxLight);
             if (minTemperature > maxTemperature) {
                 throw new IllegalArgumentException("Plage de température inversée : " + minTemperature + " > " + maxTemperature);
             }
@@ -78,7 +87,7 @@ public final class Efficiency {
     }
 
     static double light(Requirements requirements, int light) {
-        return falloff(requirements.minLight() - light, LIGHT_SPAN);
+        return falloff(Math.max(requirements.minLight() - light, light - requirements.maxLight()), LIGHT_SPAN);
     }
 
     static double water(double coverage) {

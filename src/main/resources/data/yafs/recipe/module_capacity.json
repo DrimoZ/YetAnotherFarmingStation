@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "IHI",
+    "CBC",
+    "IHI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "H": { "item": "minecraft:hopper" },
+    "C": { "item": "minecraft:chest" },
+    "B": { "item": "minecraft:barrel" }
+  },
+  "result": { "id": "yafs:capacity" }
+}

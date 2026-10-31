@@ -3,6 +3,10 @@ package dev.drimoz.yafs.gametest;
 import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.crop.Crop;
+import dev.drimoz.yafs.content.crop.CropData;
+import dev.drimoz.yafs.content.crop.CropOverride;
+import dev.drimoz.yafs.content.crop.SubstrateDefinition;
+import dev.drimoz.yafs.core.Efficiency.Requirements;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.module.ModuleItem;
@@ -20,9 +24,14 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -291,6 +300,65 @@ public class ModuleGameTests {
             helper.assertTrue(verdict != null && verdict.limiting() == Efficiency.Factor.WATER && verdict.value() < 1D,
                     "L'eau ne freine pas : " + verdict);
         });
+    }
+
+    /**
+     * Une culture qui exige le noir (max_light 0, par datapack) est freinée par la lumière du jour
+     * et poussée à plein avec l'Obscurité alimentée ; la lampe et l'obscurité s'excluent.
+     */
+    @GameTest(template = PLATFORM)
+    public static void blackoutPlungesTheGreenhouseIntoDarkness(GameTestHelper helper) {
+        List<CropOverride> shipped = CropData.overrides();
+        List<SubstrateDefinition> substrates = CropData.substrates();
+        try {
+            List<CropOverride> changed = new ArrayList<>(shipped);
+            changed.add(new CropOverride(Items.WHEAT_SEEDS, Optional.empty(), Optional.empty(), Optional.of(new Requirements(0, 0, 0D, 40D)),
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+            CropData.set(changed, substrates);
+
+            GreenhouseBlockEntity greenhouse = place(helper);
+            plantWheat(greenhouse, 0);
+            greenhouse.energy().receiveEnergy(100_000, false);
+
+            greenhouse.grow(GreenhouseBlockEntity.STEP);
+            Efficiency.Verdict lit = greenhouse.verdict(0);
+            helper.assertTrue(lit != null && lit.limiting() == Efficiency.Factor.LIGHT && lit.value() < 1D, "Le jour ne freine pas : " + lit);
+
+            greenhouse.modules().setStackInSlot(0, module("blackout"));
+            greenhouse.grow(GreenhouseBlockEntity.STEP);
+            Efficiency.Verdict dark = greenhouse.verdict(0);
+            helper.assertTrue(dark != null && dark.value() >= 1D, "L'obscurité ne suffit pas : " + dark);
+
+            helper.assertTrue(!greenhouse.modules().isItemValid(1, module("grow_lamp")), "Une lampe acceptée avec l'obscurité");
+        } finally {
+            CropData.set(shipped, substrates);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Les modules de capacité agrandissent chaque case de sortie, au-delà de 64 et même de 99 ; et
+     * une pile de 500 survit à la sauvegarde (le format vanilla borne à 99 ailleurs).
+     */
+    @GameTest(template = PLATFORM)
+    public static void capacityModulesGrowTheOutputSlots(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        helper.assertTrue(greenhouse.output().getSlotLimit(0) == 64, "Limite de base " + greenhouse.output().getSlotLimit(0));
+
+        greenhouse.modules().setStackInSlot(0, module("capacity").copyWithCount(2));
+        helper.assertTrue(greenhouse.output().getSlotLimit(0) == 64 + 512, "Limite avec 2 modules " + greenhouse.output().getSlotLimit(0));
+
+        ItemStack left = greenhouse.output().insertItem(0, new ItemStack(Items.WHEAT, 500), false);
+        helper.assertTrue(left.isEmpty() && greenhouse.output().getStackInSlot(0).getCount() == 500, "500 blés non acceptés : reste " + left.getCount());
+
+        // La vraie sauvegarde de la serre : vidée, puis relue.
+        var registries = helper.getLevel().registryAccess();
+        var saved = greenhouse.saveWithoutMetadata(registries);
+        greenhouse.output().setStackInSlot(0, ItemStack.EMPTY);
+        greenhouse.loadWithComponents(saved, registries);
+        helper.assertTrue(greenhouse.output().getStackInSlot(0).is(Items.WHEAT) && greenhouse.output().getStackInSlot(0).getCount() == 500,
+                "Pile perdue à la sauvegarde : " + greenhouse.output().getStackInSlot(0));
+        helper.succeed();
     }
 
     private static GreenhouseBlockEntity place(GameTestHelper helper) {

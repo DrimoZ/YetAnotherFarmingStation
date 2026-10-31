@@ -125,5 +125,12 @@
   "yafs.gui.ops.demand.battery": "Les Batteries agrandissent la réserve.",
   "yafs.gui.ops.section.consumption": "Consommation, par tick",
   "yafs.gui.ops.section.modules": "Modules",
-  "yafs.gui.ops.section.plots": "Parcelles"
+  "yafs.gui.ops.section.plots": "Parcelles",
+  "item.yafs.blackout": "Obscurité",
+  "item.yafs.capacity": "Capacité",
+  "yafs.module.light_cap": "Lumière jamais au-dessus de %s",
+  "yafs.module.output_capacity": "+%s items par case de sortie",
+  "yafs.tooltip.module.one_dark": "Éclairée ou dans le noir, pas les deux : une serre prend une Lampe de croissance ou une Obscurité, pas l'une et l'autre.",
+  "yafs.gui.requires.light_range": "Lumière %s–%s (%s)",
+  "yafs.jei.requirements_dark": "Lumière %s–%s · %s–%s °C"
 }
