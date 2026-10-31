@@ -28,6 +28,7 @@ import net.minecraft.world.Containers;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -36,6 +37,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 import net.neoforged.neoforge.energy.EnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -580,6 +583,27 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
     }
 
+    /**
+     * Ce que le client cuit dans le maillage du chunk (YAF-041) : la culture de chaque parcelle à son
+     * stade, et son substrat ; {@code null} pour rien.
+     */
+    public record Plants(BlockState[] crops, BlockState[] soils) {}
+
+    public static final ModelProperty<Plants> PLANTS = new ModelProperty<>();
+
+    @Override
+    public ModelData getModelData() {
+        BlockState[] crops = new BlockState[this.growth.length];
+        BlockState[] soils = new BlockState[this.growth.length];
+        for (int plot = 0; plot < this.growth.length; plot++) {
+            crops[plot] = displayedState(plot);
+            if (crops[plot] != null && this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE).getItem() instanceof BlockItem soil) {
+                soils[plot] = soil.getBlock().defaultBlockState();
+            }
+        }
+        return ModelData.builder().with(PLANTS, new Plants(crops, soils)).build();
+    }
+
     /** L'état de bloc à dessiner pour cette parcelle, ou {@code null} si elle n'a pas de culture connue. */
     @Nullable
     public BlockState displayedState(int plot) {
@@ -843,6 +867,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
         List<PlotGrowth> saved = GROWTH_CODEC.parse(NbtOps.INSTANCE, tag.get("growth")).result().orElse(List.of());
         for (int plot = 0; plot < this.growth.length; plot++) {
             this.growth[plot] = plot < saved.size() ? saved.get(plot) : PlotGrowth.SOWN;
+        }
+
+        // Au client : les plantes sont dans le maillage du chunk, qui se refait quand elles changent.
+        if (this.level != null && this.level.isClientSide) {
+            requestModelDataUpdate();
+            this.level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), Block.UPDATE_IMMEDIATE);
         }
     }
 

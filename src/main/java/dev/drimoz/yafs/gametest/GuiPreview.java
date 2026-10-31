@@ -61,7 +61,7 @@ import java.util.stream.Stream;
 public final class GuiPreview {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final boolean ENABLED = "1".equals(System.getenv("YAFS_GUI_PREVIEW"));
+    private static final boolean ENABLED = "1".equals(System.getenv("YAFS_GUI_PREVIEW")) || PerfBench.ENABLED;
     private static final String SOURCE_WORLD = "New World";
     private static final String WORLD = "GuiPreview";
     private static final BlockPos ORIGIN = new BlockPos(2000, 150, 2000);
@@ -72,6 +72,8 @@ public final class GuiPreview {
     private static boolean started;
     private static int wait;
     private static String pendingShot;
+    /** Les images rendues depuis le lancement : le banc en tire sa cadence. */
+    static int frames;
 
     private GuiPreview() {}
 
@@ -86,7 +88,8 @@ public final class GuiPreview {
             started = true;
             minecraft.options.pauseOnLostFocus = false;
             copyWorld(minecraft);
-            script();
+            if (PerfBench.ENABLED) PerfBench.script();
+            else script();
             minecraft.createWorldOpenFlows().openWorld(WORLD, () -> minecraft.setScreen(title));
             return;
         }
@@ -102,7 +105,9 @@ public final class GuiPreview {
     /** La capture se prend après le rendu complet de l'image. */
     @SubscribeEvent
     public static void onRenderFrame(RenderFrameEvent.Post event) {
-        if (!ENABLED || pendingShot == null) return;
+        if (!ENABLED) return;
+        frames++;
+        if (pendingShot == null) return;
         Minecraft minecraft = Minecraft.getInstance();
 
         File file = new File(minecraft.gameDirectory, "screenshots/preview/" + pendingShot + ".png");

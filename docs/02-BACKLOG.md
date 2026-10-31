@@ -69,7 +69,7 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-040~~ | ✅ | M | **Prototype de rendu des plantes** — **fait, vu sur les captures** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
-| YAF-041 | P1 | S | **Budget de performance** : mesure de 50 serres P3 pleines, niveau de détail selon la distance. Budget versionné dans `docs/`. | chiffres consignés, budget tenu |
+| ~~YAF-041~~ | ✅ | S | **Budget de performance** — **fait** (`docs/03-PERF.md`, banc `YAFS_PERF_BENCH=1`) : plantes cuites dans le maillage du chunk au lieu d'un niveau de détail ; rendu 4,9 → 0,14 ms par image, serveur 5,8 µs par serre. mesure de 50 serres P3 pleines, niveau de détail selon la distance. Budget versionné dans `docs/`. | chiffres consignés, budget tenu |
 
 ## Épic F — Socle
 
