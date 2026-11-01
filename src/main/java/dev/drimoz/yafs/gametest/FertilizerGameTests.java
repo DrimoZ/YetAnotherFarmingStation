@@ -2,6 +2,8 @@ package dev.drimoz.yafs.gametest;
 
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.crop.CropData;
+import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import dev.drimoz.yafs.content.crop.CropOverride;
 import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
@@ -12,6 +14,9 @@ import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
@@ -28,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** Engrais, résidus et Composteur (YAF-022, YAF-023, YAF-065). Serre P1 posée en (5, 2, 5). */
+/** Engrais, résidus, Composteur et sols à bonus (YAF-022, 023, 065, 017). Serre P1 posée en (5, 2, 5). */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class FertilizerGameTests {
@@ -63,17 +68,19 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /** L'Engrais, lui, ne presse pas la croissance : il augmente la récolte (×1,5), arrondie. */
+    /** L'Engrais, lui, ne presse pas la croissance : il augmente la récolte (×1,5). */
     @GameTest(template = PLATFORM)
     public static void fertilizerRaisesTheHarvestNotTheSpeed(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
         plantWheat(greenhouse, 0);
+        // Deux plants : 2 × 1,5 = 3, exact. Avec un seul, l'arrondi non biaisé donnerait 1 ou 2 au hasard.
+        greenhouse.modules().setStackInSlot(0, module("module_density_1"));
         greenhouse.fertilizer().setStackInSlot(0, new ItemStack(YafsItems.FERTILIZER.get()));
 
         greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
 
         int wheat = count(greenhouse, Items.WHEAT);
-        helper.assertTrue(wheat == 2, wheat + " blés au lieu de 2 (×1,5 de 1, arrondi)");
+        helper.assertTrue(wheat == 3, wheat + " blés au lieu de 3 (2 plants × 1,5)");
         helper.succeed();
     }
 
@@ -168,6 +175,62 @@ public class FertilizerGameTests {
 
     private static ItemStack module(String id) {
         return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, id)));
+    }
+
+    /** Un ItemMatch désigne un item ou, avec #, tout un tag : c'est ce qui permet à un modpack de ranger ses engrais. */
+    @GameTest(template = PLATFORM)
+    public static void anItemMatchAcceptsTags(GameTestHelper helper) {
+        ItemMatch logs = new ItemMatch(null, TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace("logs")));
+        helper.assertTrue(logs.contains(Items.OAK_LOG) && logs.contains(Items.BIRCH_LOG), "Un tronc n'est pas dans #logs");
+        helper.assertTrue(!logs.contains(Items.DIRT), "De la terre est dans #logs");
+        helper.assertTrue(new ItemMatch(Items.BONE_MEAL, null).contains(Items.BONE_MEAL) && !new ItemMatch(Items.BONE_MEAL, null).contains(Items.DIRT), "Item simple");
+        helper.succeed();
+    }
+
+    /** La Terre fertile est un sol que le blé accepte, et son bonus est celui de SA parcelle, pas des autres. */
+    @GameTest(template = PLATFORM)
+    public static void fertileSoilRaisesTheHarvestOfItsOwnPlotOnly(GameTestHelper helper) {
+        helper.assertTrue(Crops.of(Items.WHEAT_SEEDS).accepts(YafsItems.FERTILE_SOIL.get()), "Le blé refuse la terre fertile");
+
+        GreenhouseBlockEntity greenhouse = place(helper);
+        greenhouse.modules().setStackInSlot(0, module("module_density_1").copyWithCount(3));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+        greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(YafsItems.FERTILE_SOIL.get()));
+        plantWheat(greenhouse, 1);
+
+        greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
+
+        // 4 plants par parcelle : 4 × 1,25 = 5 sur la terre fertile, 4 sur la terre.
+        int wheat = count(greenhouse, Items.WHEAT);
+        helper.assertTrue(wheat == 9, wheat + " blés au lieu de 9 (5 + 4)");
+        helper.succeed();
+    }
+
+    /** Un sol de datapack, désigné par un tag, peut accélérer sa parcelle : le bonus n'a rien de propre au mod. */
+    @GameTest(template = PLATFORM)
+    public static void aDatapackSoilFromATagCanSpeedItsPlotUp(GameTestHelper helper) {
+        List<CropOverride> overrides = CropData.overrides();
+        List<SubstrateDefinition> shipped = CropData.substrates();
+        try {
+            List<SubstrateDefinition> changed = new ArrayList<>(shipped);
+            changed.add(new SubstrateDefinition(List.of(new ItemMatch(null, TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace("sand")))),
+                    Blocks.FARMLAND, 2D, 1D));
+            CropData.set(overrides, changed);
+
+            GreenhouseBlockEntity greenhouse = place(helper);
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.SAND));
+            plantWheat(greenhouse, 1);
+
+            greenhouse.grow(GreenhouseBlockEntity.STEP);
+
+            float step = (float) GreenhouseBlockEntity.STEP / GreenhouseBlockEntity.BASE_TICKS;
+            helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - 2F * step) < 1e-6F, "Sable : " + greenhouse.growth(0).progress());
+            helper.assertTrue(Math.abs(greenhouse.growth(1).progress() - step) < 1e-6F, "Terre : " + greenhouse.growth(1).progress());
+        } finally {
+            CropData.set(overrides, shipped);
+        }
+        helper.succeed();
     }
 
     // Inner work

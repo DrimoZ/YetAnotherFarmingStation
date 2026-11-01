@@ -39,6 +39,11 @@ public record ItemMatch(@Nullable Item item, @Nullable TagKey<Item> tag) {
         return this.tag != null ? "#" + this.tag.location() : BuiltInRegistries.ITEM.getKey(this.item).toString();
     }
 
+    /** Cet item est-il désigné ? Sans parcourir le tag : un item sait de quels tags il est. */
+    public boolean contains(Item candidate) {
+        return this.item != null ? this.item == candidate : candidate.builtInRegistryHolder().is(this.tag);
+    }
+
     /** Les items désignés ; un tag absent n'en désigne aucun. */
     public Stream<Item> items() {
         if (this.item != null) return Stream.of(this.item);

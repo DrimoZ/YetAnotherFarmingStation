@@ -47,6 +47,8 @@ public final class YafsItems {
     public static final DeferredItem<ModuleItem> CAPACITY = ITEMS.registerItem("module_capacity", ModuleItem::new);
     public static final DeferredItem<ModuleItem> COMPOSTER = ITEMS.registerItem("module_composter", ModuleItem::new);
 
+    public static final DeferredItem<BlockItem> FERTILE_SOIL = ITEMS.registerSimpleBlockItem("fertile_soil", YafsBlocks.FERTILE_SOIL);
+
     /** Le résidu des récoltes, et ce qu'on en fait : quatre composts font un engrais. */
     public static final DeferredItem<Item> COMPOST = ITEMS.register("compost", () -> described("yafs.tooltip.compost"));
     public static final DeferredItem<Item> FERTILIZER = ITEMS.register("fertilizer", () -> described("yafs.tooltip.fertilizer"));

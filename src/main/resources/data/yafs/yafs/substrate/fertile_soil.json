@@ -1,0 +1,5 @@
+{
+  "items": ["yafs:fertile_soil"],
+  "counts_as": "minecraft:farmland",
+  "yield": 1.25
+}

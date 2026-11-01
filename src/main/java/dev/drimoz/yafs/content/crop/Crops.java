@@ -79,6 +79,9 @@ public final class Crops {
 
     @Nullable
     private static Map<Item, Crop> crops;
+    /** Le bonus de chaque sol qui en porte un ; refait avec les cultures. */
+    @Nullable
+    private static Map<Item, SubstrateDefinition.Bonus> bonuses;
 
     private Crops() {}
 
@@ -96,9 +99,25 @@ public final class Crops {
         return known;
     }
 
+    /** Ce que ce sol apporte à sa parcelle ; rien (×1, ×1) pour un sol ordinaire. */
+    public static SubstrateDefinition.Bonus bonus(Item substrate) {
+        Map<Item, SubstrateDefinition.Bonus> known = bonuses;
+        if (known == null) {
+            Map<Item, SubstrateDefinition.Bonus> built = new HashMap<>();
+            for (SubstrateDefinition definition : CropData.substrates()) {
+                if (definition.speed() == 1D && definition.yield() == 1D) continue;
+                for (ItemMatch match : definition.items()) match.items().forEach(item -> built.put(item, definition.bonus()));
+            }
+            bonuses = built;
+            known = built;
+        }
+        return known.getOrDefault(substrate, SubstrateDefinition.Bonus.NONE);
+    }
+
     /** À l'arrivée de nouveaux tags : les substrats en dépendent. */
     public static void invalidate() {
         crops = null;
+        bonuses = null;
     }
 
     // Détection

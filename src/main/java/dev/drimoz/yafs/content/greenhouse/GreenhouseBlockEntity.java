@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.content.fertilizer.FertilizerDefinition;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.module.ModuleItem;
@@ -31,6 +32,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
@@ -594,6 +596,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** L'engrais en cours d'emploi : l'item qu'on y met, ou la dernière charge entamée. */
     @Nullable
     private FertilizerDefinition running;
+    /** L'item qui a donné la charge en cours : un engrais désigné par un tag ne dit pas lequel c'était. */
+    @Nullable
+    private Item runningItem;
     /** Ce qu'il reste à l'item entamé, en secondes de parcelle. */
     private double charge;
     /** Les lots de quatre composts que les Composteurs changent en engrais à chaque pas. */
@@ -617,6 +622,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private boolean pullFertilizer() {
         FertilizerDefinition definition = FertilizerDefinition.of(this.fertilizer.getStackInSlot(0), registries());
         if (definition == null) return false;
+        this.runningItem = this.fertilizer.getStackInSlot(0).getItem();
         this.fertilizer.extractItem(0, 1, false);
         this.running = definition;
         this.charge += definition.seconds();
@@ -931,13 +937,15 @@ public class GreenhouseBlockEntity extends BlockEntity {
         // Entamé ici, pas au pas : une serre où rien ne pousse n'use pas son engrais. L'effet se juge avant
         // de consommer, comme la vitesse : un gros pas ne perd pas la récolte de l'engrais qu'il vide.
         if (!before.isMature()) startFertilizer();
-        double yieldUp = fertilizerYield();
+        // Le sol de la parcelle, s'il en a un, s'ajoute à l'engrais de la serre ; les deux se multiplient.
+        SubstrateDefinition.Bonus soil = Crops.bonus(this.plots.getStackInSlot(plot * SLOTS_PER_PLOT + SUBSTRATE).getItem());
+        double yieldUp = fertilizerYield() * soil.yield();
 
         // Mûre et bloquée : elle attend la place, sans rien coûter.
         double total = 1D;
         if (!before.isMature()) {
             // La part payée du pas donne la part du bonus : 7 ticks sur 10 payés, 70 % de l'accélération.
-            this.speeds[plot] = (1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered) * fertilizerSpeed();
+            this.speeds[plot] = (1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered) * fertilizerSpeed() * soil.speed();
             // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
             total = Math.min(before.progress() + verdict.value() * this.speeds[plot] * elapsed / cost.ticks(), MAX_CYCLES_PER_STEP);
             // Un cycle accéléré boit moins : l'eau par cycle est divisée par la racine du bonus de vitesse.
@@ -998,7 +1006,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         for (int batch = cycles; batch > 0; batch /= 2) {
             long plants = (long) batch * this.density;
-            List<ItemStack> drops = scaled(sample, plants, rolls, yield);
+            List<ItemStack> drops = scaled(sample, plants, rolls, yield, level.random);
             // Le résidu, lui, ne suit pas l'engrais : une chance par plant, tirée au pas.
             double expected = plants * residue;
             int compost = (int) expected + (level.random.nextDouble() < expected - (int) expected ? 1 : 0);
@@ -1022,10 +1030,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /** Ce que donnent {@code plants} plants, d'après ce qu'en ont donné {@code rolls}. L'engrais de rendement multiplie. */
-    private static List<ItemStack> scaled(List<ItemStack> sample, long plants, int rolls, double yield) {
+    private static List<ItemStack> scaled(List<ItemStack> sample, long plants, int rolls, double yield, RandomSource random) {
         List<ItemStack> drops = new ArrayList<>(sample.size());
         for (ItemStack stack : sample) {
-            int count = (int) Math.min(Integer.MAX_VALUE, Math.round(stack.getCount() * plants * yield / rolls));
+            // Arrondi non biaisé : 1,25 item donne 1, et un de plus une fois sur quatre.
+            double exact = stack.getCount() * plants * yield / rolls;
+            long whole = (long) exact;
+            int count = (int) Math.min(Integer.MAX_VALUE, whole + (random.nextDouble() < exact - whole ? 1 : 0));
             if (count > 0) drops.add(stack.copyWithCount(count));
         }
         return drops;
@@ -1155,7 +1166,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("modules", this.modules.serializeNBT(registries));
         tag.put("fertilizer", this.fertilizer.serializeNBT(registries));
         tag.putDouble("fertilizerCharge", this.charge);
-        if (this.running != null) tag.putString("fertilizerRunning", BuiltInRegistries.ITEM.getKey(this.running.item()).toString());
+        if (this.running != null && this.runningItem != null) tag.putString("fertilizerRunning", BuiltInRegistries.ITEM.getKey(this.runningItem).toString());
         tag.putBoolean("switchedOn", this.switchedOn);
         tag.putInt("redstoneMode", this.condition.mode().ordinal());
         tag.putInt("redstoneThreshold", this.condition.threshold());
@@ -1190,7 +1201,10 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.running = null;
         if (this.charge > 0D && tag.contains("fertilizerRunning")) {
             ResourceLocation id = ResourceLocation.tryParse(tag.getString("fertilizerRunning"));
-            if (id != null) this.running = FertilizerDefinition.of(new ItemStack(BuiltInRegistries.ITEM.get(id)), registries);
+            if (id != null) {
+                this.runningItem = BuiltInRegistries.ITEM.get(id);
+                this.running = FertilizerDefinition.of(new ItemStack(this.runningItem), registries);
+            }
         }
         if (tag.contains("switchedOn")) this.switchedOn = tag.getBoolean("switchedOn");
         if (tag.contains("redstoneMode")) {

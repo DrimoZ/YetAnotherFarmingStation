@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "DDD",
+    "DCD",
+    "DDD"
+  ],
+  "key": {
+    "D": { "item": "minecraft:dirt" },
+    "C": { "item": "yafs:compost" }
+  },
+  "result": { "id": "yafs:fertile_soil", "count": 8 }
+}

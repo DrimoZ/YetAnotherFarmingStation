@@ -61,7 +61,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     private static final int ENV_TAB_WIDTH = 120;
     /** Environnement : trois conditions et un verdict ; Fonctionnement : trois groupes sous leur titre, et un verdict. */
     private static final int ENV_ROWS = 4;
-    private static final int OPS_ROWS = 9;
 
     /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
     private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
@@ -315,7 +314,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
         @Override
         protected int contentHeight() {
-            return OPS_ROWS * GuiTheme.LINE + 11 + (fertilizerInSlot() != null ? 3 * GuiTheme.LINE + 3 : 0);
+            return opsLines() * GuiTheme.LINE + 3 * 3 + 2;
         }
 
         @Override
@@ -369,13 +368,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
 
         /**
-         * Les emplacements de modules, puis chaque module posé avec son plafond par serre, et la
-         * taille d'une case de sortie. Ce que les modules font ensemble se
-         * lit dans Fonctionnement, l'effet d'un module dans son infobulle.
+         * Les emplacements de modules, puis chaque module posé avec son plafond par serre. Ce que les
+         * modules font ensemble se lit dans Fonctionnement, l'effet d'un module dans son infobulle.
          */
         @Override
         protected int contentHeight() {
-            return moduleRows() * GuiMetrics.SLOT + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE + GuiTheme.LINE + 3;
+            return moduleRows() * GuiMetrics.SLOT + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE;
         }
 
         @Override
@@ -398,11 +396,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 GuiTheme.tabValue(graphics, font, Component.literal(count), x + MODULE_CONTENT_WIDTH - font.width(count), lineY, colour);
                 lineY += GuiTheme.LINE;
             }
-
-            // Ce qu'une case de sortie peut tenir : 64, plus ce que donnent les modules de capacité.
-            String limit = compact(outputLimit());
-            GuiTheme.tabLabel(graphics, font, Component.translatable("yafs.gui.modules.output"), x, lineY + 2);
-            GuiTheme.tabValue(graphics, font, Component.literal(limit), x + MODULE_CONTENT_WIDTH - font.width(limit), lineY + 2, GuiTheme.TAB_VALUE);
         }
 
         @Override
@@ -506,28 +499,35 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             fastest = Math.max(fastest, this.menu.speed(plot));
         }
 
+        // Quatre groupes, chacun d'une seule nature : ce qui se consomme, ce qui se produit, ce que
+        // la sortie tient, et l'état des parcelles. L'engrais n'a pas de groupe à lui : sa
+        // consommation est une consommation, son effet une production.
+        FertilizerDefinition fertilizer = fertilizerInSlot();
+
         int row = y;
         header(graphics, x, row, "yafs.gui.ops.section.consumption");
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.demand", compact(this.menu.demand()) + " FE/t",
                 starved() ? GuiTheme.Status.PROBLEM.tabColour : GuiTheme.TAB_VALUE);
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.water", number(this.menu.waterUse()) + " mB/t", GuiTheme.TAB_VALUE);
+        if (fertilizer != null) {
+            row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.fertilizer",
+                    number(Math.round(growing * 600D / fertilizer.seconds()) / 10D) + " /min", GuiTheme.TAB_VALUE);
+        }
 
         separator(graphics, x, row += GuiTheme.LINE + 3);
-        header(graphics, x, row, "yafs.gui.ops.section.modules");
+        header(graphics, x, row, "yafs.gui.ops.section.production");
+        // La vitesse est la totale : énergie, modules, engrais et sol des parcelles qui poussent.
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.speed", "×" + number(fastest), fastest > 1D ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
+        if (fertilizer != null && fertilizer.yield() > 1D) {
+            row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.yield", "×" + number(fertilizer.yield()), GuiTheme.Status.WORKING.tabColour);
+        }
         int plants = plantsPerPlot();
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.plants", String.valueOf(plants), plants > 1 ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
 
-        // L'engrais : son effet sur toutes les parcelles, et ce qu'il coûte, par minute.
-        FertilizerDefinition fertilizer = fertilizerInSlot();
-        if (fertilizer != null) {
-            separator(graphics, x, row += GuiTheme.LINE + 3);
-            header(graphics, x, row, "yafs.gui.ops.section.fertilizer");
-            boolean speed = fertilizer.speed() > 1D;
-            row(graphics, x, row += GuiTheme.LINE, speed ? "yafs.gui.ops.fertilizer.speed" : "yafs.gui.ops.fertilizer.yield",
-                    "×" + number(speed ? fertilizer.speed() : fertilizer.yield()), GuiTheme.Status.WORKING.tabColour);
-            row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.fertilizer.use", number(Math.round(growing * 600D / fertilizer.seconds()) / 10D) + " /min", GuiTheme.TAB_VALUE);
-        }
+        // Ce qu'une case de sortie tient : 64, plus ce que donnent les modules de capacité.
+        separator(graphics, x, row += GuiTheme.LINE + 3);
+        header(graphics, x, row, "yafs.gui.ops.section.output");
+        row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.output.slot", compact(outputLimit()), GuiTheme.TAB_VALUE);
 
         separator(graphics, x, row += GuiTheme.LINE + 3);
         header(graphics, x, row, "yafs.gui.ops.section.plots");
@@ -555,6 +555,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             colour = GuiTheme.Status.WORKING.tabColour;
         }
         GuiTheme.tabValue(graphics, this.font, verdict, x, row + GuiTheme.LINE, colour);
+    }
+
+    /** Les lignes de Fonctionnement : 11 de base, plus celles de l'engrais quand il y en a un. */
+    private int opsLines() {
+        FertilizerDefinition fertilizer = fertilizerInSlot();
+        return 11 + (fertilizer != null ? 1 : 0) + (fertilizer != null && fertilizer.yield() > 1D ? 1 : 0);
     }
 
     /** Le titre d'un groupe de lignes, en retrait de couleur. */
@@ -690,6 +696,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 lines.add(Component.translatable("yafs.gui.plot.growth", Math.round(this.menu.progress(plot) * 100)).withStyle(ChatFormatting.GRAY));
                 double cycle = cycleTicks(plot);
                 if (cycle > 0D) lines.add(Component.translatable("yafs.gui.plot.cycle", duration(cycle)).withStyle(ChatFormatting.GRAY));
+                // Le sol de cette parcelle, s'il rend plus : c'est ici, parcelle par parcelle, qu'il se lit.
+                GreenhouseBlockEntity soilOwner = greenhouse();
+                if (soilOwner != null) {
+                    lines.addAll(SoilTooltips.lines(soilOwner.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.SUBSTRATE).getItem()));
+                }
                 PlotStatus status = this.menu.status(plot);
                 lines.add(reason(plot).copy().withStyle(status == PlotStatus.WORKING ? ChatFormatting.GREEN : ChatFormatting.RED));
             }

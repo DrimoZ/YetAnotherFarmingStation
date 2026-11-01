@@ -212,9 +212,13 @@ compte comme une terre labourée irriguée, pour éviter de manipuler des houes 
 
 ```json
 { "items": ["minecraft:dirt", "minecraft:grass_block"], "counts_as": "minecraft:farmland" }
-``` Un substrat peut aussi porter un bonus,
-par exemple la « terre fertile » qui donne +rendement. C'est une progression sans passer par les
-modules.
+```
+
+Un substrat peut aussi porter un bonus (`speed`, `yield`, 1 par défaut), **par parcelle** puisque chaque
+parcelle a le sien : c'est une progression sans passer par les modules. La **Terre fertile**
+(`yafs:fertile_soil`, huit pour une terre ×8 et un compost) donne ×1,25 de rendement. Le bonus d'un
+sol se cumule avec l'engrais, qui est pour toute la serre ; l'arrondi de la récolte est non biaisé
+(un ×1,25 donne un item de plus une fois sur quatre). `items` accepte des items et des `#tags`.
 
 ---
 

@@ -23,6 +23,10 @@ public final class YafsBlocks {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, YetAnotherFarmingStation.MOD_ID);
 
+    /** Un sol qui rend plus (YAF-017) : même solidité que la terre, un bonus par sa définition de substrat. */
+    public static final DeferredBlock<net.minecraft.world.level.block.Block> FERTILE_SOIL = BLOCKS.registerSimpleBlock("fertile_soil",
+            BlockBehaviour.Properties.ofFullCopy(net.minecraft.world.level.block.Blocks.DIRT));
+
     /** Un seul bloc de partie pour tous les multiblocs, sans item ni loot. */
     public static final DeferredBlock<MultiblockPartBlock> MULTIBLOCK_PART = BLOCKS.register("multiblock_part",
             () -> new MultiblockPartBlock(BlockBehaviour.Properties.of()

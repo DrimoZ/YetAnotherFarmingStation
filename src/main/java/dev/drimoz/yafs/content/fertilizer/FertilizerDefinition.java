@@ -5,10 +5,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -22,20 +21,20 @@ import javax.annotation.Nullable;
  * { "item": "minecraft:bone_meal", "speed": 1.5, "seconds": 300 }
  * }</pre>
  *
- * @param item   l'item qui sert d'engrais
+ * @param item   un item ou un tag d'items ("#c:fertilizers") : un modpack range ses engrais dans un tag
  * @param speed  vitesse de toutes les parcelles, multipliée (1 : sans effet)
  * @param yield  récolte de toutes les parcelles, multipliée (1 : sans effet)
  * @param seconds combien de secondes un item nourrit <b>une</b> parcelle qui pousse. L'engrais s'use
  *                par parcelle et par temps, jamais par plant ni par vitesse : accélérer ou densifier ne
  *                le fait pas partir plus vite. Une parcelle qui ne pousse pas n'en use pas
  */
-public record FertilizerDefinition(Item item, double speed, double yield, int seconds) {
+public record FertilizerDefinition(ItemMatch item, double speed, double yield, int seconds) {
 
     public static final ResourceKey<Registry<FertilizerDefinition>> REGISTRY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "fertilizer"));
 
     public static final Codec<FertilizerDefinition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            BuiltInRegistries.ITEM.byNameCodec().fieldOf("item").forGetter(FertilizerDefinition::item),
+            ItemMatch.CODEC.fieldOf("item").forGetter(FertilizerDefinition::item),
             Codec.doubleRange(1D, 16D).optionalFieldOf("speed", 1D).forGetter(FertilizerDefinition::speed),
             Codec.doubleRange(1D, 16D).optionalFieldOf("yield", 1D).forGetter(FertilizerDefinition::yield),
             Codec.intRange(1, 1_000_000).optionalFieldOf("seconds", 300).forGetter(FertilizerDefinition::seconds)
@@ -50,7 +49,7 @@ public record FertilizerDefinition(Item item, double speed, double yield, int se
         if (stack.isEmpty() || registries == null) return null;
         return registries.lookup(REGISTRY).flatMap(lookup -> lookup.listElements()
                 .map(holder -> holder.value())
-                .filter(definition -> definition.item() == stack.getItem())
+                .filter(definition -> definition.item().contains(stack.getItem()))
                 .findFirst()).orElse(null);
     }
 }
