@@ -43,7 +43,7 @@ un monde).
 | ~~YAF-014~~ | ✅ | M | **Registres datapack** `yafs/crop` et `yafs/substrate` — **fait** : fichiers JSON relus à chaque `/reload` (et non registres dynamiques, qui ne se rechargent qu'au lancement du monde), codecs bornés, synchronisés aux joueurs ; une surcharge remplace la détection champ par champ. Les exigences vanilla et la règle « terre = terre labourée » sont passées en JSON. | JSON invalide refusé et journalisé ; surcharge appliquée après `/reload` |
 | ~~YAF-015~~ | ✅ | M | **Cas exotiques** — **fait** par des JSON livrés et un champ `harvest` (le bloc dont le loot donne la récolte) : canne à sucre, cactus, melon et citrouille (tige → fruit), urne (2 blocs), cacao. Aucune culture vanilla n'a de bloc-entité : ce cas n'est pas testé. | un GameTest par cas |
 | ~~YAF-016~~ | ✅ | S | **Exigences vanilla livrées** — **fait**, en dur dans `Crops` jusqu'à YAF-014 ; test fait sur la verrue, la canne attendant YAF-015 (températures par culture) ; défaut tolérant pour le reste. | GameTest : la canne pousse moins vite en taïga qu'en désert |
-| YAF-017 | P2 | S | **Substrats à bonus** (« terre fertile » : +rendement). | GameTest : rendement accru |
+| ~~YAF-017~~ | ✅ | S | **Substrats à bonus** — **fait** : `speed` / `yield` par définition de substrat, donc par parcelle ; bloc Terre fertile (×1,25 de rendement) ; l'infobulle de l'item et celle de la parcelle le disent. | GameTests : bonus de sa parcelle seule, sol de datapack par tag |
 
 ## Épic C — Environnement et ressources
 
