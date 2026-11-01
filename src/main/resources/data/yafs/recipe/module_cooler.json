@@ -12,5 +12,5 @@
     "R": { "item": "minecraft:redstone" },
     "C": { "item": "minecraft:snow_block" }
   },
-  "result": { "id": "yafs:cooler" }
+  "result": { "id": "yafs:module_cooler" }
 }

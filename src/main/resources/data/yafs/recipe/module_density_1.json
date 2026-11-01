@@ -11,5 +11,5 @@
     "I": { "item": "minecraft:iron_ingot" },
     "C": { "item": "minecraft:composter" }
   },
-  "result": { "id": "yafs:density_1" }
+  "result": { "id": "yafs:module_density_1" }
 }

@@ -186,9 +186,10 @@ public class GreenhouseGameTests {
         helper.assertTrue(greenhouse.growth(0).isMature(), "Une parcelle bloquée a perdu sa maturité");
         helper.assertTrue(count(greenhouse.output(), Items.STONE) == 64 * GreenhouseBlockEntity.OUTPUT_SLOTS, "La sortie a changé");
 
-        // Deux places : la récolte du blé, ce sont du blé et des graines.
+        // Trois places : la récolte du blé, ce sont du blé, des graines, et parfois du compost.
         greenhouse.output().setStackInSlot(0, ItemStack.EMPTY);
         greenhouse.output().setStackInSlot(1, ItemStack.EMPTY);
+        greenhouse.output().setStackInSlot(2, ItemStack.EMPTY);
         greenhouse.grow(GreenhouseBlockEntity.STEP);
         helper.assertTrue(count(greenhouse.output(), Items.WHEAT) == 1, "La récolte n'a pas repris");
         helper.succeed();
@@ -205,7 +206,7 @@ public class GreenhouseGameTests {
         try {
             List<CropOverride> changed = new ArrayList<>(shipped);
             changed.add(new CropOverride(Items.WHEAT_SEEDS, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
-                    Optional.of(20), Optional.of(30), Optional.of(3)));
+                    Optional.of(20), Optional.of(30), Optional.of(3), Optional.empty()));
             CropData.set(changed, substrates);
 
             GreenhouseBlockEntity greenhouse = place(helper);

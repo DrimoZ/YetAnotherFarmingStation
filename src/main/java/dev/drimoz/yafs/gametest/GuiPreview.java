@@ -141,7 +141,7 @@ public final class GuiPreview {
             // La source créative collée contre le socle : l'énergie doit monter à l'écran.
             level.setBlock(small.offset(2, 0, 1), YafsBlocks.CREATIVE_ENERGY_SOURCE.get().defaultBlockState(), 3);
             build(level, big, YafsBlocks.GREENHOUSE_T3.get(),
-                    List.of(YafsItems.ACCELERATOR_1.get(), YafsItems.GROW_LAMP.get(), YafsItems.DENSITY_1.get()), 1_000_000);
+                    List.of(YafsItems.ACCELERATOR_1.get(), YafsItems.GROW_LAMP.get(), YafsItems.DENSITY_1.get(), YafsItems.CAPACITY.get()), 1_000_000);
         }));
 
         step(10, mc -> command(mc, "tp @s " + small.getX() + " " + ORIGIN.getY() + " " + (small.getZ() - 4) + " 0 20"));
@@ -224,6 +224,7 @@ public final class GuiPreview {
         greenhouse.water().fill(new FluidStack(Fluids.WATER, 6_000), IFluidHandler.FluidAction.EXECUTE);
         for (int given = 0; given < energy; given += 100_000) greenhouse.energy().receiveEnergy(100_000, false);
         greenhouse.output().setStackInSlot(0, new ItemStack(Items.WHEAT, 23));
+        greenhouse.fertilizer().setStackInSlot(0, new ItemStack(Items.BONE_MEAL, 12));
         greenhouse.output().setStackInSlot(1, new ItemStack(Items.WHEAT_SEEDS, 41));
     }
 

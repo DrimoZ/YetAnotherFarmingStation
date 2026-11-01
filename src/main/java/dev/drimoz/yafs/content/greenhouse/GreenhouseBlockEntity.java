@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.fertilizer.FertilizerDefinition;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
 import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.core.Climate;
@@ -13,8 +14,11 @@ import dev.drimoz.yafs.core.PlotGrowth;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.core.RedstoneCondition;
 import dev.drimoz.yafs.registry.YafsBlocks;
+import dev.drimoz.yafs.registry.YafsItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.material.Fluids;
@@ -172,6 +176,19 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     private final OutputStore output = new OutputStore();
+
+    /** L'engrais : un emplacement, rempli à la main ou par un tuyau branché au socle. */
+    private final ItemStackHandler fertilizer = new ItemStackHandler(1) {
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return FertilizerDefinition.of(stack, registries()) != null;
+        }
+
+        @Override
+        protected void onContentsChanged(int slot) {
+            setChanged();
+        }
+    };
 
     private final FluidTank water = new FluidTank(TANK_CAPACITY, fluid -> fluid.is(FluidTags.WATER)) {
         @Override
@@ -572,6 +589,92 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.plots.setStackInSlot(plot * SLOTS_PER_PLOT + slot, stack);
     }
 
+    // Engrais
+
+    /** L'engrais en cours d'emploi : l'item qu'on y met, ou la dernière charge entamée. */
+    @Nullable
+    private FertilizerDefinition running;
+    /** Ce qu'il reste à l'item entamé, en cycles de plant. */
+    private double charge;
+    /** Les lots de quatre composts que les Composteurs changent en engrais à chaque pas. */
+    private int composting;
+
+    public ItemStackHandler fertilizer() {
+        return this.fertilizer;
+    }
+
+    @Nullable
+    private HolderLookup.Provider registries() {
+        return this.level == null ? null : this.level.registryAccess();
+    }
+
+    /** Entame un item de l'emplacement : sa charge s'ajoute à ce qu'il reste. */
+    private boolean pullFertilizer() {
+        FertilizerDefinition definition = FertilizerDefinition.of(this.fertilizer.getStackInSlot(0), registries());
+        if (definition == null) return false;
+        this.fertilizer.extractItem(0, 1, false);
+        this.running = definition;
+        this.charge += definition.cycles();
+        return true;
+    }
+
+    /** Au début d'un pas : de quoi nourrir, ou rien. */
+    private void startFertilizer() {
+        if (this.running != null && this.charge > 0D) return;
+        this.running = null;
+        this.charge = 0D;
+        pullFertilizer();
+    }
+
+    /** L'engrais est consommé à la mesure de ce qui pousse : {@code cycles} de plant, tous plants compris. */
+    private void consumeFertilizer(double cycles) {
+        if (this.running == null) return;
+        this.charge -= cycles;
+        while (this.charge <= 0D && pullFertilizer()) {
+            // le suivant prend le relais, avec ce qui dépassait
+        }
+        if (this.charge <= 0D) {
+            this.running = null;
+            this.charge = 0D;
+        }
+    }
+
+    private double fertilizerSpeed() {
+        return this.running == null ? 1D : this.running.speed();
+    }
+
+    private double fertilizerYield() {
+        return this.running == null ? 1D : this.running.yield();
+    }
+
+    /**
+     * Le Composteur : quatre composts de la sortie font un engrais dans l'emplacement, s'il est vide
+     * ou en tient déjà. Jamais plus de {@link #composting} lots par pas ; rien n'est perdu si
+     * l'emplacement est plein.
+     */
+    private void compost() {
+        for (int batch = 0; batch < this.composting; batch++) {
+            ItemStack product = new ItemStack(YafsItems.FERTILIZER.get());
+            if (!this.fertilizer.insertItem(0, product, true).isEmpty() || !takeFromOutput(YafsItems.COMPOST.get(), 4)) return;
+            this.fertilizer.insertItem(0, product, false);
+        }
+    }
+
+    private boolean takeFromOutput(Item item, int count) {
+        int found = 0;
+        for (int slot = 0; slot < this.output.getSlots() && found < count; slot++) {
+            ItemStack stack = this.output.getStackInSlot(slot);
+            if (stack.is(item)) found += stack.getCount();
+        }
+        if (found < count) return false;
+
+        int left = count;
+        for (int slot = 0; slot < this.output.getSlots() && left > 0; slot++) {
+            if (this.output.getStackInSlot(slot).is(item)) left -= this.output.extractItem(slot, left, false).getCount();
+        }
+        return true;
+    }
+
     // Croissance
 
     public void serverTick() {
@@ -653,6 +756,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         runModules(elapsed, powered);
         collectRain();
+        if (this.composting > 0) compost();
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
         this.environment = new Conditions(this.environment.light(), this.environment.temperature(), watered);
@@ -700,6 +804,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.energyMultiplier = 1D;
         this.waterMultiplier = 1D;
         this.density = 1;
+        this.composting = 0;
         if (this.level == null) return;
 
         Registry<ModuleDefinition> registry = this.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
@@ -717,6 +822,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             this.energyMultiplier *= ModuleDefinition.stacked(module.energyMultiplier(), count);
             this.waterMultiplier *= ModuleDefinition.stacked(module.waterMultiplier(), count);
             this.density += module.extraPlants() * count;
+            this.composting += module.composting() * count;
             // rain_collection est en mB par seconde : on reporte les fractions d'un pas à l'autre.
             if (this.raining && module.rainCollection() > 0) {
                 this.rainfall += (double) module.rainCollection() * count * elapsed / STEP;
@@ -817,21 +923,24 @@ public class GreenhouseBlockEntity extends BlockEntity {
         // Mûre et bloquée : elle attend la place, sans rien coûter.
         double total = 1D;
         if (!before.isMature()) {
+            // Entamé ici, pas au pas : une serre où rien ne pousse n'use pas son engrais.
+            startFertilizer();
             // La part payée du pas donne la part du bonus : 7 ticks sur 10 payés, 70 % de l'accélération.
-            this.speeds[plot] = 1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered;
+            this.speeds[plot] = (1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered) * fertilizerSpeed();
             // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
             total = Math.min(before.progress() + verdict.value() * this.speeds[plot] * elapsed / cost.ticks(), MAX_CYCLES_PER_STEP);
             // Un cycle accéléré boit moins : l'eau par cycle est divisée par la racine du bonus de vitesse.
             // Sans accélération (vitesse 1), rien ne change ; ×4 en vitesse, un cycle boit moitié moins.
             double water = (1D + (this.waterMultiplier - 1D) * powered) / Math.sqrt(Math.max(1D, this.speeds[plot]));
             this.thirstOfStep = (total - before.progress()) * cost.water() * this.density * water;
+            consumeFertilizer((total - before.progress()) * this.density);
         }
         if (total < 1D) {
             this.growth[plot] = new PlotGrowth((float) total, before.density());
             return PlotStatus.WORKING;
         }
 
-        int harvested = harvest(level, known.harvestState(), (int) total);
+        int harvested = harvest(level, known.harvestState(), (int) total, fertilizerYield(), cost.residue());
         // Ce qui n'a pas trouvé place reste mûr, pour le pas suivant.
         this.growth[plot] = new PlotGrowth((float) Math.min(1D, total - harvested), before.density());
         return harvested == 0 ? PlotStatus.BLOCKED : PlotStatus.WORKING;
@@ -869,7 +978,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * <p>La table de loot est tirée pour {@link #LOOT_ROLLS} plants au plus, puis mise à l'échelle :
      * soixante-quatre cycles coûtent autant que huit.
      */
-    private int harvest(ServerLevel level, BlockState mature, int cycles) {
+    private int harvest(ServerLevel level, BlockState mature, int cycles, double yield, double residue) {
         int rolls = Math.min(cycles * this.density, LOOT_ROLLS);
         List<ItemStack> sample = new ArrayList<>();
         for (int roll = 0; roll < rolls; roll++) {
@@ -877,7 +986,12 @@ public class GreenhouseBlockEntity extends BlockEntity {
         }
 
         for (int batch = cycles; batch > 0; batch /= 2) {
-            List<ItemStack> drops = scaled(sample, (long) batch * this.density, rolls);
+            long plants = (long) batch * this.density;
+            List<ItemStack> drops = scaled(sample, plants, rolls, yield);
+            // Le résidu, lui, ne suit pas l'engrais : une chance par plant, tirée au pas.
+            double expected = plants * residue;
+            int compost = (int) expected + (level.random.nextDouble() < expected - (int) expected ? 1 : 0);
+            if (compost > 0) drops.add(new ItemStack(YafsItems.COMPOST.get(), compost));
             if (fits(drops)) {
                 for (ItemStack drop : drops) ItemHandlerHelper.insertItemStacked(this.output, drop, false);
                 return batch;
@@ -896,11 +1010,11 @@ public class GreenhouseBlockEntity extends BlockEntity {
         into.add(drop.copy());
     }
 
-    /** Ce que donnent {@code plants} plants, d'après ce qu'en ont donné {@code rolls}. */
-    private static List<ItemStack> scaled(List<ItemStack> sample, long plants, int rolls) {
+    /** Ce que donnent {@code plants} plants, d'après ce qu'en ont donné {@code rolls}. L'engrais de rendement multiplie. */
+    private static List<ItemStack> scaled(List<ItemStack> sample, long plants, int rolls, double yield) {
         List<ItemStack> drops = new ArrayList<>(sample.size());
         for (ItemStack stack : sample) {
-            int count = (int) Math.min(Integer.MAX_VALUE, Math.round((double) stack.getCount() * plants / rolls));
+            int count = (int) Math.min(Integer.MAX_VALUE, Math.round(stack.getCount() * plants * yield / rolls));
             if (count > 0) drops.add(stack.copyWithCount(count));
         }
         return drops;
@@ -929,32 +1043,37 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         @Override
         public int getSlots() {
-            return OUTPUT_SLOTS;
+            return OUTPUT_SLOTS + 1;
         }
 
         @Override
         public ItemStack getStackInSlot(int slot) {
+            if (slot == OUTPUT_SLOTS) return GreenhouseBlockEntity.this.fertilizer.getStackInSlot(0);
             return GreenhouseBlockEntity.this.output.getStackInSlot(slot);
         }
 
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            // Seul l'engrais entre : graines, sols et catalyseurs se posent à la main, une fois.
+            if (slot == OUTPUT_SLOTS) return GreenhouseBlockEntity.this.fertilizer.insertItem(0, stack, simulate);
             return stack;
         }
 
         @Override
         public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            if (slot == OUTPUT_SLOTS) return ItemStack.EMPTY;
             return GreenhouseBlockEntity.this.output.extractItem(slot, amount, simulate);
         }
 
         @Override
         public int getSlotLimit(int slot) {
+            if (slot == OUTPUT_SLOTS) return GreenhouseBlockEntity.this.fertilizer.getSlotLimit(0);
             return GreenhouseBlockEntity.this.output.getSlotLimit(slot);
         }
 
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            return false;
+            return slot == OUTPUT_SLOTS && GreenhouseBlockEntity.this.fertilizer.isItemValid(0, stack);
         }
     }
 
@@ -1001,7 +1120,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
     /** Tout ce que contient la serre tombe au sol : parcelles, sortie, modules. */
     public void dropContents(Level level, BlockPos pos) {
-        for (ItemStackHandler handler : List.of(this.plots, this.output, this.modules)) {
+        for (ItemStackHandler handler : List.of(this.plots, this.output, this.modules, this.fertilizer)) {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 // Par piles de taille normale : une case de sortie peut tenir des milliers d'items.
                 ItemStack stack = handler.getStackInSlot(slot).copy();
@@ -1023,6 +1142,9 @@ public class GreenhouseBlockEntity extends BlockEntity {
         tag.put("water", this.water.writeToNBT(registries, new CompoundTag()));
         tag.put("energy", this.energy.serializeNBT(registries));
         tag.put("modules", this.modules.serializeNBT(registries));
+        tag.put("fertilizer", this.fertilizer.serializeNBT(registries));
+        tag.putDouble("fertilizerCharge", this.charge);
+        if (this.running != null) tag.putString("fertilizerRunning", BuiltInRegistries.ITEM.getKey(this.running.item()).toString());
         tag.putBoolean("switchedOn", this.switchedOn);
         tag.putInt("redstoneMode", this.condition.mode().ordinal());
         tag.putInt("redstoneThreshold", this.condition.threshold());
@@ -1052,6 +1174,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (tag.contains("water")) this.water.readFromNBT(registries, tag.getCompound("water"));
         if (tag.contains("energy")) this.energy.deserializeNBT(registries, tag.get("energy"));
         if (tag.contains("modules")) copyInto(this.modules, registries, tag.getCompound("modules"));
+        if (tag.contains("fertilizer")) this.fertilizer.deserializeNBT(registries, tag.getCompound("fertilizer"));
+        this.charge = Math.max(0D, tag.getDouble("fertilizerCharge"));
+        this.running = null;
+        if (this.charge > 0D && tag.contains("fertilizerRunning")) {
+            ResourceLocation id = ResourceLocation.tryParse(tag.getString("fertilizerRunning"));
+            if (id != null) this.running = FertilizerDefinition.of(new ItemStack(BuiltInRegistries.ITEM.get(id)), registries);
+        }
         if (tag.contains("switchedOn")) this.switchedOn = tag.getBoolean("switchedOn");
         if (tag.contains("redstoneMode")) {
             this.condition = new RedstoneCondition(RedstoneCondition.Mode.byOrdinal(tag.getInt("redstoneMode")), tag.getInt("redstoneThreshold"));

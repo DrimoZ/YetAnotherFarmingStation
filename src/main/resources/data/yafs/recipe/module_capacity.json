@@ -12,5 +12,5 @@
     "C": { "item": "minecraft:chest" },
     "B": { "item": "minecraft:barrel" }
   },
-  "result": { "id": "yafs:capacity" }
+  "result": { "id": "yafs:module_capacity" }
 }

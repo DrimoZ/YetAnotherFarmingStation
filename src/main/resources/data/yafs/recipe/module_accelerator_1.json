@@ -11,5 +11,5 @@
     "G": { "item": "minecraft:gold_ingot" },
     "C": { "item": "minecraft:clock" }
   },
-  "result": { "id": "yafs:accelerator_1" }
+  "result": { "id": "yafs:module_accelerator_1" }
 }

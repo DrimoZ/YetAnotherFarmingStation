@@ -7,6 +7,7 @@ import dev.drimoz.yafs.client.gui.SideTabs;
 import dev.drimoz.yafs.client.gui.GuiTheme;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.fertilizer.FertilizerDefinition;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseMenu;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
@@ -366,23 +367,40 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
 
         /**
-         * Les slots, puis chaque module posé avec son plafond par serre. Rien d'autre : ce que les
-         * modules font ensemble se lit dans Fonctionnement, l'effet d'un module dans son infobulle.
+         * Les emplacements de modules, celui de l'engrais dessous, puis chaque module posé avec son
+         * plafond par serre, et la taille d'une case de sortie. Ce que les modules font ensemble se
+         * lit dans Fonctionnement, l'effet d'un module dans son infobulle.
          */
         @Override
         protected int contentHeight() {
-            return moduleRows() * GuiMetrics.SLOT + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE;
+            return fertilizerBottom() + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE + GuiTheme.LINE + 3;
         }
 
         @Override
         protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
-            int lineY = y + moduleRows() * GuiMetrics.SLOT + 6;
+            // L'emplacement d'engrais est un slot du menu ; ici, ce qu'on lit à sa droite.
+            int textX = x + GuiMetrics.SLOT + 4;
+            int fertilizerY = y + moduleRows() * GuiMetrics.SLOT + GreenhouseMenu.FERTILIZER_GAP;
+            ItemStack fertilizer = menu.fertilizerSlot().getItem();
+            FertilizerDefinition definition = minecraft.level == null ? null : FertilizerDefinition.of(fertilizer, minecraft.level.registryAccess());
+            if (fertilizer.isEmpty()) {
+                GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.fertilizer"), textX, fertilizerY + 4, GuiTheme.TAB_MUTED);
+            } else {
+                GuiTheme.tabLabel(graphics, font, Component.literal(font.plainSubstrByWidth(fertilizer.getHoverName().getString(), MODULE_CONTENT_WIDTH - GuiMetrics.SLOT - 4)), textX, fertilizerY + 1);
+                if (definition != null) {
+                    boolean speed = definition.speed() > 1D;
+                    GuiTheme.tabValue(graphics, font, Component.translatable(speed ? "yafs.gui.fertilizer.speed" : "yafs.gui.fertilizer.yield",
+                            number(speed ? definition.speed() : definition.yield())), textX, fertilizerY + 1 + GuiTheme.LINE, GuiTheme.Status.WORKING.tabColour);
+                }
+            }
+
+            int lineY = y + fertilizerBottom() + 6;
             graphics.fill(x, lineY - 3, x + MODULE_CONTENT_WIDTH, lineY - 2, 0x40FFFFFF);
 
             List<ItemStack> installed = installedModules();
             if (installed.isEmpty()) {
                 GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.none"), x, lineY, GuiTheme.TAB_MUTED);
-                return;
+                lineY += GuiTheme.LINE;
             }
             // Au plafond : grisé, on n'en ajoute plus. Au-delà (une vieille sauvegarde) : rouge, le surplus ne compte pas.
             for (ItemStack stack : installed) {
@@ -394,6 +412,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 GuiTheme.tabValue(graphics, font, Component.literal(count), x + MODULE_CONTENT_WIDTH - font.width(count), lineY, colour);
                 lineY += GuiTheme.LINE;
             }
+
+            // Ce qu'une case de sortie peut tenir : 64, plus ce que donnent les modules de capacité.
+            String limit = compact(outputLimit());
+            GuiTheme.tabLabel(graphics, font, Component.translatable("yafs.gui.modules.output"), x, lineY + 2);
+            GuiTheme.tabValue(graphics, font, Component.literal(limit), x + MODULE_CONTENT_WIDTH - font.width(limit), lineY + 2, GuiTheme.TAB_VALUE);
         }
 
         @Override
@@ -631,6 +654,10 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                     mouseX, mouseY);
             return;
         }
+        if (this.hoveredSlot == this.menu.fertilizerSlot() && !this.hoveredSlot.hasItem()) {
+            graphics.renderTooltip(this.font, this.font.split(Component.translatable("yafs.gui.fertilizer.help"), 180), mouseX, mouseY);
+            return;
+        }
         if (this.hoveredSlot != null && !this.hoveredSlot.hasItem() && isModuleSlot(this.hoveredSlot)) {
             List<FormattedCharSequence> help = new ArrayList<>(this.font.split(Component.translatable("yafs.gui.modules.help"), 180));
             graphics.renderTooltip(this.font, help, mouseX, mouseY);
@@ -730,6 +757,24 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     private boolean isModuleSlot(Slot slot) {
         int index = this.menu.slots.indexOf(slot);
         return index >= GreenhouseBlockEntity.OUTPUT_SLOTS && index < GreenhouseBlockEntity.OUTPUT_SLOTS + this.menu.moduleSlots();
+    }
+
+    /** Le bas de la rangée d'engrais, en coordonnées du contenu de l'onglet Modules. */
+    private int fertilizerBottom() {
+        return moduleRows() * GuiMetrics.SLOT + GreenhouseMenu.FERTILIZER_GAP + GuiMetrics.SLOT;
+    }
+
+    /** Ce qu'une case de sortie tient : 64, plus ce que donnent les modules de capacité (même calcul que la serre). */
+    private long outputLimit() {
+        long limit = 64;
+        if (this.minecraft == null || this.minecraft.level == null) return limit;
+        Registry<ModuleDefinition> registry = this.minecraft.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
+        for (ItemStack stack : installedModules()) {
+            ResourceKey<ModuleDefinition> kind = ModuleItem.kind(stack);
+            ModuleDefinition module = registry == null || kind == null ? null : registry.get(kind);
+            if (module != null) limit += (long) module.outputCapacity() * Math.min(stack.getCount(), module.maxStack());
+        }
+        return limit;
     }
 
     private int moduleRows() {

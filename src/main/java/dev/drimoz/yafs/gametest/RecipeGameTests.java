@@ -27,8 +27,8 @@ public class RecipeGameTests {
 
     private static final String PLATFORM = "platform";
 
-    /** Des outils de test, qui n'ont pas de recette par choix. */
-    private static final List<Item> CREATIVE_ONLY = List.of(YafsItems.CREATIVE_ENERGY_SOURCE.get());
+    /** Des outils de test, et le résidu des récoltes : ils n'ont pas de recette par choix. */
+    private static final List<Item> CREATIVE_ONLY = List.of(YafsItems.CREATIVE_ENERGY_SOURCE.get(), YafsItems.COMPOST.get());
 
     @GameTest(template = PLATFORM)
     public static void everyItemIsCraftable(GameTestHelper helper) {

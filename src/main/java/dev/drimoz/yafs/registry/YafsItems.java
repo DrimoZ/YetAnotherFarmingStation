@@ -32,23 +32,36 @@ public final class YafsItems {
                 }
             });
 
-    public static final DeferredItem<ModuleItem> GROW_LAMP = ITEMS.registerItem("grow_lamp", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> HEATER = ITEMS.registerItem("heater", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> COOLER = ITEMS.registerItem("cooler", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> RAIN_COLLECTOR = ITEMS.registerItem("rain_collector", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> ACCELERATOR_1 = ITEMS.registerItem("accelerator_1", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> ACCELERATOR_2 = ITEMS.registerItem("accelerator_2", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> ACCELERATOR_3 = ITEMS.registerItem("accelerator_3", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> DENSITY_1 = ITEMS.registerItem("density_1", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> DENSITY_2 = ITEMS.registerItem("density_2", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> DENSITY_3 = ITEMS.registerItem("density_3", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> BATTERY = ITEMS.registerItem("battery", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> BLACKOUT = ITEMS.registerItem("blackout", ModuleItem::new);
-    public static final DeferredItem<ModuleItem> CAPACITY = ITEMS.registerItem("capacity", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> GROW_LAMP = ITEMS.registerItem("module_grow_lamp", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> HEATER = ITEMS.registerItem("module_heater", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> COOLER = ITEMS.registerItem("module_cooler", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> RAIN_COLLECTOR = ITEMS.registerItem("module_rain_collector", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> ACCELERATOR_1 = ITEMS.registerItem("module_accelerator_1", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> ACCELERATOR_2 = ITEMS.registerItem("module_accelerator_2", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> ACCELERATOR_3 = ITEMS.registerItem("module_accelerator_3", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> DENSITY_1 = ITEMS.registerItem("module_density_1", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> DENSITY_2 = ITEMS.registerItem("module_density_2", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> DENSITY_3 = ITEMS.registerItem("module_density_3", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> BATTERY = ITEMS.registerItem("module_battery", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> BLACKOUT = ITEMS.registerItem("module_blackout", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> CAPACITY = ITEMS.registerItem("module_capacity", ModuleItem::new);
+    public static final DeferredItem<ModuleItem> COMPOSTER = ITEMS.registerItem("module_composter", ModuleItem::new);
 
+    /** Le résidu des récoltes, et ce qu'on en fait : quatre composts font un engrais. */
+    public static final DeferredItem<Item> COMPOST = ITEMS.register("compost", () -> described("yafs.tooltip.compost"));
+    public static final DeferredItem<Item> FERTILIZER = ITEMS.register("fertilizer", () -> described("yafs.tooltip.fertilizer"));
+
+    private static Item described(String tooltip) {
+        return new Item(new Item.Properties()) {
+            @Override
+            public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flag) {
+                lines.add(Component.translatable(tooltip).withStyle(ChatFormatting.GRAY));
+            }
+        };
+    }
     /** Les modules, pour ce qui les traite tous pareil (teinte, onglet). */
     public static List<DeferredItem<ModuleItem>> modules() {
-        return List.of(GROW_LAMP, HEATER, COOLER, RAIN_COLLECTOR, ACCELERATOR_1, ACCELERATOR_2, ACCELERATOR_3, DENSITY_1, DENSITY_2, DENSITY_3, BATTERY, BLACKOUT, CAPACITY);
+        return List.of(GROW_LAMP, HEATER, COOLER, RAIN_COLLECTOR, ACCELERATOR_1, ACCELERATOR_2, ACCELERATOR_3, DENSITY_1, DENSITY_2, DENSITY_3, BATTERY, BLACKOUT, CAPACITY, COMPOSTER);
     }
     private YafsItems() {}
 }

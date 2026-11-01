@@ -12,5 +12,5 @@
     "R": { "item": "minecraft:redstone" },
     "C": { "item": "minecraft:redstone_lamp" }
   },
-  "result": { "id": "yafs:blackout" }
+  "result": { "id": "yafs:module_blackout" }
 }

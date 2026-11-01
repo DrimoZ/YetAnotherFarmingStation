@@ -223,7 +223,7 @@ modules.
 | Ressource | Statut | Détail |
 |---|---|---|
 | **Eau** | obligatoire | réserve interne en fluide ; consommée à chaque cycle de croissance, × densité |
-| **Engrais** | facultatif | poudre d'os, compost, engrais typés : vitesse **ou** rendement, à la Stardew |
+| **Engrais** | facultatif | un emplacement dans l'onglet Modules, rempli à la main ou par un tuyau au socle ; poudre d'os (vitesse ×1,5) ou Engrais (rendement ×1,5) : vitesse **ou** rendement, à la Stardew |
 | **Énergie (FE)** | modules seulement | une serre au soleil et arrosée tourne sans énergie |
 
 Le mod **ne produit pas d'énergie**, comme FactoryIO.
@@ -234,13 +234,25 @@ Le mod **ne produit pas d'énergie**, comme FactoryIO.
 une probabilité définie par culture. Le compost **se recycle en engrais** : à la main, ou
 automatiquement avec le module Composteur. La boucle est fermée.
 
+**Décidé le 1/11/2026.** Le résidu arrive dans la sortie avec la récolte, tout ou rien comme le reste :
+une sortie pleine bloque la parcelle (BLOCKED), résidu compris. Chance par plant et par cycle,
+0,2 par défaut, réglable par culture (`residue_chance`). Quatre composts font un Engrais, au
+établi ou par le Composteur (un lot de quatre par pas, sans énergie). La boucle n'est volontairement
+pas autosuffisante : 0,2 compost produit pour 0,25 nécessaire (un Engrais nourrit 16 cycles).
+
+Un engrais est une entrée de datapack (`data/<ns>/yafs/fertilizer/*.json` : `item`, `speed`, `yield`,
+`cycles`). Il est entamé quand une parcelle en a besoin, jamais pour rien, et consommé à la mesure de
+ce qui pousse (cycles de plant × plants), pas à la seconde.
+
+**Identifiants** : tout module s'appelle `module_*` (item, définition, modèle), pour les retrouver d'un coup.
+
 Plus tard : des résidus fluides (une « boue »), qui sortiraient par le socle.
 
 ---
 
 ## 7. Modules
 
-**Un item par module**, comme un bloc par palier (`yafs:heater`, `yafs:grow_lamp`…). Ce que fait un
+**Un item par module**, comme un bloc par palier (`yafs:module_heater`, `yafs:module_grow_lamp`…). Ce que fait un
 module vient de la définition de même identifiant dans le registre datapack `yafs/module` : un
 modpack retouche les chiffres d'un module sans code, mais un nouveau module demande un item.
 
@@ -257,7 +269,7 @@ les recettes et l'inventaire.
 | Accélérateur | + vitesse | FE + eau, proportionnels | oui, coût croissant |
 | Composteur | résidus → engrais | — | non |
 | Obscurité | lumière à 0 (pour une culture qui exige le noir, `max_light`) ; exclut la lampe | FE | non |
-| Capacité | + 256 items par case de sortie, jusqu'à 64 modules | — | oui |
+| Capacité | + 64 items par case de sortie, jusqu'à 64 modules | — | oui |
 | Batterie | + 10 000 000 FE de réserve (64 au plus) | — | oui |
 | Densité | + plants par parcelle (+1/+2/+3) | tout × plants | oui |
 

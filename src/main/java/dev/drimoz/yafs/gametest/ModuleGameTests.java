@@ -43,11 +43,11 @@ public class ModuleGameTests {
     private static final String PLATFORM = "platform";
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
 
-    /** Les quatre modules livrés sont des entrées de datapack, lues au chargement du monde. */
+    /** Les modules livrés sont des entrées de datapack, lues au chargement du monde. */
     @GameTest(template = PLATFORM)
     public static void shippedModulesComeFromTheDatapack(GameTestHelper helper) {
         var registry = helper.getLevel().registryAccess().registryOrThrow(ModuleDefinition.REGISTRY);
-        for (String name : new String[]{"grow_lamp", "heater", "cooler", "rain_collector"}) {
+        for (String name : new String[]{"module_grow_lamp", "module_heater", "module_cooler", "module_rain_collector"}) {
             helper.assertTrue(registry.containsKey(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, name)), name + " absent");
         }
         helper.assertTrue(registry.get(key("heater")).temperatureShift() == 20D, "Chauffage " + registry.get(key("heater")));
@@ -255,12 +255,13 @@ public class ModuleGameTests {
         greenhouse.setPlotItem(plot, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
     }
 
+    /** Tous les modules portent le préfixe {@code module_} : le test dit « heater », le jeu « module_heater ». */
     private static ResourceKey<ModuleDefinition> key(String name) {
-        return ResourceKey.create(ModuleDefinition.REGISTRY, ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, name));
+        return ResourceKey.create(ModuleDefinition.REGISTRY, ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "module_" + name));
     }
 
     private static ItemStack module(String name) {
-        return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, name)));
+        return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "module_" + name)));
     }
 
     /**
@@ -313,7 +314,7 @@ public class ModuleGameTests {
         try {
             List<CropOverride> changed = new ArrayList<>(shipped);
             changed.add(new CropOverride(Items.WHEAT_SEEDS, Optional.empty(), Optional.empty(), Optional.of(new Requirements(0, 0, 0D, 40D)),
-                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
             CropData.set(changed, substrates);
 
             GreenhouseBlockEntity greenhouse = place(helper);
@@ -345,8 +346,8 @@ public class ModuleGameTests {
         GreenhouseBlockEntity greenhouse = place(helper);
         helper.assertTrue(greenhouse.output().getSlotLimit(0) == 64, "Limite de base " + greenhouse.output().getSlotLimit(0));
 
-        greenhouse.modules().setStackInSlot(0, module("capacity").copyWithCount(2));
-        helper.assertTrue(greenhouse.output().getSlotLimit(0) == 64 + 512, "Limite avec 2 modules " + greenhouse.output().getSlotLimit(0));
+        greenhouse.modules().setStackInSlot(0, module("capacity").copyWithCount(10));
+        helper.assertTrue(greenhouse.output().getSlotLimit(0) == 64 + 640, "Limite avec 10 modules " + greenhouse.output().getSlotLimit(0));
 
         ItemStack left = greenhouse.output().insertItem(0, new ItemStack(Items.WHEAT, 500), false);
         helper.assertTrue(left.isEmpty() && greenhouse.output().getStackInSlot(0).getCount() == 500, "500 blés non acceptés : reste " + left.getCount());

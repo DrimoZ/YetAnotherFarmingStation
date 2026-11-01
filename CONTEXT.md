@@ -55,6 +55,10 @@ _Éviter_ : crux, socle, bloc requis
 Un sous-produit qu'une récolte donne parfois, en plus de la production.
 _Éviter_ : déchet, sludge, boue, byproduct
 
+**Engrais** :
+Ce qu'on met dans l'emplacement dédié de la serre pour accélérer toutes ses parcelles, ou leur faire rendre plus ; consommé à la mesure de ce qui pousse.
+_Éviter_ : fertilisant, booster
+
 **Environnement** :
 Les quelques grandeurs que la serre fournit à ses parcelles (lumière, eau, température) :
 celles du lieu où elle est posée, corrigées par ses modules.

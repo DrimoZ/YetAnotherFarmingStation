@@ -51,8 +51,8 @@ un monde).
 |---|---|---|---|---|
 | ~~YAF-020~~ | ✅ | S | **Environnement de base** — **fait** : lumière du ciel au maître, biome → °C, pluie ; recalcul toutes les 100 ticks. | JUnit : conversion biome → °C ; GameTest : sans ciel, lumière 0 |
 | ~~YAF-021~~ | ✅ | S | **Réserve d'eau** — **fait** (8 000 mB, 500 mB par croissance, seau ou tuyau sur n'importe quel bloc en attendant les ports) : réservoir de fluide, consommation par cycle × densité, eau vide → PROBLEM. | GameTest : sans eau, rien ne pousse et le statut le dit |
-| YAF-022 | P2 | S | **Engrais** : registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
-| YAF-023 | P2 | S | **Résidus** : compost avec une probabilité par culture ; réserve pleine → BLOCKED. | GameTest : conservation, blocage |
+| ~~YAF-022~~ | ✅ | S | **Engrais** — **fait** : registre datapack `yafs/fertilizer`, un emplacement dans l'onglet Modules (aussi rempli par le socle), vitesse **ou** rendement. registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
+| ~~YAF-023~~ | ✅ | S | **Résidus** — **fait** : compost par plant et par cycle (`residue_chance`), dans la sortie ; sortie pleine → BLOCKED. compost avec une probabilité par culture ; réserve pleine → BLOCKED. | GameTest : conservation, blocage |
 
 ## Épic D — Interface
 
@@ -85,8 +85,8 @@ un monde).
 | ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
 | ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
 | ~~YAF-063~~ | ✅ | S | **Accélérateurs I, II, III** — **fait** : vitesse ×2/×4/×8, énergie ×4/×16/×64, eau ×2/×4/×8, tout se multiplie entre modules et avec le bonus d'énergie de base (×2 réglable). Inactifs sans énergie. | GameTest : vitesse et coûts multipliés, inactifs sans énergie |
-| ~~YAF-064~~ | ✅ | S | **Densité, Batterie, Capacité — faits** : densité additive (+1/+2/+3 plants par module), Batterie (+1 M FE, 64 au plus), Capacité (+256 items par case de sortie, 64 au plus, sauvegarde faite à la main car le format vanilla borne les piles à 99). | GameTests : densité additive, batteries, capacité |
-| YAF-065 | P2 | S | Composteur (résidus → engrais). | GameTest : la boucle tourne seule |
+| ~~YAF-064~~ | ✅ | S | **Densité, Batterie, Capacité — faits** : densité additive (+1/+2/+3 plants par module), Batterie (+1 M FE, 64 au plus), Capacité (+64 items par case de sortie, 64 au plus, sauvegarde faite à la main car le format vanilla borne les piles à 99). | GameTests : densité additive, batteries, capacité |
+| ~~YAF-065~~ | ✅ | S | **Composteur** — **fait** : quatre composts → un Engrais par pas, sans énergie. | GameTest : la boucle tourne seule |
 
 ## Épic H — Progression
 

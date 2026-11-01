@@ -160,7 +160,8 @@ public final class Crops {
                 override.catalyst().orElse(crop.catalyst()),
                 override.harvest().orElse(crop.harvest()),
                 new Cost(override.ticks().orElse(crop.cost().ticks()), override.waterPerCycle().orElse(crop.cost().water()),
-                        override.energyPerTick().orElse(crop.cost().energy())));
+                        override.energyPerTick().orElse(crop.cost().energy()),
+                        override.residueChance().orElse(crop.cost().residue())));
     }
 
     /**

@@ -11,5 +11,5 @@
     "R": { "item": "minecraft:redstone_block" },
     "I": { "item": "minecraft:iron_block" }
   },
-  "result": { "id": "yafs:battery" }
+  "result": { "id": "yafs:module_battery" }
 }

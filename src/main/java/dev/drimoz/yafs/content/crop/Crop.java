@@ -27,8 +27,13 @@ public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substr
      * @param ticks  la durée d'un cycle à vitesse ×1 et efficacité pleine
      * @param water  l'eau d'un cycle complet, en mB
      * @param energy ce que coûte la parcelle alimentée, en FE/t, avant les modules
+     * @param residue la chance, par plant et par cycle, de laisser un résidu (du compost) avec la récolte
      */
-    public record Cost(int ticks, int water, int energy) {
+    public record Cost(int ticks, int water, int energy, double residue) {
+
+        public Cost(int ticks, int water, int energy) {
+            this(ticks, water, energy, 0.2D);
+        }
 
         /**
          * Le blé vanilla dans les meilleures conditions : 7 stades, une chance sur 3 d'avancer par

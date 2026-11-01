@@ -9,7 +9,7 @@
   "key": {
     "R": { "item": "minecraft:redstone_block" },
     "D": { "item": "minecraft:diamond" },
-    "A": { "item": "yafs:accelerator_1" }
+    "A": { "item": "yafs:module_accelerator_1" }
   },
-  "result": { "id": "yafs:accelerator_2" }
+  "result": { "id": "yafs:module_accelerator_2" }
 }

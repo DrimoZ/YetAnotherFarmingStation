@@ -12,5 +12,5 @@
     "R": { "item": "minecraft:redstone" },
     "C": { "item": "minecraft:cauldron" }
   },
-  "result": { "id": "yafs:rain_collector" }
+  "result": { "id": "yafs:module_rain_collector" }
 }

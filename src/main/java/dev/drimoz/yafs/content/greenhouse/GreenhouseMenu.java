@@ -3,6 +3,7 @@ package dev.drimoz.yafs.content.greenhouse;
 import dev.drimoz.yafs.content.module.ModuleItem;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.fertilizer.FertilizerDefinition;
 import dev.drimoz.yafs.core.Efficiency;
 import dev.drimoz.yafs.core.PlotStatus;
 import dev.drimoz.yafs.core.RedstoneCondition;
@@ -48,6 +49,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int MODULE_TAB_X = GuiMetrics.WIDTH;
     public static final int MODULE_COLUMNS = 3;
     public static final int MODULE_TAB_WIDTH = 116;
+    /** L'air entre la grille des modules et l'emplacement d'engrais. */
+    public static final int FERTILIZER_GAP = 4;
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
@@ -109,7 +112,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
 
     /** Côté serveur. */
     public GreenhouseMenu(int id, Inventory inventory, GreenhouseBlockEntity greenhouse) {
-        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.modules(), greenhouse.plots(),
+        this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.modules(), greenhouse.fertilizer(), greenhouse.plots(),
                 greenhouse.menuData(), ContainerLevelAccess.create(greenhouse.getLevel(), greenhouse.getBlockPos()));
     }
 
@@ -119,9 +122,19 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     private GreenhouseMenu(int id, Inventory inventory, BlockPos pos, GreenhouseTier tier) {
-        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), clientModules(tier, inventory),
+        this(id, inventory, tier, pos, new ItemStackHandler(OUTPUT_SLOTS), clientModules(tier, inventory), clientFertilizer(inventory),
                 new ItemStackHandler(tier.plots() * GreenhouseBlockEntity.SLOTS_PER_PLOT),
                 new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
+    }
+
+    /** Côté client aussi : le registre des engrais est synchronisé, le slot sait ce qu'il refuse. */
+    private static ItemStackHandler clientFertilizer(Inventory inventory) {
+        return new ItemStackHandler(1) {
+            @Override
+            public boolean isItemValid(int slot, ItemStack stack) {
+                return FertilizerDefinition.of(stack, inventory.player.level().registryAccess()) != null;
+            }
+        };
     }
 
     /** Côté client, la même règle qu'au serveur, pour que le slot refuse sans aller-retour. */
@@ -144,7 +157,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         };
     }
 
-    private GreenhouseMenu(int id, Inventory inventory, GreenhouseTier tier, BlockPos pos, IItemHandler output, IItemHandler modules,
+    private GreenhouseMenu(int id, Inventory inventory, GreenhouseTier tier, BlockPos pos, IItemHandler output, IItemHandler modules, IItemHandler fertilizer,
                            ItemStackHandler plots, ContainerData data, ContainerLevelAccess access) {
         super(YafsMenus.GREENHOUSE.get(), id);
 
@@ -181,7 +194,15 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 }
             });
         }
-        this.detailStart = OUTPUT_SLOTS + modules.getSlots();
+        // L'engrais, sous la grille des modules : même onglet, même visibilité.
+        int fertilizerY = GuiMetrics.TAB_TOP + GuiMetrics.TAB_HEADER + ((modules.getSlots() + MODULE_COLUMNS - 1) / MODULE_COLUMNS) * GuiMetrics.SLOT + FERTILIZER_GAP + 1;
+        addSlot(new SlotItemHandler(fertilizer, 0, MODULE_TAB_X + GuiMetrics.TAB_PADDING + 1, fertilizerY) {
+            @Override
+            public boolean isActive() {
+                return GreenhouseMenu.this.modulesVisible;
+            }
+        });
+        this.detailStart = OUTPUT_SLOTS + modules.getSlots() + 1;
         IItemHandlerModifiable detail = new SelectedPlot(plots);
         for (int slot = 0; slot < GreenhouseBlockEntity.SLOTS_PER_PLOT; slot++) {
             addSlot(new PlotSlot(detail, slot, GuiMetrics.column(1 + slot) + 1, DETAIL_SLOTS_Y));
@@ -454,7 +475,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     }
 
     public int moduleSlots() {
-        return this.detailStart - OUTPUT_SLOTS;
+        return this.detailStart - OUTPUT_SLOTS - 1;
+    }
+
+    /** L'emplacement d'engrais, juste après les modules. */
+    public Slot fertilizerSlot() {
+        return this.slots.get(OUTPUT_SLOTS + moduleSlots());
     }
 
     /**
@@ -471,6 +497,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         boolean moved;
         if (index < this.containerSlots) {
             moved = moveItemStackTo(stack, this.containerSlots, this.containerSlots + PLAYER_SLOTS, true);
+        } else if (FertilizerDefinition.of(stack, player.level().registryAccess()) != null && fertilizerSlot().mayPlace(stack)) {
+            moved = moveItemStackTo(stack, OUTPUT_SLOTS + moduleSlots(), OUTPUT_SLOTS + moduleSlots() + 1, false);
         } else if (ModuleItem.kind(stack) != null) {
             moved = moveItemStackTo(stack, OUTPUT_SLOTS, this.detailStart, false);
         } else if (this.selected >= 0) {

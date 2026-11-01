@@ -31,10 +31,11 @@ import net.minecraft.resources.ResourceLocation;
 
  * @param lightCap          la lumière ne monte pas au-dessus de ce niveau tant que le module tourne (15 : sans effet)
  * @param outputCapacity   items en plus que chaque case de sortie accepte, par module
+* @param composting       lots de quatre composts changés en un engrais, par pas de dix ticks et par module
  */
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
                                double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack,
-                               int energyCapacity, int lightCap, int outputCapacity) {
+                               int energyCapacity, int lightCap, int outputCapacity, int composting) {
 
     /** Une serre est éclairée ou plongée dans le noir, pas les deux ; et deux lumières, seule la plus forte compterait. */
     public boolean excludes(ModuleDefinition other) {
@@ -72,6 +73,7 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
             Codec.intRange(1, 64).optionalFieldOf("max_stack", 16).forGetter(ModuleDefinition::maxStack),
             Codec.intRange(0, 100_000_000).optionalFieldOf("energy_capacity", 0).forGetter(ModuleDefinition::energyCapacity),
             Codec.intRange(0, 15).optionalFieldOf("light_cap", 15).forGetter(ModuleDefinition::lightCap),
-            Codec.intRange(0, 100_000).optionalFieldOf("output_capacity", 0).forGetter(ModuleDefinition::outputCapacity)
+            Codec.intRange(0, 100_000).optionalFieldOf("output_capacity", 0).forGetter(ModuleDefinition::outputCapacity),
+            Codec.intRange(0, 64).optionalFieldOf("composting", 0).forGetter(ModuleDefinition::composting)
     ).apply(instance, ModuleDefinition::new));
 }

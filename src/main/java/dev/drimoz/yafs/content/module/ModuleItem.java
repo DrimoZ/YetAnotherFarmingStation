@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * Un module de serre : un item par module, comme un bloc par palier. Ce qu'il fait vient de la
- * {@link ModuleDefinition} de même identifiant ({@code yafs:heater} → {@code data/yafs/yafs/module/heater.json}),
+ * {@link ModuleDefinition} de même identifiant ({@code yafs:module_heater} → {@code data/yafs/yafs/module/module_heater.json}),
  * qu'un datapack peut retoucher. Empilés dans un emplacement, ils combinent leurs effets.
  */
 public class ModuleItem extends Item {
@@ -79,6 +79,7 @@ public class ModuleItem extends Item {
                 if (module.lightFloor() > 0) gain(tooltip, "yafs.module.light_floor", module.lightFloor());
                 if (module.lightCap() < 15) gain(tooltip, "yafs.module.light_cap", module.lightCap());
                 if (module.outputCapacity() > 0) gain(tooltip, "yafs.module.output_capacity", module.outputCapacity());
+                if (module.composting() > 0) gain(tooltip, "yafs.module.composting", module.composting());
                 if (module.temperatureShift() != 0) gain(tooltip, "yafs.module.temperature_shift", String.format("%+.0f", module.temperatureShift()));
                 if (module.rainCollection() > 0) gain(tooltip, "yafs.module.rain_collection", module.rainCollection());
                 if (module.energyMultiplier() > 1D) cost(tooltip, "yafs.module.energy_cost", times(module.energyMultiplier()));

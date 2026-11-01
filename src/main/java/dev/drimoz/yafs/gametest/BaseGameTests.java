@@ -82,6 +82,21 @@ public class BaseGameTests {
         helper.succeed();
     }
 
+    /** Le socle prend de l'engrais par un tuyau, et rien d'autre ; l'engrais ne ressort pas. */
+    @GameTest(template = PLATFORM)
+    public static void theBaseTakesFertilizerOnly(GameTestHelper helper) {
+        GreenhouseBlockEntity greenhouse = place(helper);
+        IItemHandler items = helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, helper.absolutePos(CORNER), Direction.DOWN);
+        int fertilizerSlot = GreenhouseBlockEntity.OUTPUT_SLOTS;
+
+        helper.assertTrue(items.getSlots() == fertilizerSlot + 1, "Emplacements vus : " + items.getSlots());
+        helper.assertTrue(items.insertItem(fertilizerSlot, new ItemStack(Items.BONE_MEAL, 5), false).isEmpty(), "Poudre d'os refusée");
+        helper.assertTrue(greenhouse.fertilizer().getStackInSlot(0).getCount() == 5, "Poudre d'os non rangée");
+        helper.assertTrue(items.insertItem(fertilizerSlot, new ItemStack(Items.DIRT), false).getCount() == 1, "De la terre acceptée");
+        helper.assertTrue(items.extractItem(fertilizerSlot, 64, false).isEmpty(), "L'engrais ressort par le socle");
+        helper.succeed();
+    }
+
     private static GreenhouseBlockEntity place(GameTestHelper helper) {
         helper.setBlock(MASTER, YafsBlocks.GREENHOUSE_T1.get().defaultBlockState().setValue(MultiblockBlock.FACING, Direction.NORTH));
         YafsBlocks.GREENHOUSE_T1.get().placeParts(helper.getLevel(), helper.absolutePos(MASTER), Direction.NORTH);

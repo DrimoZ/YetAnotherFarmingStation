@@ -9,7 +9,7 @@
   "key": {
     "B": { "item": "minecraft:bone_block" },
     "G": { "item": "minecraft:gold_block" },
-    "D": { "item": "yafs:density_1" }
+    "D": { "item": "yafs:module_density_1" }
   },
-  "result": { "id": "yafs:density_2" }
+  "result": { "id": "yafs:module_density_2" }
 }

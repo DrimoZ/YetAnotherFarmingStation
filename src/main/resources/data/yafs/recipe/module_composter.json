@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "IPI",
+    "BCB",
+    "IPI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "P": { "item": "minecraft:piston" },
+    "B": { "item": "minecraft:bone_meal" },
+    "C": { "item": "minecraft:composter" }
+  },
+  "result": { "id": "yafs:module_composter" }
+}
