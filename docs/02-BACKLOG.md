@@ -51,7 +51,7 @@ un monde).
 |---|---|---|---|---|
 | ~~YAF-020~~ | ✅ | S | **Environnement de base** — **fait** : lumière du ciel au maître, biome → °C, pluie ; recalcul toutes les 100 ticks. | JUnit : conversion biome → °C ; GameTest : sans ciel, lumière 0 |
 | ~~YAF-021~~ | ✅ | S | **Réserve d'eau** — **fait** (8 000 mB, 500 mB par croissance, seau ou tuyau sur n'importe quel bloc en attendant les ports) : réservoir de fluide, consommation par cycle × densité, eau vide → PROBLEM. | GameTest : sans eau, rien ne pousse et le statut le dit |
-| ~~YAF-022~~ | ✅ | S | **Engrais** — **fait** : registre datapack `yafs/fertilizer`, un emplacement dans l'onglet Modules (aussi rempli par le socle), vitesse **ou** rendement. registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
+| ~~YAF-022~~ | ✅ | S | **Engrais** — **fait** : registre datapack `yafs/fertilizer`, un emplacement dans la colonne de l'eau (aussi rempli par le socle), un item nourrit une parcelle N secondes, vitesse **ou** rendement. registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
 | ~~YAF-023~~ | ✅ | S | **Résidus** — **fait** : compost par plant et par cycle (`residue_chance`), dans la sortie ; sortie pleine → BLOCKED. compost avec une probabilité par culture ; réserve pleine → BLOCKED. | GameTest : conservation, blocage |
 
 ## Épic D — Interface

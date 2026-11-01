@@ -594,13 +594,18 @@ public class GreenhouseBlockEntity extends BlockEntity {
     /** L'engrais en cours d'emploi : l'item qu'on y met, ou la dernière charge entamée. */
     @Nullable
     private FertilizerDefinition running;
-    /** Ce qu'il reste à l'item entamé, en cycles de plant. */
+    /** Ce qu'il reste à l'item entamé, en secondes de parcelle. */
     private double charge;
     /** Les lots de quatre composts que les Composteurs changent en engrais à chaque pas. */
     private int composting;
 
     public ItemStackHandler fertilizer() {
         return this.fertilizer;
+    }
+
+    /** Ce qu'il reste à l'item entamé, en secondes de parcelle ; pour les GameTests. */
+    public double fertilizerCharge() {
+        return this.charge;
     }
 
     @Nullable
@@ -614,7 +619,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
         if (definition == null) return false;
         this.fertilizer.extractItem(0, 1, false);
         this.running = definition;
-        this.charge += definition.cycles();
+        this.charge += definition.seconds();
         return true;
     }
 
@@ -626,10 +631,13 @@ public class GreenhouseBlockEntity extends BlockEntity {
         pullFertilizer();
     }
 
-    /** L'engrais est consommé à la mesure de ce qui pousse : {@code cycles} de plant, tous plants compris. */
-    private void consumeFertilizer(double cycles) {
+    /**
+     * L'engrais s'use par parcelle qui pousse et par temps : {@code plotSeconds} secondes de parcelle,
+     * quelle que soit la vitesse ou la densité de cette parcelle.
+     */
+    private void consumeFertilizer(double plotSeconds) {
         if (this.running == null) return;
-        this.charge -= cycles;
+        this.charge -= plotSeconds;
         while (this.charge <= 0D && pullFertilizer()) {
             // le suivant prend le relais, avec ce qui dépassait
         }
@@ -920,11 +928,14 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.verdicts[plot] = verdict;
         Crop.Cost cost = known.cost();
 
+        // Entamé ici, pas au pas : une serre où rien ne pousse n'use pas son engrais. L'effet se juge avant
+        // de consommer, comme la vitesse : un gros pas ne perd pas la récolte de l'engrais qu'il vide.
+        if (!before.isMature()) startFertilizer();
+        double yieldUp = fertilizerYield();
+
         // Mûre et bloquée : elle attend la place, sans rien coûter.
         double total = 1D;
         if (!before.isMature()) {
-            // Entamé ici, pas au pas : une serre où rien ne pousse n'use pas son engrais.
-            startFertilizer();
             // La part payée du pas donne la part du bonus : 7 ticks sur 10 payés, 70 % de l'accélération.
             this.speeds[plot] = (1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered) * fertilizerSpeed();
             // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
@@ -933,14 +944,14 @@ public class GreenhouseBlockEntity extends BlockEntity {
             // Sans accélération (vitesse 1), rien ne change ; ×4 en vitesse, un cycle boit moitié moins.
             double water = (1D + (this.waterMultiplier - 1D) * powered) / Math.sqrt(Math.max(1D, this.speeds[plot]));
             this.thirstOfStep = (total - before.progress()) * cost.water() * this.density * water;
-            consumeFertilizer((total - before.progress()) * this.density);
+            consumeFertilizer((double) elapsed / STEP);
         }
         if (total < 1D) {
             this.growth[plot] = new PlotGrowth((float) total, before.density());
             return PlotStatus.WORKING;
         }
 
-        int harvested = harvest(level, known.harvestState(), (int) total, fertilizerYield(), cost.residue());
+        int harvested = harvest(level, known.harvestState(), (int) total, yieldUp, cost.residue());
         // Ce qui n'a pas trouvé place reste mûr, pour le pas suivant.
         this.growth[plot] = new PlotGrowth((float) Math.min(1D, total - harvested), before.density());
         return harvested == 0 ? PlotStatus.BLOCKED : PlotStatus.WORKING;

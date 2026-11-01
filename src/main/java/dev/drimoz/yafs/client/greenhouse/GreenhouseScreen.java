@@ -32,6 +32,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluids;
+
+import javax.annotation.Nullable;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.ArrayList;
@@ -131,7 +133,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
         if (this.menu.selected() < 0) {
             renderHeaders(graphics, left, top);
-            GuiSprites.fluidGauge(graphics, left + WATER_X, top + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight(),
+            GuiSprites.fluidGauge(graphics, left + WATER_X, top + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, waterHeight(),
                     new FluidStack(Fluids.WATER, Math.max(0, this.menu.water())), GreenhouseBlockEntity.TANK_CAPACITY);
             for (int plot = 0; plot < this.menu.tier().plots(); plot++) {
                 renderPlot(graphics, plot, left + plotX(plot), top + plotY(plot));
@@ -313,7 +315,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
         @Override
         protected int contentHeight() {
-            return OPS_ROWS * GuiTheme.LINE + 11;
+            return OPS_ROWS * GuiTheme.LINE + 11 + (fertilizerInSlot() != null ? 3 * GuiTheme.LINE + 3 : 0);
         }
 
         @Override
@@ -367,34 +369,18 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
 
         /**
-         * Les emplacements de modules, celui de l'engrais dessous, puis chaque module posé avec son
-         * plafond par serre, et la taille d'une case de sortie. Ce que les modules font ensemble se
+         * Les emplacements de modules, puis chaque module posé avec son plafond par serre, et la
+         * taille d'une case de sortie. Ce que les modules font ensemble se
          * lit dans Fonctionnement, l'effet d'un module dans son infobulle.
          */
         @Override
         protected int contentHeight() {
-            return fertilizerBottom() + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE + GuiTheme.LINE + 3;
+            return moduleRows() * GuiMetrics.SLOT + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE + GuiTheme.LINE + 3;
         }
 
         @Override
         protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
-            // L'emplacement d'engrais est un slot du menu ; ici, ce qu'on lit à sa droite.
-            int textX = x + GuiMetrics.SLOT + 4;
-            int fertilizerY = y + moduleRows() * GuiMetrics.SLOT + GreenhouseMenu.FERTILIZER_GAP;
-            ItemStack fertilizer = menu.fertilizerSlot().getItem();
-            FertilizerDefinition definition = minecraft.level == null ? null : FertilizerDefinition.of(fertilizer, minecraft.level.registryAccess());
-            if (fertilizer.isEmpty()) {
-                GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.fertilizer"), textX, fertilizerY + 4, GuiTheme.TAB_MUTED);
-            } else {
-                GuiTheme.tabLabel(graphics, font, Component.literal(font.plainSubstrByWidth(fertilizer.getHoverName().getString(), MODULE_CONTENT_WIDTH - GuiMetrics.SLOT - 4)), textX, fertilizerY + 1);
-                if (definition != null) {
-                    boolean speed = definition.speed() > 1D;
-                    GuiTheme.tabValue(graphics, font, Component.translatable(speed ? "yafs.gui.fertilizer.speed" : "yafs.gui.fertilizer.yield",
-                            number(speed ? definition.speed() : definition.yield())), textX, fertilizerY + 1 + GuiTheme.LINE, GuiTheme.Status.WORKING.tabColour);
-                }
-            }
-
-            int lineY = y + fertilizerBottom() + 6;
+            int lineY = y + moduleRows() * GuiMetrics.SLOT + 6;
             graphics.fill(x, lineY - 3, x + MODULE_CONTENT_WIDTH, lineY - 2, 0x40FFFFFF);
 
             List<ItemStack> installed = installedModules();
@@ -532,6 +518,17 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         int plants = plantsPerPlot();
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.plants", String.valueOf(plants), plants > 1 ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
 
+        // L'engrais : son effet sur toutes les parcelles, et ce qu'il coûte, par minute.
+        FertilizerDefinition fertilizer = fertilizerInSlot();
+        if (fertilizer != null) {
+            separator(graphics, x, row += GuiTheme.LINE + 3);
+            header(graphics, x, row, "yafs.gui.ops.section.fertilizer");
+            boolean speed = fertilizer.speed() > 1D;
+            row(graphics, x, row += GuiTheme.LINE, speed ? "yafs.gui.ops.fertilizer.speed" : "yafs.gui.ops.fertilizer.yield",
+                    "×" + number(speed ? fertilizer.speed() : fertilizer.yield()), GuiTheme.Status.WORKING.tabColour);
+            row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.fertilizer.use", number(Math.round(growing * 600D / fertilizer.seconds()) / 10D) + " /min", GuiTheme.TAB_VALUE);
+        }
+
         separator(graphics, x, row += GuiTheme.LINE + 3);
         header(graphics, x, row, "yafs.gui.ops.section.plots");
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.growing", growing + " / " + this.menu.tier().plots(), GuiTheme.TAB_VALUE);
@@ -563,6 +560,13 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     /** Le titre d'un groupe de lignes, en retrait de couleur. */
     private void header(GuiGraphics graphics, int x, int y, String key) {
         GuiTheme.tabValue(graphics, this.font, Component.translatable(key), x, y, GuiTheme.TAB_MUTED);
+    }
+
+    /** L'engrais de l'emplacement, s'il y en a un. */
+    @Nullable
+    private FertilizerDefinition fertilizerInSlot() {
+        if (this.minecraft == null || this.minecraft.level == null) return null;
+        return FertilizerDefinition.of(this.menu.fertilizerSlot().getItem(), this.minecraft.level.registryAccess());
     }
 
     private static void separator(GuiGraphics graphics, int x, int y) {
@@ -665,7 +669,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
         if (this.menu.selected() >= 0) return;
 
-        if (within(mouseX, mouseY, this.leftPos + WATER_X, this.topPos + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
+        if (within(mouseX, mouseY, this.leftPos + WATER_X, this.topPos + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, waterHeight())) {
             graphics.renderComponentTooltip(this.font, List.of(
                     Component.translatable("yafs.gui.water", this.menu.water(), GreenhouseBlockEntity.TANK_CAPACITY),
                     Component.translatable("yafs.gui.water.help").withStyle(ChatFormatting.GRAY),
@@ -754,14 +758,14 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return this.menu.contentRows() * GuiMetrics.SLOT;
     }
 
+    /** La jauge d'eau laisse la dernière case de sa colonne à l'emplacement d'engrais. */
+    private int waterHeight() {
+        return gaugeHeight() - GuiMetrics.SLOT - 2;
+    }
+
     private boolean isModuleSlot(Slot slot) {
         int index = this.menu.slots.indexOf(slot);
         return index >= GreenhouseBlockEntity.OUTPUT_SLOTS && index < GreenhouseBlockEntity.OUTPUT_SLOTS + this.menu.moduleSlots();
-    }
-
-    /** Le bas de la rangée d'engrais, en coordonnées du contenu de l'onglet Modules. */
-    private int fertilizerBottom() {
-        return moduleRows() * GuiMetrics.SLOT + GreenhouseMenu.FERTILIZER_GAP + GuiMetrics.SLOT;
     }
 
     /** Ce qu'une case de sortie tient : 64, plus ce que donnent les modules de capacité (même calcul que la serre). */

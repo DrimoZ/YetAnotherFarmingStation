@@ -133,15 +133,16 @@
   "yafs.tooltip.module.one_dark": "Éclairée ou dans le noir, pas les deux : une serre prend une Lampe de croissance ou une Obscurité, pas l'une et l'autre.",
   "yafs.gui.requires.light_range": "Lumière %s–%s (%s)",
   "yafs.jei.requirements_dark": "Lumière %s–%s · %s–%s °C",
-  "yafs.gui.fertilizer": "Engrais",
-  "yafs.gui.fertilizer.speed": "Vitesse ×%s",
-  "yafs.gui.fertilizer.yield": "Rendement ×%s",
-  "yafs.gui.fertilizer.help": "Emplacement d'engrais. La poudre d'os accélère toutes les parcelles ; l'Engrais (4 composts) augmente la récolte. Une sorte à la fois, consommée à mesure que ça pousse. Un tuyau branché au socle le remplit aussi.",
+  "yafs.gui.fertilizer.help": "Engrais. La poudre d'os fait pousser toutes les parcelles 1,5× plus vite ; l'Engrais (4 composts) augmente la récolte de 1,5×. Une sorte à la fois. Un item nourrit UNE parcelle qui pousse un certain temps (voir Fonctionnement), même rapide ou dense. Un tuyau branché au socle le remplit aussi.",
   "yafs.gui.modules.output": "Sortie / case",
   "item.yafs.compost": "Compost",
   "item.yafs.fertilizer": "Engrais",
   "item.yafs.module_composter": "Composteur",
   "yafs.tooltip.compost": "Une récolte en laisse parfois. Quatre font un Engrais.",
-  "yafs.tooltip.fertilizer": "À mettre dans l'emplacement d'engrais de la serre : récolte ×1,5, un item nourrit 16 cycles de plant.",
-  "yafs.module.composting": "Change le compost en Engrais (%s lots de quatre tous les dix ticks)"
+  "yafs.tooltip.fertilizer": "Dans l'emplacement d'engrais : récolte ×1,5 sur toutes les parcelles. Un item nourrit une parcelle qui pousse pendant 10 minutes.",
+  "yafs.module.composting": "Change le compost en Engrais (%s lots de quatre tous les dix ticks)",
+  "yafs.gui.ops.section.fertilizer": "Engrais",
+  "yafs.gui.ops.fertilizer.speed": "Vitesse",
+  "yafs.gui.ops.fertilizer.yield": "Rendement",
+  "yafs.gui.ops.fertilizer.use": "Usage"
 }

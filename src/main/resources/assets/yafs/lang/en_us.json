@@ -133,15 +133,16 @@
   "yafs.tooltip.module.one_dark": "Lit or dark, not both: a greenhouse takes a Grow Lamp or a Blackout, not one of each.",
   "yafs.gui.requires.light_range": "Light %s–%s (%s)",
   "yafs.jei.requirements_dark": "Light %s–%s · %s–%s °C",
-  "yafs.gui.fertilizer": "Fertilizer",
-  "yafs.gui.fertilizer.speed": "Speed ×%s",
-  "yafs.gui.fertilizer.yield": "Yield ×%s",
-  "yafs.gui.fertilizer.help": "Fertilizer slot. Bone meal speeds every plot up; Fertilizer (4 compost) raises the harvest. One kind at a time, used up as plants grow. Pipes plugged into the base fill it too.",
+  "yafs.gui.fertilizer.help": "Fertilizer. Bone meal makes every plot grow 1.5× faster; Fertilizer (4 compost) raises the harvest 1.5×. One kind at a time. One item feeds ONE growing plot for a while (see Operation), however fast or dense it is. Pipes plugged into the base fill it too.",
   "yafs.gui.modules.output": "Output / slot",
   "item.yafs.compost": "Compost",
   "item.yafs.fertilizer": "Fertilizer",
   "item.yafs.module_composter": "Composter",
   "yafs.tooltip.compost": "A harvest leaves some now and then. Four make a Fertilizer.",
-  "yafs.tooltip.fertilizer": "Put it in the greenhouse fertilizer slot: harvest ×1.5, one item feeds 16 plant cycles.",
-  "yafs.module.composting": "Turns compost into Fertilizer (%s batches of four every half second)"
+  "yafs.tooltip.fertilizer": "In the fertilizer slot: harvest ×1.5 on every plot. One item feeds one growing plot for 10 minutes.",
+  "yafs.module.composting": "Turns compost into Fertilizer (%s batches of four every half second)",
+  "yafs.gui.ops.section.fertilizer": "Fertilizer",
+  "yafs.gui.ops.fertilizer.speed": "Speed",
+  "yafs.gui.ops.fertilizer.yield": "Yield",
+  "yafs.gui.ops.fertilizer.use": "Use"
 }

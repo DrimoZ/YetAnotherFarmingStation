@@ -19,16 +19,17 @@ import javax.annotation.Nullable;
  * deux : choisir est tout l'intérêt.
  *
  * <pre>{@code
- * { "item": "minecraft:bone_meal", "speed": 1.5, "cycles": 8 }
+ * { "item": "minecraft:bone_meal", "speed": 1.5, "seconds": 300 }
  * }</pre>
  *
  * @param item   l'item qui sert d'engrais
  * @param speed  vitesse de toutes les parcelles, multipliée (1 : sans effet)
  * @param yield  récolte de toutes les parcelles, multipliée (1 : sans effet)
- * @param cycles combien de cycles de plant un item nourrit : consommé à la mesure de la production,
- *               pas à la seconde, donc une serre à l'arrêt n'en use pas
+ * @param seconds combien de secondes un item nourrit <b>une</b> parcelle qui pousse. L'engrais s'use
+ *                par parcelle et par temps, jamais par plant ni par vitesse : accélérer ou densifier ne
+ *                le fait pas partir plus vite. Une parcelle qui ne pousse pas n'en use pas
  */
-public record FertilizerDefinition(Item item, double speed, double yield, int cycles) {
+public record FertilizerDefinition(Item item, double speed, double yield, int seconds) {
 
     public static final ResourceKey<Registry<FertilizerDefinition>> REGISTRY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "fertilizer"));
@@ -37,7 +38,7 @@ public record FertilizerDefinition(Item item, double speed, double yield, int cy
             BuiltInRegistries.ITEM.byNameCodec().fieldOf("item").forGetter(FertilizerDefinition::item),
             Codec.doubleRange(1D, 16D).optionalFieldOf("speed", 1D).forGetter(FertilizerDefinition::speed),
             Codec.doubleRange(1D, 16D).optionalFieldOf("yield", 1D).forGetter(FertilizerDefinition::yield),
-            Codec.intRange(1, 1_000_000).optionalFieldOf("cycles", 8).forGetter(FertilizerDefinition::cycles)
+            Codec.intRange(1, 1_000_000).optionalFieldOf("seconds", 300).forGetter(FertilizerDefinition::seconds)
     ).apply(instance, FertilizerDefinition::new));
 
     /**

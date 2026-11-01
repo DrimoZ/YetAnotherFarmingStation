@@ -139,6 +139,37 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
+    /**
+     * L'engrais s'use par parcelle et par temps : 60 secondes de pousse en prennent 60 secondes de
+     * parcelle, avec ou sans accélérateur ni densité. Sinon une serre à fond mangerait des dizaines
+     * d'items par seconde.
+     */
+    @GameTest(template = PLATFORM)
+    public static void fertilizerUseIgnoresSpeedAndDensity(GameTestHelper helper) {
+        GreenhouseBlockEntity plain = place(helper);
+        plantWheat(plain, 0);
+        plain.fertilizer().setStackInSlot(0, new ItemStack(Items.BONE_MEAL, 2));
+        plain.grow(GreenhouseBlockEntity.STEP * 60);
+        double expected = 300D - 60D;
+        helper.assertTrue(Math.abs(plain.fertilizerCharge() - expected) < 1e-6, "Sans module : charge " + plain.fertilizerCharge());
+
+        // Même serre, deuxième phase : accélérateur et densité posés, alimentés. Elle pousse bien plus vite,
+        // et l'engrais baisse pourtant d'autant : 60 secondes de parcelle de plus.
+        float before = plain.growth(0).progress();
+        plain.modules().setStackInSlot(0, module("module_accelerator_1"));
+        plain.modules().setStackInSlot(1, module("module_density_1").copyWithCount(4));
+        plain.energy().receiveEnergy(900_000, false);
+        plain.grow(GreenhouseBlockEntity.STEP * 60);
+        helper.assertTrue(plain.energy().getEnergyStored() < 900_000, "Les modules n'ont rien coûté : le test ne prouve rien");
+        helper.assertTrue(plain.growth(0).progress() - before > 3 * (before), "Pas plus vite : " + before + " puis " + plain.growth(0).progress());
+        helper.assertTrue(Math.abs(plain.fertilizerCharge() - (expected - 60D)) < 1e-6, "Avec modules : charge " + plain.fertilizerCharge());
+        helper.succeed();
+    }
+
+    private static ItemStack module(String id) {
+        return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, id)));
+    }
+
     // Inner work
 
     private static void plantWheat(GreenhouseBlockEntity greenhouse, int plot) {

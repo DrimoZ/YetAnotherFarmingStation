@@ -223,7 +223,7 @@ modules.
 | Ressource | Statut | Détail |
 |---|---|---|
 | **Eau** | obligatoire | réserve interne en fluide ; consommée à chaque cycle de croissance, × densité |
-| **Engrais** | facultatif | un emplacement dans l'onglet Modules, rempli à la main ou par un tuyau au socle ; poudre d'os (vitesse ×1,5) ou Engrais (rendement ×1,5) : vitesse **ou** rendement, à la Stardew |
+| **Engrais** | facultatif | un emplacement dans la colonne de l'eau, rempli à la main ou par un tuyau au socle ; poudre d'os (vitesse ×1,5) ou Engrais (rendement ×1,5) : vitesse **ou** rendement, à la Stardew |
 | **Énergie (FE)** | modules seulement | une serre au soleil et arrosée tourne sans énergie |
 
 Le mod **ne produit pas d'énergie**, comme FactoryIO.
@@ -237,12 +237,17 @@ automatiquement avec le module Composteur. La boucle est fermée.
 **Décidé le 1/11/2026.** Le résidu arrive dans la sortie avec la récolte, tout ou rien comme le reste :
 une sortie pleine bloque la parcelle (BLOCKED), résidu compris. Chance par plant et par cycle,
 0,2 par défaut, réglable par culture (`residue_chance`). Quatre composts font un Engrais, au
-établi ou par le Composteur (un lot de quatre par pas, sans énergie). La boucle n'est volontairement
-pas autosuffisante : 0,2 compost produit pour 0,25 nécessaire (un Engrais nourrit 16 cycles).
+établi ou par le Composteur (un lot de quatre par pas, sans énergie). La boucle ne se ferme que
+si on investit : le compost suit la production (plants × cycles), l'engrais suit le nombre de
+parcelles. Une serre de base en couvre à peine 2 %, une serre poussée à fond bien plus que ce qu'il
+lui faut.
 
 Un engrais est une entrée de datapack (`data/<ns>/yafs/fertilizer/*.json` : `item`, `speed`, `yield`,
-`cycles`). Il est entamé quand une parcelle en a besoin, jamais pour rien, et consommé à la mesure de
-ce qui pousse (cycles de plant × plants), pas à la seconde.
+`cycles`). Il est entamé quand une parcelle en a besoin, jamais pour rien. **Un item nourrit une parcelle qui
+pousse pendant N secondes** (`seconds`) : l'engrais s'use par parcelle et par temps, jamais par
+plant ni par vitesse. Une seule sorte à la fois, appliquée à toutes les parcelles qui poussent ;
+accélérer ou densifier ne le fait pas partir plus vite. Écarté : l'user à la production, qui
+faisait partir une quarantaine d'items par seconde dans une P3 à fond.
 
 **Identifiants** : tout module s'appelle `module_*` (item, définition, modèle), pour les retrouver d'un coup.
 

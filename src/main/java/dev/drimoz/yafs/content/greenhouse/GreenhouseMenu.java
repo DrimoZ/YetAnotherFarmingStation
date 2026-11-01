@@ -49,8 +49,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int MODULE_TAB_X = GuiMetrics.WIDTH;
     public static final int MODULE_COLUMNS = 3;
     public static final int MODULE_TAB_WIDTH = 116;
-    /** L'air entre la grille des modules et l'emplacement d'engrais. */
-    public static final int FERTILIZER_GAP = 4;
+    /** La colonne de la réserve d'eau ; l'engrais y prend la dernière case. */
+    public static final int WATER_COLUMN = 5;
 
     /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
@@ -194,12 +194,11 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 }
             });
         }
-        // L'engrais, sous la grille des modules : même onglet, même visibilité.
-        int fertilizerY = GuiMetrics.TAB_TOP + GuiMetrics.TAB_HEADER + ((modules.getSlots() + MODULE_COLUMNS - 1) / MODULE_COLUMNS) * GuiMetrics.SLOT + FERTILIZER_GAP + 1;
-        addSlot(new SlotItemHandler(fertilizer, 0, MODULE_TAB_X + GuiMetrics.TAB_PADDING + 1, fertilizerY) {
+        // L'engrais, dans la colonne de l'eau, tout en bas : sous la jauge, qui est raccourcie pour lui. Caché avec elle sous le détail.
+        addSlot(new SlotItemHandler(fertilizer, 0, GuiMetrics.column(WATER_COLUMN) + 1, GRID_TOP + (contentRows() - 1) * GuiMetrics.SLOT + 1) {
             @Override
             public boolean isActive() {
-                return GreenhouseMenu.this.modulesVisible;
+                return GreenhouseMenu.this.selected < 0;
             }
         });
         this.detailStart = OUTPUT_SLOTS + modules.getSlots() + 1;
