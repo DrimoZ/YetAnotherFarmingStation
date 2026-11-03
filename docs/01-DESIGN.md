@@ -230,11 +230,11 @@ champ désigne des items, il accepte un item (`minecraft:dirt`) ou un `#tag` (`#
 | `crop/*.json` | `seed` (item ou `#tag` : toute une famille), `substrates`, `catalyst` (item ou `#tag`), `requirements` (`min_light`, `max_light`, `min_temperature`, `max_temperature`), `harvest`, `ticks`, `water_per_cycle`, `energy_per_tick`, `residue_chance`, `residue_item` |
 | `substrate/*.json` | `items`, `counts_as`, `speed`, `yield` (le bonus de la parcelle) |
 | `fertilizer/*.json` | `item` (item ou `#tag`), `speed`, `yield`, `seconds` |
-| `module/module_*.json` | tout ce qu\x27un module fait : `max_stack`, effets, coûts, `output_capacity`, `energy_capacity`, et le Composteur (`composting`, `compost_input`, `compost_count`, `compost_output`) |
+| `module/module_*.json` | tout ce qu'un module fait : `max_stack`, effets, coûts, `output_capacity`, `energy_capacity`, et le Composteur (`composting`, `compost_input`, `compost_count`, `compost_output`) |
 | `recipe/*.json` | les recettes du mod sont des recettes ordinaires, remplaçables, ingrédients en tag compris |
 
-Un module reste lié à **son** item (`module_*`) : un datapack règle ce qu\x27il fait, pas quel item
-d\x27un autre mod devient module. Les valeurs par défaut du Composteur sont 4 composts pour 1 Engrais.
+Un module reste lié à **son** item (`module_*`) : un datapack règle ce qu'il fait, pas quel item
+d'un autre mod devient module. Les valeurs par défaut du Composteur sont 4 composts pour 1 Engrais.
 
 ---
 
