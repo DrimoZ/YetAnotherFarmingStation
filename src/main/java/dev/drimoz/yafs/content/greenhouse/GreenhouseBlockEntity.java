@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.Crops;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.content.fertilizer.FertilizerDefinition;
 import dev.drimoz.yafs.content.module.ModuleDefinition;
@@ -601,9 +602,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
     private Item runningItem;
     /** Ce qu'il reste à l'item entamé, en secondes de parcelle. */
     private double charge;
-    /** Les lots de quatre composts que les Composteurs changent en engrais à chaque pas. */
-    private int composting;
-
     public ItemStackHandler fertilizer() {
         return this.fertilizer;
     }
@@ -662,29 +660,31 @@ public class GreenhouseBlockEntity extends BlockEntity {
     }
 
     /**
-     * Le Composteur : quatre composts de la sortie font un engrais dans l'emplacement, s'il est vide
-     * ou en tient déjà. Jamais plus de {@link #composting} lots par pas ; rien n'est perdu si
-     * l'emplacement est plein.
+     * Le Composteur : {@code compost_count} items de la sortie (par défaut quatre composts) font un item
+     * dans l'emplacement (par défaut un engrais), s'il est vide ou en tient déjà. Jamais plus de
+     * {@code batches} lots par pas ; rien n'est perdu si l'emplacement est plein. Tout vient du JSON du module.
      */
-    private void compost() {
-        for (int batch = 0; batch < this.composting; batch++) {
-            ItemStack product = new ItemStack(YafsItems.FERTILIZER.get());
-            if (!this.fertilizer.insertItem(0, product, true).isEmpty() || !takeFromOutput(YafsItems.COMPOST.get(), 4)) return;
+    private void compost(ModuleDefinition module, int batches) {
+        ItemMatch input = module.compostInput().orElseGet(() -> new ItemMatch(YafsItems.COMPOST.get(), null));
+        Item output = module.compostOutput().orElseGet(YafsItems.FERTILIZER);
+        for (int batch = 0; batch < batches; batch++) {
+            ItemStack product = new ItemStack(output);
+            if (!this.fertilizer.insertItem(0, product, true).isEmpty() || !takeFromOutput(input, module.compostCount())) return;
             this.fertilizer.insertItem(0, product, false);
         }
     }
 
-    private boolean takeFromOutput(Item item, int count) {
+    private boolean takeFromOutput(ItemMatch match, int count) {
         int found = 0;
         for (int slot = 0; slot < this.output.getSlots() && found < count; slot++) {
             ItemStack stack = this.output.getStackInSlot(slot);
-            if (stack.is(item)) found += stack.getCount();
+            if (match.contains(stack.getItem())) found += stack.getCount();
         }
         if (found < count) return false;
 
         int left = count;
         for (int slot = 0; slot < this.output.getSlots() && left > 0; slot++) {
-            if (this.output.getStackInSlot(slot).is(item)) left -= this.output.extractItem(slot, left, false).getCount();
+            if (match.contains(this.output.getStackInSlot(slot).getItem())) left -= this.output.extractItem(slot, left, false).getCount();
         }
         return true;
     }
@@ -770,7 +770,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
 
         runModules(elapsed, powered);
         collectRain();
-        if (this.composting > 0) compost();
 
         // L'eau change à chaque pas ; la lumière et la température, au relevé seulement.
         this.environment = new Conditions(this.environment.light(), this.environment.temperature(), watered);
@@ -818,7 +817,6 @@ public class GreenhouseBlockEntity extends BlockEntity {
         this.energyMultiplier = 1D;
         this.waterMultiplier = 1D;
         this.density = 1;
-        this.composting = 0;
         if (this.level == null) return;
 
         Registry<ModuleDefinition> registry = this.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
@@ -836,7 +834,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             this.energyMultiplier *= ModuleDefinition.stacked(module.energyMultiplier(), count);
             this.waterMultiplier *= ModuleDefinition.stacked(module.waterMultiplier(), count);
             this.density += module.extraPlants() * count;
-            this.composting += module.composting() * count;
+            if (module.composting() > 0 && elapsed > 0) compost(module, module.composting() * count);
             // rain_collection est en mB par seconde : on reporte les fractions d'un pas à l'autre.
             if (this.raining && module.rainCollection() > 0) {
                 this.rainfall += (double) module.rainCollection() * count * elapsed / STEP;
@@ -959,7 +957,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             return PlotStatus.WORKING;
         }
 
-        int harvested = harvest(level, known.harvestState(), (int) total, yieldUp, cost.residue());
+        int harvested = harvest(level, known.harvestState(), (int) total, yieldUp, cost.residue(), cost.residueItem() != null ? cost.residueItem() : YafsItems.COMPOST.get());
         // Ce qui n'a pas trouvé place reste mûr, pour le pas suivant.
         this.growth[plot] = new PlotGrowth((float) Math.min(1D, total - harvested), before.density());
         return harvested == 0 ? PlotStatus.BLOCKED : PlotStatus.WORKING;
@@ -997,7 +995,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
      * <p>La table de loot est tirée pour {@link #LOOT_ROLLS} plants au plus, puis mise à l'échelle :
      * soixante-quatre cycles coûtent autant que huit.
      */
-    private int harvest(ServerLevel level, BlockState mature, int cycles, double yield, double residue) {
+    private int harvest(ServerLevel level, BlockState mature, int cycles, double yield, double residue, Item residueItem) {
         int rolls = Math.min(cycles * this.density, LOOT_ROLLS);
         List<ItemStack> sample = new ArrayList<>();
         for (int roll = 0; roll < rolls; roll++) {
@@ -1010,7 +1008,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             // Le résidu, lui, ne suit pas l'engrais : une chance par plant, tirée au pas.
             double expected = plants * residue;
             int compost = (int) expected + (level.random.nextDouble() < expected - (int) expected ? 1 : 0);
-            if (compost > 0) drops.add(new ItemStack(YafsItems.COMPOST.get(), compost));
+            if (compost > 0) drops.add(new ItemStack(residueItem, compost));
             if (fits(drops)) {
                 for (ItemStack drop : drops) ItemHandlerHelper.insertItemStacked(this.output, drop, false);
                 return batch;

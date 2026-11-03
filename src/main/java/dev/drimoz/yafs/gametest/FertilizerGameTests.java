@@ -102,8 +102,8 @@ public class FertilizerGameTests {
         List<SubstrateDefinition> substrates = CropData.substrates();
         try {
             List<CropOverride> changed = new ArrayList<>(shipped);
-            changed.add(new CropOverride(Items.WHEAT_SEEDS, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
-                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(1D)));
+            changed.add(new CropOverride(new ItemMatch(Items.WHEAT_SEEDS, null), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(1D), Optional.empty()));
             CropData.set(changed, substrates);
 
             GreenhouseBlockEntity greenhouse = place(helper);

@@ -412,8 +412,8 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 case GreenhouseBlockEntity.CROP -> Crops.of(stack.getItem()) != null;
                 case GreenhouseBlockEntity.SUBSTRATE -> sown != null ? sown.accepts(stack.getItem())
                         : Crops.all().values().stream().anyMatch(crop -> crop.accepts(stack.getItem()));
-                default -> sown != null ? sown.catalyst() == stack.getItem()
-                        : Crops.all().values().stream().anyMatch(crop -> crop.catalyst() == stack.getItem());
+                default -> sown != null ? sown.catalyst() != null && sown.catalyst().contains(stack.getItem())
+                        : Crops.all().values().stream().anyMatch(crop -> crop.catalyst() != null && crop.catalyst().contains(stack.getItem()));
             };
         }
     }
@@ -530,7 +530,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
             int target;
             if (seed) target = GreenhouseBlockEntity.CROP;
             else if (sown != null && sown.accepts(stack.getItem())) target = GreenhouseBlockEntity.SUBSTRATE;
-            else if (sown != null && sown.catalyst() == stack.getItem()) target = GreenhouseBlockEntity.CATALYST;
+            else if (sown != null && sown.catalyst() != null && sown.catalyst().contains(stack.getItem())) target = GreenhouseBlockEntity.CATALYST;
             else continue;
             if (!this.plots.getStackInSlot(base + target).isEmpty()) continue;
             this.plots.setStackInSlot(base + target, stack.split(1));

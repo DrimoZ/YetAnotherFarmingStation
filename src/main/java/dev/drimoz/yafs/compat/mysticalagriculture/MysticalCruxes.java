@@ -2,6 +2,7 @@ package dev.drimoz.yafs.compat.mysticalagriculture;
 
 import com.blakebr0.mysticalagriculture.api.MysticalAgricultureAPI;
 import dev.drimoz.yafs.content.crop.Crop;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import net.minecraft.world.item.Item;
 
 import javax.annotation.Nullable;
@@ -28,7 +29,7 @@ public final class MysticalCruxes {
             Crop detected = found.get(crop.getSeedsItem());
             if (detected == null) continue;
             found.put(detected.seed(), new Crop(detected.seed(), detected.block(), detected.age(), detected.substrates(),
-                    detected.requirements(), crop.getCruxBlock().asItem(), detected.harvest(), detected.cost()));
+                    detected.requirements(), new ItemMatch(crop.getCruxBlock().asItem(), null), detected.harvest(), detected.cost()));
         }
     }
 

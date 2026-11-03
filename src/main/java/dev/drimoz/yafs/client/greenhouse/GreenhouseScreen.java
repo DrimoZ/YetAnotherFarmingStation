@@ -243,7 +243,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 Items.WHEAT_SEEDS,
                 crop == null ? Items.DIRT : crop.substrates().stream().filter(item -> item == Items.DIRT).findFirst()
                         .orElse(crop.substrates().stream().findFirst().orElse(Items.DIRT)),
-                crop == null ? null : crop.catalyst()
+                crop == null || crop.catalyst() == null ? null : crop.catalyst().first()
         };
         for (int slot = 0; slot < GreenhouseBlockEntity.SLOTS_PER_PLOT; slot++) {
             Slot detail = this.menu.detailSlot(slot);
@@ -744,7 +744,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         if (!crop.accepts(substrate.getItem())) return Component.translatable("yafs.gui.reason.wrong_substrate", soil);
 
         ItemStack catalyst = greenhouse.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.CATALYST);
-        if (!crop.catalysedBy(catalyst.getItem())) return Component.translatable("yafs.gui.reason.no_catalyst", new ItemStack(crop.catalyst()).getHoverName());
+        if (!crop.catalysedBy(catalyst.getItem())) return Component.translatable("yafs.gui.reason.no_catalyst", new ItemStack(crop.catalyst().first()).getHoverName());
         if (this.menu.water() <= 0) return Component.translatable("yafs.gui.reason.dry");
         return Component.translatable("yafs.gui.status.problem");
     }

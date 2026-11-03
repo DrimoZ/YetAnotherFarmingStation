@@ -83,7 +83,7 @@ public class CropCategory implements IRecipeCategory<Crop> {
         builder.addSlot(RecipeIngredientRole.INPUT, 1, 1 + ROW).setStandardSlotBackground()
                 .addItemStacks(crop.substrates().stream().map(ItemStack::new).toList());
         if (crop.catalyst() != null) {
-            builder.addSlot(RecipeIngredientRole.CATALYST, 1, 1 + 2 * ROW).setStandardSlotBackground().addItemStack(new ItemStack(crop.catalyst()));
+            builder.addSlot(RecipeIngredientRole.CATALYST, 1, 1 + 2 * ROW).setStandardSlotBackground().addItemStacks(crop.catalyst().items().map(ItemStack::new).toList());
         }
 
         List<ItemStack> drops = CropData.harvest(crop.seed());

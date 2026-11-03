@@ -21,18 +21,19 @@ import java.util.Set;
  * @param cost         ce que coûte un cycle : durée, eau, énergie ; chaque parcelle paie le sien, la serre la somme
  */
 public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substrates, Requirements requirements,
-                   @Nullable Item catalyst, @Nullable Block harvest, Cost cost) {
+                   @Nullable ItemMatch catalyst, @Nullable Block harvest, Cost cost) {
 
     /**
      * @param ticks  la durée d'un cycle à vitesse ×1 et efficacité pleine
      * @param water  l'eau d'un cycle complet, en mB
      * @param energy ce que coûte la parcelle alimentée, en FE/t, avant les modules
      * @param residue la chance, par plant et par cycle, de laisser un résidu (du compost) avec la récolte
+     * @param residueItem ce que laisse ce résidu ; {@code null} : le compost du mod
      */
-    public record Cost(int ticks, int water, int energy, double residue) {
+    public record Cost(int ticks, int water, int energy, double residue, @Nullable Item residueItem) {
 
         public Cost(int ticks, int water, int energy) {
-            this(ticks, water, energy, 0.2D);
+            this(ticks, water, energy, 0.2D, null);
         }
 
         /**
@@ -68,6 +69,6 @@ public record Crop(Item seed, Block block, IntegerProperty age, Set<Item> substr
 
     /** Sans exigence, n'importe quoi convient, même rien. */
     public boolean catalysedBy(Item catalyst) {
-        return this.catalyst == null || this.catalyst == catalyst;
+        return this.catalyst == null || this.catalyst.contains(catalyst);
     }
 }

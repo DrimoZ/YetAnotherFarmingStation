@@ -138,7 +138,7 @@
   "item.yafs.module_composter": "Composter",
   "yafs.tooltip.compost": "A harvest leaves some now and then. Four make a Fertilizer.",
   "yafs.tooltip.fertilizer": "In the fertilizer slot: harvest ×1.5 on every plot. One item feeds one growing plot for 10 minutes.",
-  "yafs.module.composting": "Turns compost into Fertilizer (%s batches of four every half second)",
+  "yafs.module.composting": "Recycles items of the output, by default 4 compost into a Fertilizer (%s batches every ten ticks)",
   "block.yafs.fertile_soil": "Fertile Soil",
   "yafs.tooltip.soil.yield": "Soil: harvest ×%s on this plot.",
   "yafs.tooltip.soil.speed": "Soil: growth ×%s on this plot.",

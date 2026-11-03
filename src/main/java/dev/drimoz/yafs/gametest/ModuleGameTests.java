@@ -5,6 +5,7 @@ import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.CropData;
 import dev.drimoz.yafs.content.crop.CropOverride;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import dev.drimoz.yafs.content.crop.SubstrateDefinition;
 import dev.drimoz.yafs.core.Efficiency.Requirements;
 import dev.drimoz.yafs.content.greenhouse.GreenhouseBlockEntity;
@@ -313,8 +314,8 @@ public class ModuleGameTests {
         List<SubstrateDefinition> substrates = CropData.substrates();
         try {
             List<CropOverride> changed = new ArrayList<>(shipped);
-            changed.add(new CropOverride(Items.WHEAT_SEEDS, Optional.empty(), Optional.empty(), Optional.of(new Requirements(0, 0, 0D, 40D)),
-                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+            changed.add(new CropOverride(new ItemMatch(Items.WHEAT_SEEDS, null), Optional.empty(), Optional.empty(), Optional.of(new Requirements(0, 0, 0D, 40D)),
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
             CropData.set(changed, substrates);
 
             GreenhouseBlockEntity greenhouse = place(helper);

@@ -220,6 +220,22 @@ parcelle a le sien : c'est une progression sans passer par les modules. La **Ter
 sol se cumule avec l'engrais, qui est pour toute la serre ; l'arrondi de la récolte est non biaisé
 (un ×1,25 donne un item de plus une fois sur quatre). `items` accepte des items et des `#tags`.
 
+### 5.4 Tout se règle par datapack
+
+Rien de ce qui suit n'est figé dans le code ; un modpack le change sans y toucher. Partout où un
+champ désigne des items, il accepte un item (`minecraft:dirt`) ou un `#tag` (`#c:seeds`).
+
+| Fichier (`data/<ns>/yafs/…`) | Champs |
+|---|---|
+| `crop/*.json` | `seed` (item ou `#tag` : toute une famille), `substrates`, `catalyst` (item ou `#tag`), `requirements` (`min_light`, `max_light`, `min_temperature`, `max_temperature`), `harvest`, `ticks`, `water_per_cycle`, `energy_per_tick`, `residue_chance`, `residue_item` |
+| `substrate/*.json` | `items`, `counts_as`, `speed`, `yield` (le bonus de la parcelle) |
+| `fertilizer/*.json` | `item` (item ou `#tag`), `speed`, `yield`, `seconds` |
+| `module/module_*.json` | tout ce qu\x27un module fait : `max_stack`, effets, coûts, `output_capacity`, `energy_capacity`, et le Composteur (`composting`, `compost_input`, `compost_count`, `compost_output`) |
+| `recipe/*.json` | les recettes du mod sont des recettes ordinaires, remplaçables, ingrédients en tag compris |
+
+Un module reste lié à **son** item (`module_*`) : un datapack règle ce qu\x27il fait, pas quel item
+d\x27un autre mod devient module. Les valeurs par défaut du Composteur sont 4 composts pour 1 Engrais.
+
 ---
 
 ## 6. Ressources

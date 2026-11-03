@@ -2,10 +2,15 @@ package dev.drimoz.yafs.content.module;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
+import java.util.Optional;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
+import dev.drimoz.yafs.content.crop.ItemMatch;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 
 /**
  * Ce que fait un module de serre (YAF-060), défini en datapack : {@code data/<ns>/yafs/module/*.json},
@@ -31,11 +36,15 @@ import net.minecraft.resources.ResourceLocation;
 
  * @param lightCap          la lumière ne monte pas au-dessus de ce niveau tant que le module tourne (15 : sans effet)
  * @param outputCapacity   items en plus que chaque case de sortie accepte, par module
-* @param composting       lots de quatre composts changés en un engrais, par pas de dix ticks et par module
+* @param composting       lots changés en un autre item (le compost en engrais), par pas de dix ticks et par module
+ * @param compostInput     ce qu'un lot consomme : un item ou un {@code #tag} ; le compost du mod par défaut
+ * @param compostCount     combien d'items consomme un lot (4 par défaut)
+ * @param compostOutput    ce qu'un lot produit ; l'engrais du mod par défaut
  */
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
                                double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack,
-                               int energyCapacity, int lightCap, int outputCapacity, int composting) {
+                               int energyCapacity, int lightCap, int outputCapacity, int composting,
+                               Optional<ItemMatch> compostInput, int compostCount, Optional<Item> compostOutput) {
 
     /** Une serre est éclairée ou plongée dans le noir, pas les deux ; et deux lumières, seule la plus forte compterait. */
     public boolean excludes(ModuleDefinition other) {
@@ -74,6 +83,9 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
             Codec.intRange(0, 100_000_000).optionalFieldOf("energy_capacity", 0).forGetter(ModuleDefinition::energyCapacity),
             Codec.intRange(0, 15).optionalFieldOf("light_cap", 15).forGetter(ModuleDefinition::lightCap),
             Codec.intRange(0, 100_000).optionalFieldOf("output_capacity", 0).forGetter(ModuleDefinition::outputCapacity),
-            Codec.intRange(0, 64).optionalFieldOf("composting", 0).forGetter(ModuleDefinition::composting)
+            Codec.intRange(0, 64).optionalFieldOf("composting", 0).forGetter(ModuleDefinition::composting),
+            ItemMatch.CODEC.optionalFieldOf("compost_input").forGetter(ModuleDefinition::compostInput),
+            Codec.intRange(1, 64).optionalFieldOf("compost_count", 4).forGetter(ModuleDefinition::compostCount),
+            BuiltInRegistries.ITEM.byNameCodec().optionalFieldOf("compost_output").forGetter(ModuleDefinition::compostOutput)
     ).apply(instance, ModuleDefinition::new));
 }

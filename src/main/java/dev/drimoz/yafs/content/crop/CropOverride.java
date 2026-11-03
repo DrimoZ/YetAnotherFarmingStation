@@ -28,25 +28,28 @@ import java.util.Optional;
  * {@code harvest} : le bloc dont la table de loot donne la récolte, quand ce n'est pas la culture
  * mûre elle-même ; une tige de melon ne lâche que des graines, c'est le melon qu'on récolte.
  *
- * <p>{@code residue_chance} : la chance de compost par plant et par cycle (0,2 par défaut).
+ * <p>{@code residue_chance} : la chance de compost par plant et par cycle (0,2 par défaut). {@code residue_item} : ce que
+ * laisse ce résidu, le compost du mod par défaut.
  * {@code ticks}, {@code water_per_cycle}, {@code energy_per_tick} : ce que coûte un cycle de
  * cette culture, voir {@link Crop.Cost}. Une graine de Mystical Agriculture peut ainsi prendre
  * deux fois plus longtemps et coûter dix fois plus qu'un blé.
  */
-public record CropOverride(Item seed, Optional<List<ItemMatch>> substrates, Optional<Item> catalyst,
+public record CropOverride(ItemMatch seed, Optional<List<ItemMatch>> substrates, Optional<ItemMatch> catalyst,
                            Optional<Requirements> requirements, Optional<Block> harvest,
                            Optional<Integer> ticks, Optional<Integer> waterPerCycle, Optional<Integer> energyPerTick,
-                           Optional<Double> residueChance) {
+                           Optional<Double> residueChance,
+                           Optional<Item> residueItem) {
 
     public static final Codec<CropOverride> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            BuiltInRegistries.ITEM.byNameCodec().fieldOf("seed").forGetter(CropOverride::seed),
+            ItemMatch.CODEC.fieldOf("seed").forGetter(CropOverride::seed),
             ItemMatch.CODEC.listOf().optionalFieldOf("substrates").forGetter(CropOverride::substrates),
-            BuiltInRegistries.ITEM.byNameCodec().optionalFieldOf("catalyst").forGetter(CropOverride::catalyst),
+            ItemMatch.CODEC.optionalFieldOf("catalyst").forGetter(CropOverride::catalyst),
             Requirements.CODEC.optionalFieldOf("requirements").forGetter(CropOverride::requirements),
             BuiltInRegistries.BLOCK.byNameCodec().optionalFieldOf("harvest").forGetter(CropOverride::harvest),
             Codec.intRange(20, 10_000_000).optionalFieldOf("ticks").forGetter(CropOverride::ticks),
             Codec.intRange(0, 1_000_000).optionalFieldOf("water_per_cycle").forGetter(CropOverride::waterPerCycle),
             Codec.intRange(0, 1_000_000).optionalFieldOf("energy_per_tick").forGetter(CropOverride::energyPerTick),
-            Codec.doubleRange(0D, 1D).optionalFieldOf("residue_chance").forGetter(CropOverride::residueChance)
+            Codec.doubleRange(0D, 1D).optionalFieldOf("residue_chance").forGetter(CropOverride::residueChance),
+            BuiltInRegistries.ITEM.byNameCodec().optionalFieldOf("residue_item").forGetter(CropOverride::residueItem)
     ).apply(instance, CropOverride::new));
 }

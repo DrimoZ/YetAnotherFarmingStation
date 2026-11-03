@@ -159,10 +159,13 @@ public final class Crops {
         // Mystical Agriculture : une graine à crux exige son crux ; un datapack peut encore dire autre chose.
         if (ModList.get().isLoaded("mysticalagriculture")) MysticalCruxes.apply(found);
 
+        // Une surcharge désigne une graine ou un #tag de graines : un modpack règle toute une famille d'un coup.
         for (CropOverride override : CropData.overrides()) {
-            Crop crop = found.get(override.seed());
-            if (crop == null) crop = undetected(override);
-            if (crop != null) found.put(override.seed(), apply(override, crop));
+            override.seed().items().forEach(seed -> {
+                Crop crop = found.get(seed);
+                if (crop == null) crop = undetected(override, seed);
+                if (crop != null) found.put(seed, apply(override, crop));
+            });
         }
 
         LOGGER.info("{} cultures reconnues en {} ms", found.size(), (System.nanoTime() - start) / 1_000_000);
@@ -180,7 +183,8 @@ public final class Crops {
                 override.harvest().orElse(crop.harvest()),
                 new Cost(override.ticks().orElse(crop.cost().ticks()), override.waterPerCycle().orElse(crop.cost().water()),
                         override.energyPerTick().orElse(crop.cost().energy()),
-                        override.residueChance().orElse(crop.cost().residue())));
+                        override.residueChance().orElse(crop.cost().residue()),
+                        override.residueItem().orElse(crop.cost().residueItem())));
     }
 
     /**
@@ -188,14 +192,14 @@ public final class Crops {
      * substrats, et la graine poser un bloc à âge ; sinon on ne sait pas la faire pousser.
      */
     @Nullable
-    private static Crop undetected(CropOverride override) {
-        IntegerProperty age = override.seed() instanceof BlockItem item ? ageOf(item.getBlock()) : null;
+    private static Crop undetected(CropOverride override, Item seed) {
+        IntegerProperty age = seed instanceof BlockItem item ? ageOf(item.getBlock()) : null;
         if (age == null || override.substrates().isEmpty()) {
             LOGGER.error("Culture {} refusée : la graine ne pose pas de bloc à âge, ou la surcharge ne nomme pas ses substrats",
-                    BuiltInRegistries.ITEM.getKey(override.seed()));
+                    BuiltInRegistries.ITEM.getKey(seed));
             return null;
         }
-        return new Crop(override.seed(), ((BlockItem) override.seed()).getBlock(), age, Set.of(), Requirements.TOLERANT, null, null, Cost.DEFAULT);
+        return new Crop(seed, ((BlockItem) seed).getBlock(), age, Set.of(), Requirements.TOLERANT, null, null, Cost.DEFAULT);
     }
 
     @Nullable

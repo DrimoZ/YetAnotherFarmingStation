@@ -138,7 +138,7 @@
   "item.yafs.module_composter": "Composteur",
   "yafs.tooltip.compost": "Une récolte en laisse parfois. Quatre font un Engrais.",
   "yafs.tooltip.fertilizer": "Dans l'emplacement d'engrais : récolte ×1,5 sur toutes les parcelles. Un item nourrit une parcelle qui pousse pendant 10 minutes.",
-  "yafs.module.composting": "Change le compost en Engrais (%s lots de quatre tous les dix ticks)",
+  "yafs.module.composting": "Recycle des items de la sortie, par défaut 4 composts en un Engrais (%s lots tous les dix ticks)",
   "block.yafs.fertile_soil": "Terre fertile",
   "yafs.tooltip.soil.yield": "Sol : récolte ×%s sur cette parcelle.",
   "yafs.tooltip.soil.speed": "Sol : croissance ×%s sur cette parcelle.",

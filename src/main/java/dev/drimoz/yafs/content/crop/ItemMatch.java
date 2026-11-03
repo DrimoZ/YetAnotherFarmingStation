@@ -39,6 +39,12 @@ public record ItemMatch(@Nullable Item item, @Nullable TagKey<Item> tag) {
         return this.tag != null ? "#" + this.tag.location() : BuiltInRegistries.ITEM.getKey(this.item).toString();
     }
 
+    /** Le premier item désigné, pour en montrer un quand il en faut un seul ; {@code null} si le tag est vide. */
+    @Nullable
+    public Item first() {
+        return items().findFirst().orElse(null);
+    }
+
     /** Cet item est-il désigné ? Sans parcourir le tag : un item sait de quels tags il est. */
     public boolean contains(Item candidate) {
         return this.item != null ? this.item == candidate : candidate.builtInRegistryHolder().is(this.tag);
