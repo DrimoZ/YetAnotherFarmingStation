@@ -1,4 +1,4 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/bone_meal" }
+  "textures": { "layer0": "yafs:item/module_density_1" }
 }
