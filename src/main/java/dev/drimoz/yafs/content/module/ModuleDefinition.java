@@ -12,41 +12,11 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
-/**
- * Ce que fait un module de serre (YAF-060), défini en datapack : {@code data/<ns>/yafs/module/*.json},
- * du même identifiant que l'item {@link ModuleItem} qu'il décrit. Un datapack retouche un module
- * existant ; une définition sans item ne fait rien.
- * Registre de datapack, synchronisé par le jeu ; il se recharge au lancement du monde, pas au
- * {@code /reload}, ce qui suffit pour un contenu qu'on ne retouche pas en jouant.
- *
- * <pre>{@code
- * { "temperature_shift": 20, "energy_per_tick": 40 }
- * }</pre>
- *
- * @param lightFloor        la lumière ne descend pas sous ce niveau tant que le module tourne
- * @param temperatureShift  degrés ajoutés à la température du lieu (négatif pour refroidir)
- * @param rainCollection    mB recueillis par seconde quand il pleut sur la serre
- * @param energyPerTick     FE consommés par tick ; sans énergie, le module ne fait rien
- * @param speedMultiplier   vitesse d'une parcelle alimentée, multipliée ; sans énergie, rien
- * @param energyMultiplier  coût en énergie de chaque parcelle alimentée, multiplié
- * @param waterMultiplier   eau bue par une parcelle alimentée, multipliée
- * @param density           plants par parcelle quand il est seul ; chaque module ajoute {@code density - 1} plants
- * @param maxStack          combien de ce module une serre accepte ; leurs effets s'additionnent
- * @param energyCapacity    FE de réserve en plus, par module
-
- * @param lightCap          la lumière ne monte pas au-dessus de ce niveau tant que le module tourne (15 : sans effet)
- * @param outputCapacity   items en plus que chaque case de sortie accepte, par module
-* @param composting       lots changés en un autre item (le compost en engrais), par pas de dix ticks et par module
- * @param compostInput     ce qu'un lot consomme : un item ou un {@code #tag} ; le compost du mod par défaut
- * @param compostCount     combien d'items consomme un lot (4 par défaut)
- * @param compostOutput    ce qu'un lot produit ; l'engrais du mod par défaut
- */
 public record ModuleDefinition(int lightFloor, double temperatureShift, int rainCollection, int energyPerTick,
                                double speedMultiplier, double energyMultiplier, double waterMultiplier, int density, int maxStack,
                                int energyCapacity, int lightCap, int outputCapacity, int composting,
                                Optional<ItemMatch> compostInput, int compostCount, Optional<Item> compostOutput) {
 
-    /** Une serre est éclairée ou plongée dans le noir, pas les deux ; et deux lumières, seule la plus forte compterait. */
     public boolean excludes(ModuleDefinition other) {
         boolean lights = this.lightFloor > 0 && other.lightFloor > 0;
         boolean darks = this.lightCap < 15 && other.lightCap < 15;
@@ -54,15 +24,10 @@ public record ModuleDefinition(int lightFloor, double temperatureShift, int rain
         return lights || darks || opposed;
     }
 
-    /** Les plants que ce module ajoute à chaque parcelle. */
     public int extraPlants() {
         return this.density - 1;
     }
 
-    /**
-     * Un multiplicateur empilé {@code count} fois : les bonus s'additionnent. Deux Accélérateurs I
-     * (×2, soit +100 % chacun) font ×3, pas ×4. Des modules différents, eux, se multiplient.
-     */
     public static double stacked(double multiplier, int count) {
         return 1D + (multiplier - 1D) * count;
     }

@@ -7,12 +7,6 @@ import net.minecraft.util.StringRepresentable;
 import javax.annotation.Nullable;
 import java.util.Locale;
 
-/**
- * Les paliers d'une serre, voir {@code docs/01-DESIGN.md} §2.2. Un palier donne de la place
- * (parcelles, modules), jamais de vitesse.
- *
- * @param plotSide côté de la grille de parcelles : 2 pour 2×2
- */
 public enum GreenhouseTier implements StringRepresentable {
     I(new MultiblockShape(3, 3, 3), 2, 2),
     II(new MultiblockShape(5, 4, 5), 3, 4),
@@ -46,7 +40,6 @@ public enum GreenhouseTier implements StringRepresentable {
         return this.moduleSlots;
     }
 
-    /** Le palier qu'on peut poser par-dessus celui-ci ; {@code null} au dernier. */
     @Nullable
     public GreenhouseTier next() {
         return ordinal() + 1 < values().length ? values()[ordinal() + 1] : null;

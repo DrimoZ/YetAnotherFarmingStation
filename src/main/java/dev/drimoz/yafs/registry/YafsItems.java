@@ -49,7 +49,6 @@ public final class YafsItems {
 
     public static final DeferredItem<BlockItem> FERTILE_SOIL = ITEMS.registerSimpleBlockItem("fertile_soil", YafsBlocks.FERTILE_SOIL);
 
-    /** Le résidu des récoltes, et ce qu'on en fait : quatre composts font un engrais. */
     public static final DeferredItem<Item> COMPOST = ITEMS.register("compost", () -> described("yafs.tooltip.compost"));
     public static final DeferredItem<Item> FERTILIZER = ITEMS.register("fertilizer", () -> described("yafs.tooltip.fertilizer"));
 
@@ -61,7 +60,7 @@ public final class YafsItems {
             }
         };
     }
-    /** Les modules, pour ce qui les traite tous pareil (teinte, onglet). */
+
     public static List<DeferredItem<ModuleItem>> modules() {
         return List.of(GROW_LAMP, HEATER, COOLER, RAIN_COLLECTOR, ACCELERATOR_1, ACCELERATOR_2, ACCELERATOR_3, DENSITY_1, DENSITY_2, DENSITY_3, BATTERY, BLACKOUT, CAPACITY, COMPOSTER);
     }

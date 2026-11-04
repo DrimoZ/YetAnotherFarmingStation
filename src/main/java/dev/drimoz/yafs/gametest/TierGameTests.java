@@ -34,10 +34,6 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import java.util.List;
 
-/**
- * Les paliers (YAF-005) et la montée de palier sur place (YAF-006). Même plateforme que
- * {@link GreenhouseGameTests}, maître en (5, 2, 5) : un P3 de 7×5×7 y tient.
- */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class TierGameTests {
@@ -45,8 +41,6 @@ public class TierGameTests {
     private static final String PLATFORM = "platform";
 
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
-
-    // Tests (Paliers)
 
     @GameTest(template = PLATFORM)
     public static void aSecondTierFillsItsVolume(GameTestHelper helper) {
@@ -58,9 +52,6 @@ public class TierGameTests {
         placesWhole(helper, YafsItems.GREENHOUSE_T3.get(), GreenhouseTier.III, 245);
     }
 
-    // Tests (Montée de palier)
-
-    /** Le P2 posé sur un P1 garde tout : parcelles, croissance, sortie, eau. Rien ne tombe. */
     @GameTest(template = PLATFORM)
     public static void upgradingKeepsEverything(GameTestHelper helper) {
         GreenhouseBlockEntity small = place(helper);
@@ -88,7 +79,6 @@ public class TierGameTests {
         helper.succeed();
     }
 
-    /** Un bloc dans le volume agrandi : rien ne change, l'item reste. */
     @GameTest(template = PLATFORM)
     public static void anObstacleBlocksTheUpgrade(GameTestHelper helper) {
         place(helper);
@@ -102,7 +92,6 @@ public class TierGameTests {
         helper.succeed();
     }
 
-    /** On ne saute pas de palier : un P3 sur un P1 n'agrandit rien. */
     @GameTest(template = PLATFORM)
     public static void tiersCannotBeSkipped(GameTestHelper helper) {
         place(helper);
@@ -112,8 +101,6 @@ public class TierGameTests {
         helper.assertBlockPresent(YafsBlocks.GREENHOUSE_T1.get(), MASTER);
         helper.succeed();
     }
-
-    // Inner work
 
     private static void placesWhole(GameTestHelper helper, Item item, GreenhouseTier tier, int positions) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
@@ -138,7 +125,6 @@ public class TierGameTests {
         return (GreenhouseBlockEntity) helper.getBlockEntity(MASTER);
     }
 
-    /** Comme un joueur : le bloc visé répond d'abord, l'item ensuite s'il laisse faire. Renvoie la pile en main. */
     private static ItemStack click(GameTestHelper helper, BlockPos target, ItemStack stack) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);

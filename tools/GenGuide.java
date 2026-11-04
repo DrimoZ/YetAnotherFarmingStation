@@ -11,14 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-/**
- * Fills the tables of the player wiki (docs/wiki/*.md) from the data files and the code: a number
- * quoted in those tables exists, because it comes from there (YAF-091).
- *
- * <p>Usage: {@code java tools/GenGuide.java} rewrites the wiki; {@code java tools/GenGuide.java --check}
- * exits with an error when a table is stale, writing nothing. Each block sits between
- * {@code <!-- gen:name -->} and {@code <!-- /gen:name -->}; what is between them is replaced.
- */
 public class GenGuide {
 
     static final Path ROOT = Path.of("").toAbsolutePath();
@@ -75,8 +67,6 @@ public class GenGuide {
         System.out.println("Wiki written: " + WIKI);
     }
 
-    // Blocks
-
     static String replace(String doc, String name, String content) {
         String open = "<!-- gen:" + name + " -->";
         String close = "<!-- /gen:" + name + " -->";
@@ -86,15 +76,12 @@ public class GenGuide {
         return doc.substring(0, a + open.length()) + "\n" + content.strip() + "\n" + doc.substring(b);
     }
 
-    // Reading
-
     static void loadLang() throws IOException {
         String text = Files.readString(RES.resolve("assets/yafs/lang/en_us.json"), StandardCharsets.UTF_8);
         Matcher m = Pattern.compile("\"([^\"]+)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(text);
         while (m.find()) lang.put(m.group(1), m.group(2).replace("\\\"", "\""));
     }
 
-    /** The English name of an item or block: ours from the lang file, vanilla's by its id ("sugar_cane" is Sugar Cane). */
     static String name(String id) {
         int colon = id.indexOf(':');
         String ns = id.substring(0, colon), path = id.substring(colon + 1);
@@ -129,8 +116,6 @@ public class GenGuide {
         return m;
     }
 
-    // Numbers
-
     static String n(double v) {
         if (v == Math.rint(v)) return String.format(Locale.US, "%,d", (long) v);
         String s = String.format(Locale.US, "%.2f", v);
@@ -150,8 +135,6 @@ public class GenGuide {
     static double num(String s) {
         return Double.parseDouble(s.replace("_", ""));
     }
-
-    // Tables
 
     static String tiers() throws IOException {
         Path file = JAVA.resolve("content/greenhouse/GreenhouseTier.java");

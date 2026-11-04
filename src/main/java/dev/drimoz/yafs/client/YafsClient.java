@@ -18,8 +18,6 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 import java.util.List;
 
-/** Ce que le client enregistre sur le bus du mod. */
-// Le bus du mod est déduit du type d'événement : l'attribut bus est déprécié.
 @EventBusSubscriber(modid = YetAnotherFarmingStation.MOD_ID, value = Dist.CLIENT)
 public final class YafsClient {
 
@@ -30,7 +28,6 @@ public final class YafsClient {
         event.registerBlockEntityRenderer(YafsBlocks.GREENHOUSE_ENTITY.get(), GreenhouseRenderer::new);
     }
 
-    /** Chaque état des maîtres porte ses parcelles dans son modèle : elles sont cuites avec le chunk. */
     @SubscribeEvent
     public static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
         for (Block block : List.of(YafsBlocks.GREENHOUSE_T1.get(), YafsBlocks.GREENHOUSE_T2.get(), YafsBlocks.GREENHOUSE_T3.get())) {

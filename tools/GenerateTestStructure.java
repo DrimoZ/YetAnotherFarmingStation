@@ -4,30 +4,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.zip.GZIPOutputStream;
 
-/**
- * Writes the game tests' structure template.
- *
- * <p>Vanilla's game test framework has no "no structure" option: every test names a template that
- * must exist as {@code data/<ns>/structure/<name>.nbt}. NeoForge ships no empty-template helper on
- * 1.21.1 either, so the file has to come from somewhere - and an NBT is a gzipped binary, which is
- * not something to keep as an opaque committed blob nobody can read or change.
- *
- * <p>So it is generated, like the textures. The format is small enough to write directly: a tag is
- * a type byte, a name, and a payload, and {@code DataOutputStream.writeUTF} already emits NBT's
- * length-prefixed modified UTF-8.
- *
- * <pre>java tools/GenerateTestStructure.java</pre>
- */
 public final class GenerateTestStructure {
 
     private static final String OUT = "src/main/resources/data/yafs/structure";
 
-    // Room for a tier III greenhouse (7x5x7) with a block of margin all round, and its floor.
     private static final int SIZE_X = 11;
     private static final int SIZE_Y = 8;
     private static final int SIZE_Z = 11;
 
-    /** 1.21.1. A template without one is read as ancient and silently run through DataFixerUpper. */
     private static final int DATA_VERSION = 3955;
 
     private static final byte TAG_END = 0;
@@ -82,12 +66,6 @@ public final class GenerateTestStructure {
         }
     }
 
-    /**
-     * Every position is written, air included.
-     *
-     * <p>A template only overwrites the positions it lists, so leaving the air implicit would let
-     * whatever terrain the test area happens to sit on stay standing inside the test.
-     */
     private static void blocks(DataOutputStream out) throws IOException {
         out.writeByte(TAG_LIST);
         out.writeUTF("blocks");

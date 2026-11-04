@@ -35,12 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-/**
- * Ce que les datapacks disent des cultures et des substrats (YAF-014) : lu au chargement et à
- * chaque {@code /reload}, puis envoyé aux joueurs, puisque le client refait la détection.
- *
- * <p>Un fichier invalide est refusé et journalisé, jamais corrigé : les autres restent.
- */
 public final class CropData {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -59,14 +53,11 @@ public final class CropData {
         return substrates;
     }
 
-    /** Remplace tout et refait la détection. Public pour les GameTests. */
     public static void set(List<CropOverride> newOverrides, List<SubstrateDefinition> newSubstrates) {
         overrides = List.copyOf(newOverrides);
         substrates = List.copyOf(newSubstrates);
         Crops.invalidate();
     }
-
-    // Chargement
 
     public static void onAddReloadListeners(AddReloadListenerEvent event) {
         HolderLookup.Provider registries = event.getRegistryAccess();
@@ -102,12 +93,6 @@ public final class CropData {
         }
     }
 
-    // Synchronisation
-
-    /**
-     * Ce que lâche une culture, tiré au serveur : les tables de loot n'existent que là, et JEI veut
-     * montrer la récolte. Des quantités moyennes sur {@link #ROLLS} tirages, pas une promesse.
-     */
     public record Harvest(Item seed, List<ItemStack> drops) {
 
         static final StreamCodec<RegistryFriendlyByteBuf, Harvest> STREAM_CODEC = StreamCodec.composite(
@@ -119,7 +104,6 @@ public final class CropData {
     private static final int ROLLS = 16;
     private static volatile Map<Item, List<ItemStack>> harvests = Map.of();
 
-    /** La récolte typique de cette graine ; vide si le serveur ne l'a pas encore dite. */
     public static List<ItemStack> harvest(Item seed) {
         return harvests.getOrDefault(seed, List.of());
     }
@@ -130,7 +114,6 @@ public final class CropData {
         harvests = Map.copyOf(bySeed);
     }
 
-    /** Chaque culture reconnue, sa table de loot tirée {@link #ROLLS} fois : les items, en quantité moyenne. */
     private static List<Harvest> sample(ServerLevel level) {
         List<Harvest> sampled = new ArrayList<>();
         for (Crop crop : Crops.all().values()) {
@@ -169,9 +152,8 @@ public final class CropData {
                 }));
     }
 
-    /** À la connexion d'un joueur, et à chaque {@code /reload} pour tous. */
     public static void onDatapackSync(OnDatapackSyncEvent event) {
-        // Tiré une fois par synchronisation, gardé aussi ici : en solo, le client lit la même mémoire.
+
         List<Harvest> sampled = sample(event.getPlayerList().getServer().overworld());
         setHarvests(sampled);
         Payload payload = new Payload(overrides, substrates, sampled);

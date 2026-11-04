@@ -24,19 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Le banc de YAF-041 : 50 serres P3 pleines, poussées à fond, mesurées côté serveur et côté rendu.
- *
- * <p>Ne fait rien sans {@code YAFS_PERF_BENCH=1} ; tourne dans la copie de monde de {@link GuiPreview}
- * et écrit {@code run/perf/bench.txt}, puis ferme le jeu :
- * <pre>
- *   YAFS_PERF_BENCH=1 ./gradlew runClient
- * </pre>
- *
- * <p>Serveur : chaque serre tique {@link #SERVER_TICKS} fois de suite sur le thread serveur, énergie
- * remise et sortie vidée hors du chronomètre. Rendu : le temps CPU de {@link GreenhouseRenderer} par
- * image, champ entier dans le cadre. Le GPU n'est pas compté : il ne voit que des quads ordinaires.
- */
 final class PerfBench {
 
     static final boolean ENABLED = "1".equals(System.getenv("YAFS_PERF_BENCH"));
@@ -69,7 +56,7 @@ final class PerfBench {
         GuiPreview.step(5, mc -> GuiPreview.command(mc, "weather clear"));
         GuiPreview.step(5, GuiPreview::fly);
         GuiPreview.step(5, mc -> {
-            // Sans limite d'images ni synchro : sinon on mesure l'écran, pas le mod.
+
             mc.options.enableVsync().set(false);
             mc.options.framerateLimit().set(260);
             GuiPreview.command(mc, "tp @s " + centre.getX() + " " + (ORIGIN.getY() + 20) + " " + centre.getZ());
@@ -79,7 +66,6 @@ final class PerfBench {
         GuiPreview.step(20, mc -> GuiPreview.onServer(mc, PerfBench::build));
         GuiPreview.step(40, mc -> GuiPreview.onServer(mc, PerfBench::measureServer));
 
-        // Tout le champ dans le cadre, depuis le sud, en hauteur.
         GuiPreview.step(20, mc -> GuiPreview.command(mc, "tp @s " + centre.getX() + " " + (ORIGIN.getY() + 18) + " " + (ORIGIN.getZ() + ROWS * SPACING + 14) + " 180 40"));
         GuiPreview.step(5, GuiPreview::fly);
         GuiPreview.step(100, PerfBench::startRender);
@@ -89,7 +75,6 @@ final class PerfBench {
         GuiPreview.step(10, Minecraft::stop);
     }
 
-    /** Du blé partout, densité ×4, quatre Accélérateurs III, une lampe : le pire cas raisonnable. */
     private static void build(ServerLevel level) {
         for (BlockPos master : MASTERS) {
             level.setBlock(master, YafsBlocks.GREENHOUSE_T3.get().defaultBlockState().setValue(MultiblockBlock.FACING, Direction.NORTH), 3);
@@ -115,7 +100,7 @@ final class PerfBench {
 
         long nanos = 0L;
         long harvested = 0L;
-        for (int tick = -200; tick < SERVER_TICKS; tick++) { // 200 ticks d'échauffement pour le JIT
+        for (int tick = -200; tick < SERVER_TICKS; tick++) {
             for (GreenhouseBlockEntity greenhouse : greenhouses) {
                 if (tick % 20 == 0) harvested += empty(greenhouse);
                 refill(greenhouse);
@@ -135,7 +120,7 @@ final class PerfBench {
     private static void refill(GreenhouseBlockEntity greenhouse) {
         greenhouse.water().fill(new FluidStack(Fluids.WATER, GreenhouseBlockEntity.TANK_CAPACITY), IFluidHandler.FluidAction.EXECUTE);
         while (greenhouse.energy().receiveEnergy(Integer.MAX_VALUE, false) > 0) {
-            // la réserve n'accepte que 100 000 FE par appel
+
         }
     }
 

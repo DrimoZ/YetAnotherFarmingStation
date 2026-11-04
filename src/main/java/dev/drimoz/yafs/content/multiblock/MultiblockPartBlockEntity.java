@@ -19,23 +19,15 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import javax.annotation.Nullable;
 import java.util.List;
 
-/**
- * Une partie de multibloc : elle ne sait qu'où est son maître.
- *
- * <p>Ses capabilities sont celles du maître, demandées au monde à la position du maître : un
- * tuyau ou un mod tiers ne voit qu'un inventaire ordinaire.
- */
 public class MultiblockPartBlockEntity extends BlockEntity {
 
     private static final String MASTER_TAG = "master";
 
-    /** Les capabilities qu'une partie relaie. */
     private static final List<BlockCapability<?, Direction>> RELAYED = List.of(
             Capabilities.ItemHandler.BLOCK,
             Capabilities.FluidHandler.BLOCK,
             Capabilities.EnergyStorage.BLOCK);
 
-    /** Décalage vers le maître ; relatif, pour survivre à une structure déplacée. */
     private BlockPos masterOffset = BlockPos.ZERO;
 
     public MultiblockPartBlockEntity(BlockPos pos, BlockState state) {
@@ -47,23 +39,15 @@ public class MultiblockPartBlockEntity extends BlockEntity {
         setChanged();
     }
 
-    /** Plus de maître : la partie peut disparaître sans rien emporter. */
     public void detach() {
         this.masterOffset = BlockPos.ZERO;
     }
 
-    /** {@code null} tant qu'aucun maître n'a été désigné. */
     @Nullable
     public BlockPos masterPos() {
         return this.masterOffset.equals(BlockPos.ZERO) ? null : this.worldPosition.offset(this.masterOffset);
     }
 
-    /**
-     * Le maître, s'il est chargé et bien un multibloc.
-     *
-     * <p>Jamais de chargement forcé : {@code getBlockEntity} sur un chunk absent le chargerait,
-     * et une capability demandée à la frontière suffirait à le déclencher.
-     */
     @Nullable
     public BlockEntity master() {
         BlockPos master = masterPos();
@@ -73,13 +57,6 @@ public class MultiblockPartBlockEntity extends BlockEntity {
         return this.level.getBlockEntity(master);
     }
 
-    // Capabilities
-
-    /**
-     * Ce qu'une partie expose, c'est son maître qui le décide ({@link MultiblockBlock#partCapability}) :
-     * une serre n'ouvre que ses ports. Les handlers du maître ne changent pas d'objet ; quand le
-     * port d'une partie change, celui qui le change invalide la position.
-     */
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
         for (BlockCapability<?, Direction> capability : RELAYED) {
             relay(event, capability);
@@ -94,8 +71,6 @@ public class MultiblockPartBlockEntity extends BlockEntity {
             return ((MultiblockBlock) master.getBlockState().getBlock()).partCapability(capability, level, master, part.getBlockState(), side);
         });
     }
-
-    // Persistance et synchronisation : le client en a besoin pour le pick block et les clics.
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {

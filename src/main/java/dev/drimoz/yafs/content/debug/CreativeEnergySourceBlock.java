@@ -13,7 +13,6 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
 
-/** Une source d'énergie infinie, réservée au créatif, pour tester sans générateur. Sans recette. */
 public class CreativeEnergySourceBlock extends BaseEntityBlock {
 
     public static final MapCodec<CreativeEnergySourceBlock> CODEC = simpleCodec(CreativeEnergySourceBlock::new);

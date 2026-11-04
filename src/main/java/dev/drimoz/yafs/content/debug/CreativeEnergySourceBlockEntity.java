@@ -8,14 +8,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
-/** Pousse à chaque tick tout ce que ses six voisins acceptent. */
 public class CreativeEnergySourceBlockEntity extends BlockEntity {
 
     public CreativeEnergySourceBlockEntity(BlockPos pos, BlockState state) {
         super(YafsBlocks.CREATIVE_ENERGY_SOURCE_ENTITY.get(), pos, state);
     }
 
-    // ponytail: capability relue à chaque tick ; un BlockCapabilityCache par face si un profil le réclame.
     public void serverTick() {
         if (this.level == null) return;
 

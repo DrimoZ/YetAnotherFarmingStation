@@ -8,21 +8,12 @@ import net.minecraft.world.item.Item;
 import javax.annotation.Nullable;
 import java.util.Map;
 
-/**
- * Mystical Agriculture (YAF-082) : une graine à crux ne pousse que sur son crux, posé sous la
- * terre. Dans la serre, le crux est le catalyseur de la parcelle.
- *
- * <p>Appelée seulement si Mystical Agriculture est chargé ({@link #MOD_ID}) : sans lui, la classe
- * n'est jamais chargée. ponytail: les biomes exigés de certaines graines sont ignorés ; la serre
- * fait son propre climat.
- */
 public final class MysticalCruxes {
 
     public static final String MOD_ID = "mysticalagriculture";
 
     private MysticalCruxes() {}
 
-    /** Donne à chaque graine à crux que la détection a trouvée son crux pour catalyseur. */
     public static void apply(Map<Item, Crop> found) {
         for (var crop : MysticalAgricultureAPI.getCropRegistry().getCrops()) {
             if (!crop.isEnabled() || crop.getCruxBlock() == null) continue;
@@ -33,7 +24,6 @@ public final class MysticalCruxes {
         }
     }
 
-    /** Pour le message d'un test qui échoue : cultures, activées, à crux. */
     public static String census() {
         var crops = MysticalAgricultureAPI.getCropRegistry().getCrops();
         long enabled = crops.stream().filter(crop -> crop.isEnabled()).count();
@@ -42,7 +32,6 @@ public final class MysticalCruxes {
         return crops.size() + " cultures, " + enabled + " activées, à crux : " + cruxes;
     }
 
-    /** Une graine à crux et son crux, pour les GameTests ; {@code null} s'il n'y en a pas. */
     @Nullable
     public static Item[] anyCruxSeed() {
         for (var crop : MysticalAgricultureAPI.getCropRegistry().getCrops()) {

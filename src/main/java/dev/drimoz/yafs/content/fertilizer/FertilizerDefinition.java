@@ -12,22 +12,6 @@ import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
 
-/**
- * Ce que fait un engrais (YAF-022), défini en datapack : {@code data/<ns>/yafs/fertilizer/*.json}.
- * Une serre n'en prend qu'une sorte à la fois, donc il accélère <b>ou</b> il rend plus, jamais les
- * deux : choisir est tout l'intérêt.
- *
- * <pre>{@code
- * { "item": "minecraft:bone_meal", "speed": 1.5, "seconds": 300 }
- * }</pre>
- *
- * @param item   un item ou un tag d'items ("#c:fertilizers") : un modpack range ses engrais dans un tag
- * @param speed  vitesse de toutes les parcelles, multipliée (1 : sans effet)
- * @param yield  récolte de toutes les parcelles, multipliée (1 : sans effet)
- * @param seconds combien de secondes un item nourrit <b>une</b> parcelle qui pousse. L'engrais s'use
- *                par parcelle et par temps, jamais par plant ni par vitesse : accélérer ou densifier ne
- *                le fait pas partir plus vite. Une parcelle qui ne pousse pas n'en use pas
- */
 public record FertilizerDefinition(ItemMatch item, double speed, double yield, int seconds) {
 
     public static final ResourceKey<Registry<FertilizerDefinition>> REGISTRY =
@@ -40,10 +24,6 @@ public record FertilizerDefinition(ItemMatch item, double speed, double yield, i
             Codec.intRange(1, 1_000_000).optionalFieldOf("seconds", 300).forGetter(FertilizerDefinition::seconds)
     ).apply(instance, FertilizerDefinition::new));
 
-    /**
-     * L'engrais que cet item est, s'il en est un. Parcourt le registre : à n'appeler qu'au changement
-     * du contenu de l'emplacement, pas à chaque tick.
-     */
     @Nullable
     public static FertilizerDefinition of(ItemStack stack, @Nullable HolderLookup.Provider registries) {
         if (stack.isEmpty() || registries == null) return null;

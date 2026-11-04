@@ -7,17 +7,8 @@ import net.minecraft.world.level.block.Block;
 
 import java.util.List;
 
-/**
- * Une entrée {@code data/<ns>/yafs/substrate/*.json} : des items qui, dans une parcelle, comptent
- * comme un autre bloc de sol. C'est ainsi que la terre vaut terre labourée irriguée, sans houe.
- *
- * <pre>{@code
- * { "items": ["minecraft:dirt", "minecraft:grass_block"], "counts_as": "minecraft:farmland" }
- * }</pre>
- */
 public record SubstrateDefinition(List<ItemMatch> items, Block countsAs, double speed, double yield) {
 
-    /** Ce qu'un sol apporte à sa parcelle. */
     public record Bonus(double speed, double yield) {
 
         public static final Bonus NONE = new Bonus(1D, 1D);

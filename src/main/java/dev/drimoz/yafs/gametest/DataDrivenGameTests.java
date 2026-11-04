@@ -36,10 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Ce qu'un modpack règle sans toucher au code : résidu par culture, Composteur, catalyseur et
- * graine en tag. Chaque test remet les données comme il les a trouvées.
- */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class DataDrivenGameTests {
@@ -47,7 +43,6 @@ public class DataDrivenGameTests {
     private static final String PLATFORM = "platform";
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
 
-    /** Le résidu d'une culture se règle : autre item, autre chance. Plus de compost obligé. */
     @GameTest(template = PLATFORM)
     public static void aCropCanLeaveAnotherResidue(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -77,7 +72,6 @@ public class DataDrivenGameTests {
         helper.succeed();
     }
 
-    /** Un module lit son Composteur dans son JSON : entrée en tag, quantité, sortie. Sans rien, les défauts du mod. */
     @GameTest(template = PLATFORM)
     public static void aModuleReadsItsOwnComposting(GameTestHelper helper) {
         var ops = helper.getLevel().registryAccess().createSerializationContext(JsonOps.INSTANCE);
@@ -93,7 +87,6 @@ public class DataDrivenGameTests {
         helper.succeed();
     }
 
-    /** Un catalyseur peut être un tag : n'importe quel tronc fait l'affaire, rien d'autre. */
     @GameTest(template = PLATFORM)
     public static void aCatalystCanBeATag(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -114,7 +107,6 @@ public class DataDrivenGameTests {
         helper.succeed();
     }
 
-    /** Une surcharge peut viser un tag de graines : toute la famille d'un coup. */
     @GameTest(template = PLATFORM)
     public static void anOverrideCanTargetASeedTag(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -137,7 +129,6 @@ public class DataDrivenGameTests {
         helper.succeed();
     }
 
-    /** Le réglage « residues » coupe les résidus partout, même pour une culture qui en laisse à coup sûr. */
     @GameTest(template = PLATFORM)
     public static void theResiduesSwitchTurnsThemOffEverywhere(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -170,7 +161,6 @@ public class DataDrivenGameTests {
         helper.succeed();
     }
 
-    /** Le multiplicateur global accélère toute croissance, sans toucher à l'eau par cycle (qui suit la vitesse des modules). */
     @GameTest(template = PLATFORM)
     public static void theGlobalGrowthSpeedMultipliesEveryGrowth(GameTestHelper helper) {
         double before = YafsConfig.GROWTH_SPEED.get();

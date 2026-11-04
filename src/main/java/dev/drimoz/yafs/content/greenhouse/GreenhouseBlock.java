@@ -29,7 +29,6 @@ import net.neoforged.neoforge.fluids.FluidUtil;
 
 import javax.annotation.Nullable;
 
-/** Le maître d'une serre, un bloc par {@link GreenhouseTier palier}. */
 public class GreenhouseBlock extends MultiblockBlock {
 
     public static final MapCodec<GreenhouseBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -67,7 +66,6 @@ public class GreenhouseBlock extends MultiblockBlock {
                 : createTickerHelper(type, YafsBlocks.GREENHOUSE_ENTITY.get(), (l, pos, s, greenhouse) -> greenhouse.serverTick());
     }
 
-    /** Redstone autour du volume : les parties relaient leurs voisins ici. */
     @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
         super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
@@ -75,23 +73,17 @@ public class GreenhouseBlock extends MultiblockBlock {
         if (level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse) greenhouse.forgetSignal();
     }
 
-    // Interface (Socle)
-
-    /** Un bloc du socle expose eau, énergie et récolte ; les murs au-dessus n'exposent rien. */
     @Nullable
     @Override
     public <T> T partCapability(BlockCapability<T, Direction> capability, Level level, BlockEntity master, BlockState part, @Nullable Direction side) {
         if (!(master instanceof GreenhouseBlockEntity greenhouse)) return null;
 
         Object handler = part.getValue(MultiblockPartBlock.BASE) ? greenhouse.base(capability) : null;
-        @SuppressWarnings("unchecked") // base() ne rend que le type de la capability demandée
+        @SuppressWarnings("unchecked")
         T typed = (T) handler;
         return typed;
     }
 
-    // Interface (Monter de palier, YAF-006)
-
-    /** Le bloc de serre du palier suivant, si {@code stack} en est l'item. */
     @Nullable
     public GreenhouseBlock upgradeFrom(ItemStack stack) {
         return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof GreenhouseBlock next
@@ -107,10 +99,6 @@ public class GreenhouseBlock extends MultiblockBlock {
         return canGrowInto(level, master, level.getBlockState(master).getValue(FACING), next.shape());
     }
 
-    /**
-     * Remplace le maître par celui du palier suivant, contenu compris : les parties partent sans
-     * casser le volume, le nouveau maître reprend la sauvegarde de l'ancien, puis pose ses parties.
-     */
     private void upgrade(Level level, BlockPos master, GreenhouseBlock next, GreenhouseBlockEntity old) {
         Direction facing = level.getBlockState(master).getValue(FACING);
         CompoundTag saved = old.saveWithoutMetadata(level.registryAccess());
@@ -126,13 +114,6 @@ public class GreenhouseBlock extends MultiblockBlock {
         next.placeParts(level, master, facing);
     }
 
-    // Interface (Clics)
-
-    /**
-     * Avec un item en main : celui du palier suivant agrandit la serre, un seau la remplit. Tout le
-     * reste ouvre l'écran, comme une main vide : un bloc tenu ne doit jamais se poser contre la serre au lieu de l'ouvrir. Les
-     * parties renvoient leurs clics ici.
-     */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) {
@@ -149,13 +130,11 @@ public class GreenhouseBlock extends MultiblockBlock {
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
 
-        // Un seau, sur n'importe quel bloc de la serre.
         if (FluidUtil.interactWithFluidHandler(player, hand, greenhouse.water())) return ItemInteractionResult.sidedSuccess(level.isClientSide);
 
-        // Le jeu appelle alors useWithoutItem, qui ouvre l'écran.
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
-    /** Main vide, ou n'importe quel item sans usage propre sur la serre : l'écran. */
+
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse)) return InteractionResult.PASS;
@@ -170,12 +149,6 @@ public class GreenhouseBlock extends MultiblockBlock {
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
-    // Interface (Casse)
-
-    /**
-     * Le contenu tombe avant que le block entity ne disparaisse ; le loot, lui, ne porte que l'item.
-     * Rien ne tombe quand c'est le palier suivant qui prend la place.
-     */
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof GreenhouseBlockEntity greenhouse

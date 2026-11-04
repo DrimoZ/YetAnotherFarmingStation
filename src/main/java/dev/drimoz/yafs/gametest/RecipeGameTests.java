@@ -17,29 +17,23 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Tout se fabrique en survie (YAF-070) : chaque item du mod a une recette d'établi, et chacun de
- * ses ingrédients désigne au moins un item, ce qui attrape un tag vide ou mal écrit.
- */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class RecipeGameTests {
 
     private static final String PLATFORM = "platform";
 
-    /** Des outils de test, et le résidu des récoltes : ils n'ont pas de recette par choix. */
     private static final List<Item> CREATIVE_ONLY = List.of(YafsItems.CREATIVE_ENERGY_SOURCE.get(), YafsItems.COMPOST.get());
 
     @GameTest(template = PLATFORM)
     public static void everyItemIsCraftable(GameTestHelper helper) {
-        // Tout l'onglet créatif, sauf ce qui est réservé au créatif.
+
         YafsItems.ITEMS.getEntries().stream().map(item -> item.get())
                 .filter(item -> !CREATIVE_ONLY.contains(item))
                 .forEach(item -> craftable(helper, recipeFor(helper, new ItemStack(item)), item.toString()));
         helper.succeed();
     }
 
-    /** P3 demande ce qu'une serre produit : le melon scintillant, qui vient d'un melon. */
     @GameTest(template = PLATFORM)
     public static void theThirdTierNeedsAGreenhouseCrop(GameTestHelper helper) {
         CraftingRecipe recipe = recipeFor(helper, new ItemStack(YafsItems.GREENHOUSE_T3.get())).orElseThrow();
@@ -61,6 +55,5 @@ public class RecipeGameTests {
             helper.assertTrue(ingredient.isEmpty() || ingredient.getItems().length > 0, "Un ingrédient de " + name + " ne désigne aucun item");
         }
     }
-
 
 }

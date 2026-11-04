@@ -21,10 +21,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.neoforged.neoforge.items.IItemHandler;
 
-/**
- * Le socle, la couche du bas : tout s'y branche. Serre P1 posée en (5, 2, 5) sur la plateforme ;
- * {@code CORNER} est un bloc du socle.
- */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class BaseGameTests {
@@ -34,7 +30,6 @@ public class BaseGameTests {
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
     private static final BlockPos CORNER = MASTER.offset(-1, 0, -1);
 
-    /** Un hopper sous le socle tire la récolte. */
     @GameTest(template = PLATFORM, timeoutTicks = 100)
     public static void aHopperDrainsTheBase(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -45,10 +40,6 @@ public class BaseGameTests {
                 "Le hopper sous le socle n'a pas tout tiré"));
     }
 
-    /**
-     * Le socle, maître compris, prend eau et énergie et rend la récolte ; il ne prend aucun item et
-     * ne rend pas l'eau. Un mur au-dessus n'expose rien.
-     */
     @GameTest(template = PLATFORM)
     public static void theBaseTakesEverythingAndWallsNothing(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -82,7 +73,6 @@ public class BaseGameTests {
         helper.succeed();
     }
 
-    /** Le socle prend de l'engrais par un tuyau, et rien d'autre ; l'engrais ne ressort pas. */
     @GameTest(template = PLATFORM)
     public static void theBaseTakesFertilizerOnly(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);

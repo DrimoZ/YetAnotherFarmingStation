@@ -14,10 +14,6 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Le bonus d'un sol (YAF-017) se lit sur l'item, où qu'il soit : inventaire, JEI, emplacement de
- * parcelle. Un sol de datapack qui porte un bonus l'affiche sans rien de plus.
- */
 @EventBusSubscriber(modid = YetAnotherFarmingStation.MOD_ID, value = Dist.CLIENT)
 public final class SoilTooltips {
 
@@ -28,7 +24,6 @@ public final class SoilTooltips {
         event.getToolTip().addAll(lines(event.getItemStack().getItem()));
     }
 
-    /** Les lignes du bonus de ce sol ; vide pour un sol ordinaire (et pour tout ce qui n'est pas un sol). */
     public static List<Component> lines(Item substrate) {
         SubstrateDefinition.Bonus bonus = Crops.bonus(substrate);
         List<Component> lines = new ArrayList<>(2);

@@ -22,18 +22,10 @@ import net.minecraft.world.phys.HitResult;
 
 import javax.annotation.Nullable;
 
-/**
- * Toute position d'un multibloc qui n'est pas le maître. Un seul bloc pour tous les multiblocs :
- * c'est son block entity qui sait à quel maître il appartient.
- *
- * <p>Invisible (le maître dessine tout le volume), sans item ni loot. Casser une partie casse le
- * maître, qui emporte les autres parties avec lui.
- */
 public class MultiblockPartBlock extends BaseEntityBlock {
 
     public static final MapCodec<MultiblockPartBlock> CODEC = simpleCodec(MultiblockPartBlock::new);
 
-    /** La couche du bas : un bloc plein, branchable de partout. Dans l'état, pour que le client la dessine. */
     public static final BooleanProperty BASE = BooleanProperty.create("base");
 
     public MultiblockPartBlock(Properties properties) {
@@ -52,7 +44,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return CODEC;
     }
 
-    /** Invisible au-dessus du socle ; le socle est un bloc plein. */
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return state.getValue(BASE) ? RenderShape.MODEL : RenderShape.INVISIBLE;
@@ -64,18 +55,11 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return new MultiblockPartBlockEntity(pos, state);
     }
 
-    /**
-     * Pas d'ombre ambiante : une partie a la collision d'un bloc plein, et le jeu en déduit qu'elle
-     * assombrit ses voisins. Le socle entier sortait gris foncé au lieu de gris clair.
-     */
     @Override
     protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
         return 1.0F;
     }
 
-    // Interface (Casse)
-
-    /** En créatif, le maître part sans rien lâcher, comme s'il avait été cassé lui-même. */
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide && player.isCreative()) {
@@ -86,13 +70,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return super.playerWillDestroy(level, pos, state, player);
     }
 
-    /**
-     * Quelle que soit la cause — joueur, explosion, {@code /setblock} — une partie qui disparaît
-     * emporte le maître, qui lâche l'item et son contenu.
-     *
-     * <p>Appelé <i>avant</i> le retrait du block entity : on peut encore lire le maître. Quand
-     * c'est le maître qui retire ses parties, il n'est déjà plus en place et rien ne se relance.
-     */
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock())) {
@@ -103,9 +80,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         super.onRemove(state, level, pos, newState, movedByPiston);
     }
 
-    // Interface (Voisinage)
-
-    /** Redstone, inventaire posé à côté : c'est au maître d'en juger. */
     @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
         super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
@@ -114,7 +88,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         if (master != null) level.getBlockState(master).handleNeighborChanged(level, master, neighborBlock, neighborPos, movedByPiston);
     }
 
-    /** Un clic sur n'importe quelle partie vaut un clic sur le maître. */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         BlockPos master = knownMaster(level, pos);
@@ -131,7 +104,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return level.getBlockState(master).useItemOn(stack, level, player, hand, hitResult.withPosition(master));
     }
 
-    /** Pick block sur une partie : l'item du maître. */
     @Override
     public ItemStack getCloneItemStack(BlockState state, HitResult target, LevelReader level, BlockPos pos, Player player) {
         BlockPos master = level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part ? part.masterPos() : null;
@@ -140,9 +112,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return level.getBlockState(master).getCloneItemStack(target, level, master, player);
     }
 
-    // Inner work
-
-    /** Le maître de cette partie, s'il est chargé et toujours un multibloc. */
     @Nullable
     private static BlockPos masterOf(Level level, BlockPos pos) {
         if (!(level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part)) return null;
@@ -150,7 +119,6 @@ public class MultiblockPartBlock extends BaseEntityBlock {
         return part.master() != null ? part.masterPos() : null;
     }
 
-    /** Valable côté client aussi : le block entity de la partie y connaît son maître (getUpdateTag). */
     @Nullable
     private static BlockPos knownMaster(Level level, BlockPos pos) {
         return level.getBlockEntity(pos) instanceof MultiblockPartBlockEntity part ? part.masterPos() : null;

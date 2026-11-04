@@ -24,12 +24,6 @@ import snownee.jade.api.config.IPluginConfig;
 
 import java.util.Locale;
 
-/**
- * Jade (YAF-081) : au survol de n'importe quel bloc d'une serre, ce qu'elle fait et ce qui la
- * freine, sans l'ouvrir. Chargé par Jade seulement : sans Jade, rien ici n'est lu.
- *
- * <p>Le serveur résume, le client affiche : les verdicts d'efficacité n'existent qu'au serveur.
- */
 @WailaPlugin
 public class YafsJadePlugin implements IWailaPlugin {
 
@@ -55,7 +49,6 @@ public class YafsJadePlugin implements IWailaPlugin {
             return UID;
         }
 
-        /** Un résumé de la serre : marche, parcelles qui poussent ou coincent, la plus lente. */
         @Override
         public void appendServerData(CompoundTag data, BlockAccessor accessor) {
             BlockEntity entity = accessor.getBlockEntity();
@@ -90,7 +83,6 @@ public class YafsJadePlugin implements IWailaPlugin {
             }
         }
 
-        /** Les mêmes mots que l'onglet Fonctionnement de l'écran. */
         @Override
         public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
             CompoundTag data = accessor.getServerData();

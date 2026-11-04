@@ -23,16 +23,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
-/**
- * Une page par culture que la serre sait faire pousser (YAF-080) : la graine, les substrats
- * acceptés, le catalyseur s'il en faut un, la récolte, puis ce qu'elle attend et ce qu'elle coûte.
- *
- * <pre>
- *  [graine]   Lumière 9+ · 10–30 °C
- *  [sol]  ──▶ [récolte][récolte]…
- *  [cata]     24 min · 500 mB · 10 FE/t
- * </pre>
- */
 public class CropCategory implements IRecipeCategory<Crop> {
 
     public static final RecipeType<Crop> TYPE = RecipeType.create(YetAnotherFarmingStation.MOD_ID, "crop", Crop.class);

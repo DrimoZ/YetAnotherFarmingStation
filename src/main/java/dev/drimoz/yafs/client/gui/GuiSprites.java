@@ -13,17 +13,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidStack;
 
-/**
- * La planche {@code textures/gui/widgets.png} et la façon d'en dessiner chaque pièce. Portée de
- * FactoryIO (FIO-071, FIO-181).
- *
- * <p>Les emplacements recopient {@code tools/gui-sprites.js}, qui génère la planche : changer
- * l'un impose de changer l'autre. Aucune autre classe ne connaît une coordonnée de texture.
- *
- * <p>{@code blitNineSliced} a disparu de vanilla en 1.20.2 au profit des sprites d'atlas ; la
- * planche reste une texture simple, découpée ici en neuf morceaux étirés. Les cadres sont unis :
- * étirer ou répéter le centre donne le même résultat.
- */
 public final class GuiSprites {
 
     public static final ResourceLocation SHEET =
@@ -32,8 +21,6 @@ public final class GuiSprites {
     private static final int SHEET_SIZE = 256;
 
     private GuiSprites() {}
-
-    // Cadres étirables
 
     private static final int PANEL_U = 0;
     private static final int TAB_U = 16;
@@ -46,12 +33,10 @@ public final class GuiSprites {
     private static final int FRAME_V = 0;
     private static final int FRAME_SIZE = 16;
 
-    /** Fenêtre principale, dans le ton des conteneurs vanilla. */
     public static void panel(GuiGraphics graphics, int x, int y, int width, int height) {
         nineSlice(graphics, x, y, width, height, 4, PANEL_U, FRAME_V);
     }
 
-    /** Onglet latéral, teinté à la couleur de sa fonction. */
     public static void tab(GuiGraphics graphics, int x, int y, int width, int height, int rgb) {
         graphics.setColor(red(rgb), green(rgb), blue(rgb), 1f);
         nineSlice(graphics, x, y, width, height, 4, TAB_U, FRAME_V);
@@ -70,22 +55,17 @@ public final class GuiSprites {
         nineSlice(graphics, x, y, width, height, 3, u, FRAME_V);
     }
 
-    /** Zone en creux d'un pixel : jauges, cadres de texte. */
     public static void inset(GuiGraphics graphics, int x, int y, int width, int height) {
         nineSlice(graphics, x, y, width, height, 1, INSET_U, FRAME_V);
     }
 
-    /** Champ de saisie : un creux sombre où le texte blanc se lit. */
     public static void field(GuiGraphics graphics, int x, int y, int width, int height) {
         nineSlice(graphics, x, y, width, height, 1, FIELD_U, FRAME_V);
     }
 
-    // Slots et jauges
-
     public static final int SLOT_SIZE = GuiMetrics.SLOT;
     public static final int BIG_SLOT_SIZE = GuiMetrics.SOCKET;
 
-    /** Socle d'un slot dont l'item est en {@code (itemX, itemY)}. */
     public static void slot(GuiGraphics graphics, int itemX, int itemY) {
         graphics.blit(SHEET, itemX - 1, itemY - 1, 0, 16, SLOT_SIZE, SLOT_SIZE);
     }
@@ -100,17 +80,11 @@ public final class GuiSprites {
     private static final int GAUGE_SPRITE_WIDTH = 12;
     private static final int GAUGE_SPRITE_HEIGHT = 48;
 
-    /**
-     * Jauge verticale à segments, remplie par le bas, sur toute la hauteur donnée.
-     *
-     * @param fill part remplie, de 0 à 1
-     */
     public static void gauge(GuiGraphics graphics, int x, int y, int width, int height, float fill) {
         inset(graphics, x, y, width, height);
 
         int inner = height - 2;
 
-        // Segments éteints sur toute la hauteur : vide, la jauge reste lisible comme une jauge.
         graphics.blit(SHEET, x + 1, y + 1, width - 2, inner,
                 GAUGE_EMPTY_U, GAUGE_V + GAUGE_SPRITE_HEIGHT - Math.min(inner, GAUGE_SPRITE_HEIGHT),
                 GAUGE_SPRITE_WIDTH, Math.min(inner, GAUGE_SPRITE_HEIGHT), SHEET_SIZE, SHEET_SIZE);
@@ -118,16 +92,11 @@ public final class GuiSprites {
         int filled = Math.round(inner * Math.max(0f, Math.min(1f, fill)));
         if (filled <= 0) return;
 
-        // Pris par le bas du sprite : les segments restent calés sur le fond de la jauge.
         int visible = Math.min(filled, GAUGE_SPRITE_HEIGHT);
         graphics.blit(SHEET, x + 1, y + 1 + inner - filled, width - 2, filled,
                 GAUGE_U, GAUGE_V + GAUGE_SPRITE_HEIGHT - visible, GAUGE_SPRITE_WIDTH, visible, SHEET_SIZE, SHEET_SIZE);
     }
 
-    /**
-     * Jauge verticale de fluide : un creux où le fluide monte du fond, à sa texture et à sa teinte,
-     * répétée sur la hauteur. Rien à voir avec la jauge d'énergie à segments rouges : l'eau se voit.
-     */
     public static void fluidGauge(GuiGraphics graphics, int x, int y, int width, int height, FluidStack fluid, int capacity) {
         inset(graphics, x, y, width, height);
         if (fluid.isEmpty()) return;
@@ -153,7 +122,6 @@ public final class GuiSprites {
         graphics.disableScissor();
     }
 
-    /** Flèche de progression, remplie de gauche à droite. */
     public static void arrow(GuiGraphics graphics, int x, int y, float progress) {
         graphics.blit(SHEET, x, y, 112, 16, GuiMetrics.ARROW_WIDTH, GuiMetrics.ARROW_HEIGHT);
 
@@ -163,27 +131,22 @@ public final class GuiSprites {
         graphics.blit(SHEET, x, y, 112, 30, filled, GuiMetrics.ARROW_HEIGHT);
     }
 
-    /** Socle d'un slot qui n'acceptera rien : plus sombre, hachuré. */
     public static void disabledSlot(GuiGraphics graphics, int itemX, int itemY) {
         graphics.blit(SHEET, itemX - 1, itemY - 1, 132, 16, SLOT_SIZE, SLOT_SIZE);
     }
 
-    /** Socle au liseré vert : le choix courant d'une liste. */
     public static void selectedSlot(GuiGraphics graphics, int itemX, int itemY) {
         graphics.blit(SHEET, itemX - 1, itemY - 1, 150, 16, SLOT_SIZE, SLOT_SIZE);
     }
 
-    /** Voyant d'état du bandeau, à la teinte de {@link GuiTheme.Status}. */
     public static void statusLight(GuiGraphics graphics, GuiTheme.Status status, int x, int y) {
         graphics.blit(SHEET, x, y, 168 + status.ordinal() * 8, 16, GuiMetrics.LED_SIZE, GuiMetrics.LED_SIZE);
     }
 
-    /** Petit verrou, dans le coin bas-droit d'une case de 16. */
     public static void smallLock(GuiGraphics graphics, int itemX, int itemY) {
         graphics.blit(SHEET, itemX + 9, itemY + 8, 208, 16, 7, 8);
     }
 
-    /** Item « fantôme » : ce qui va dans ce slot, voilé. Ce n'est pas un contenu, il ne se prend pas. */
     public static void ghostItem(GuiGraphics graphics, Font font, ItemStack stack, int count, int itemX, int itemY) {
         if (stack.isEmpty()) return;
 
@@ -198,10 +161,6 @@ public final class GuiSprites {
         graphics.pose().popPose();
     }
 
-    /**
-     * Réservoir dans un cadre de slot : le fluide monte du fond à hauteur du remplissage, à sa
-     * texture et à sa teinte. {@code ghost} : réservoir vide, on montre le fluide attendu, voilé.
-     */
     public static void tank(GuiGraphics graphics, int frameX, int frameY, FluidStack fluid, int capacity, boolean ghost) {
         graphics.blit(SHEET, frameX, frameY, 0, 16, SLOT_SIZE, SLOT_SIZE);
         if (fluid.isEmpty()) return;
@@ -216,7 +175,6 @@ public final class GuiSprites {
                 .apply(extensions.getStillTexture(fluid));
         int tint = extensions.getTintColor(fluid);
 
-        // Le ciseau coupe le haut de la texture au niveau du fluide : rien n'est écrasé.
         graphics.enableScissor(x, y + 16 - height, x + 16, y + 16);
         RenderSystem.enableBlend();
         graphics.setColor(red(tint), green(tint), blue(tint), 1.0F);
@@ -228,11 +186,8 @@ public final class GuiSprites {
         if (ghost) graphics.fill(x, y, x + 16, y + 16, GuiTheme.GHOST_WASH);
     }
 
-    // Icônes 12×12
-
     public static final int ICON_SIZE = 12;
 
-    /** Rang des icônes sur la planche, dans l'ordre où le script les dessine. */
     public enum Icon {
         POWER_ON, POWER_OFF,
         ANIMATION_SMOOTH, ANIMATION_SNAP, ANIMATION_OFF,
@@ -242,7 +197,6 @@ public final class GuiSprites {
         LOCK, MINUS, PLUS, HAND
     }
 
-    /** Icône estompée : un rappel de ce qui va là, pas un contenu. */
     public static void faintIcon(GuiGraphics graphics, Icon icon, int x, int y) {
         RenderSystem.enableBlend();
         graphics.setColor(1f, 1f, 1f, 0.3f);
@@ -255,12 +209,6 @@ public final class GuiSprites {
         graphics.blit(SHEET, x, y, icon.ordinal() * ICON_SIZE, 64, ICON_SIZE, ICON_SIZE);
     }
 
-    // Inner work
-
-    /**
-     * Un cadre de {@link #FRAME_SIZE}² étiré à la taille voulue : coins fixes de {@code border},
-     * bords étirés dans un sens, centre dans les deux.
-     */
     private static void nineSlice(GuiGraphics graphics, int x, int y, int width, int height, int border, int u, int v) {
         int middle = FRAME_SIZE - 2 * border;
         int innerWidth = width - 2 * border;
@@ -270,17 +218,16 @@ public final class GuiSprites {
         int sourceRight = u + FRAME_SIZE - border;
         int sourceBottom = v + FRAME_SIZE - border;
 
-        // Coins
         piece(graphics, x, y, border, border, u, v, border, border);
         piece(graphics, right, y, border, border, sourceRight, v, border, border);
         piece(graphics, x, bottom, border, border, u, sourceBottom, border, border);
         piece(graphics, right, bottom, border, border, sourceRight, sourceBottom, border, border);
-        // Bords
+
         piece(graphics, x + border, y, innerWidth, border, u + border, v, middle, border);
         piece(graphics, x + border, bottom, innerWidth, border, u + border, sourceBottom, middle, border);
         piece(graphics, x, y + border, border, innerHeight, u, v + border, border, middle);
         piece(graphics, right, y + border, border, innerHeight, sourceRight, v + border, border, middle);
-        // Centre
+
         piece(graphics, x + border, y + border, innerWidth, innerHeight, u + border, v + border, middle, middle);
     }
 

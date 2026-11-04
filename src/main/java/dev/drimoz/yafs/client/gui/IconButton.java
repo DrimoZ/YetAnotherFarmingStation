@@ -11,18 +11,6 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
-/**
- * Petit bouton de la nouvelle interface (FIO-071) : une icône ou un libellé court, un état
- * « enfoncé » pour le choix courant, une infobulle.
- *
- * <p>Volontairement pas un {@code AbstractWidget} vanilla : ces boutons vivent aussi dans des
- * onglets qui glissent, s'ouvrent et se referment, et un widget enregistré auprès de l'écran
- * garde sa position et reste cliquable même caché. Ici la position est relative à une origine
- * donnée à chaque image, et un bouton qu'on ne dessine pas n'existe pas.
- *
- * <p>Le clic n'applique rien localement : les réglages partent au serveur, qui fait autorité et
- * renvoie l'état — le bouton se contente de relire ses fournisseurs.
- */
 public final class IconButton {
 
     private final int x;
@@ -45,8 +33,6 @@ public final class IconButton {
         this.height = height;
     }
 
-    // Configuration
-
     public IconButton icon(Supplier<GuiSprites.Icon> icon) {
         this.icon = icon;
         return this;
@@ -57,7 +43,6 @@ public final class IconButton {
         return this;
     }
 
-    /** Le choix que ce bouton représente est-il celui en vigueur ? */
     public IconButton pressed(BooleanSupplier pressed) {
         this.pressed = pressed;
         return this;
@@ -68,7 +53,6 @@ public final class IconButton {
         return this;
     }
 
-    /** Un bouton caché n'est ni dessiné, ni cliquable, ni survolable. */
     public IconButton visible(BooleanSupplier visible) {
         this.visible = visible;
         return this;
@@ -83,8 +67,6 @@ public final class IconButton {
         this.action = action;
         return this;
     }
-
-    // Interface
 
     public void render(GuiGraphics graphics, Font font, int originX, int originY, int mouseX, int mouseY) {
         if (!this.visible.getAsBoolean()) return;
@@ -106,7 +88,6 @@ public final class IconButton {
         int iconY = top + (this.height - GuiSprites.ICON_SIZE) / 2;
         int textY = top + (this.height - 8) / 2;
 
-        // Icône seule : centrée. Libellé seul : centré. Les deux : l'icône mène, le texte suit.
         if (glyph != null && text != null) {
             GuiSprites.icon(graphics, glyph, left + 3, iconY);
             graphics.drawString(font, text, left + 3 + GuiSprites.ICON_SIZE + 4, textY, colour, true);
@@ -126,7 +107,6 @@ public final class IconButton {
         return mouseX >= left && mouseX < left + this.width && mouseY >= top && mouseY < top + this.height;
     }
 
-    /** @return {@code true} si le clic a été pris */
     public boolean mouseClicked(int originX, int originY, double mouseX, double mouseY) {
         if (!isOver(originX, originY, mouseX, mouseY) || !this.active.getAsBoolean()) return false;
 
@@ -136,7 +116,6 @@ public final class IconButton {
         return true;
     }
 
-    /** @return l'infobulle si la souris survole le bouton, sinon une liste vide */
     public List<Component> tooltipAt(int originX, int originY, double mouseX, double mouseY) {
         return isOver(originX, originY, mouseX, mouseY) ? this.tooltip.get() : List.of();
     }

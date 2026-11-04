@@ -30,7 +30,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
-/** Ce que l'écran lit et règle, côté serveur (YAF-032 à 034). Serre P1 en (5, 2, 5). */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class ScreenGameTests {
@@ -38,7 +37,6 @@ public class ScreenGameTests {
     private static final String PLATFORM = "platform";
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
 
-    /** Le détail d'une parcelle pose et retire sa culture ; un substrat que la culture refuse est refusé. */
     @GameTest(template = PLATFORM)
     public static void theDetailPlantsAndRefuses(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -68,7 +66,6 @@ public class ScreenGameTests {
         helper.succeed();
     }
 
-    /** « Limité par » : la lumière au plancher dans le noir, plus rien une fois la lampe allumée. */
     @GameTest(template = PLATFORM)
     public static void theLimitingFactorFollowsALamp(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -90,10 +87,6 @@ public class ScreenGameTests {
         helper.succeed();
     }
 
-    /**
-     * Un bloc en main, clic sur la serre : l'écran s'ouvre, rien n'est rangé ni posé. Comme le jeu :
-     * le bloc visé répond d'abord ; s'il passe la main, c'est l'écran (useWithoutItem) qui répond.
-     */
     @GameTest(template = PLATFORM)
     public static void aHeldBlockOpensTheScreenInsteadOfBeingPlaced(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -112,10 +105,6 @@ public class ScreenGameTests {
         helper.succeed();
     }
 
-    /**
-     * Maj-clic depuis la vue générale : une graine par parcelle vide, puis un sol par parcelle
-     * semée ; parcelle ouverte, une seule graine dans sa case.
-     */
     @GameTest(template = PLATFORM)
     public static void shiftClickSowsOnePerPlot(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -143,7 +132,6 @@ public class ScreenGameTests {
         helper.succeed();
     }
 
-    /** Un signal sur n'importe quel bloc du volume éteint la serre : rien ne pousse, tout est OFF. */
     @GameTest(template = PLATFORM)
     public static void redstoneSwitchesTheGreenhouseOff(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);

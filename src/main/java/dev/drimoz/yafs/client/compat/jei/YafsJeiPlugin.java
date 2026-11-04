@@ -21,10 +21,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * JEI ne recouvre pas les onglets de la serre. Chargée par JEI seul : sans JEI, la classe n'est
- * jamais lue, et le mod tourne pareil. Une page par culture (YAF-080), voir {@link CropCategory}.
- */
 @JeiPlugin
 public class YafsJeiPlugin implements IModPlugin {
 
@@ -40,7 +36,6 @@ public class YafsJeiPlugin implements IModPlugin {
         runtime = available;
     }
 
-    /** Ouvre les pages de cultures ; pour l'aperçu d'écran, qui veut les voir sans jouer. */
     public static void showCrops() {
         if (runtime != null) runtime.getRecipesGui().showTypes(List.of(CropCategory.TYPE));
     }
@@ -50,7 +45,6 @@ public class YafsJeiPlugin implements IModPlugin {
         registration.addRecipeCategories(new CropCategory(registration.getJeiHelpers().getGuiHelper()));
     }
 
-    /** Toutes les cultures reconnues, détection et datapacks compris, triées par graine. */
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         List<Crop> crops = new ArrayList<>(Crops.all().values());

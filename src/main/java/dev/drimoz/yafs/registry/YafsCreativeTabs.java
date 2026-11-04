@@ -13,7 +13,6 @@ public final class YafsCreativeTabs {
     public static final DeferredRegister<CreativeModeTab> TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, YetAnotherFarmingStation.MOD_ID);
 
-    /** Chaque item du mod, dans l'ordre d'enregistrement : rien à tenir à jour à la main. */
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.yafs"))

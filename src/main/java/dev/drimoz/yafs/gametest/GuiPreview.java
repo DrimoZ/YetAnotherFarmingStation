@@ -46,17 +46,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-/**
- * Captures automatiques de l'écran de la serre, pour le regarder sans jouer. Porté de FactoryIO.
- *
- * <p>Ne fait rien sans la variable d'environnement {@code YAFS_GUI_PREVIEW=1} :
- * <pre>
- *   YAFS_GUI_PREVIEW=1 ./gradlew runClient
- * </pre>
- * Le client charge une <b>copie</b> du monde « New World » de {@code run/saves} (jamais
- * l'original), pose une serre P1 et une P3 garnies loin de tout, ouvre leurs écrans, enregistre
- * {@code run/screenshots/preview/*.png} et se ferme.
- */
 @EventBusSubscriber(modid = YetAnotherFarmingStation.MOD_ID, value = Dist.CLIENT)
 public final class GuiPreview {
 
@@ -72,7 +61,7 @@ public final class GuiPreview {
     private static boolean started;
     private static int wait;
     private static String pendingShot;
-    /** Les images rendues depuis le lancement : le banc en tire sa cadence. */
+
     static int frames;
 
     private GuiPreview() {}
@@ -82,8 +71,6 @@ public final class GuiPreview {
         if (!ENABLED) return;
         Minecraft minecraft = Minecraft.getInstance();
 
-        // Pas pendant un écran de chargement : un mod qui fait recharger les ressources au menu (Jade, quand
-        // une traduction manque) laissait le chargement du monde attendre un écran qui ne finissait jamais.
         if (!started && minecraft.screen instanceof TitleScreen title && minecraft.getOverlay() == null) {
             started = true;
             minecraft.options.pauseOnLostFocus = false;
@@ -102,7 +89,6 @@ public final class GuiPreview {
         wait = STEPS.isEmpty() ? 0 : STEPS.peek().delay();
     }
 
-    /** La capture se prend après le rendu complet de l'image. */
     @SubscribeEvent
     public static void onRenderFrame(RenderFrameEvent.Post event) {
         if (!ENABLED) return;
@@ -121,8 +107,6 @@ public final class GuiPreview {
         pendingShot = null;
     }
 
-    // Scénario
-
     private static void script() {
         BlockPos small = ORIGIN.offset(0, 0, 4);
         BlockPos big = ORIGIN.offset(10, 0, 6);
@@ -130,15 +114,15 @@ public final class GuiPreview {
         step(60, mc -> command(mc, "gamemode creative"));
         step(5, mc -> command(mc, "time set noon"));
         step(5, mc -> command(mc, "weather clear"));
-        // En vol : sinon le joueur tombe pendant l'attente, et tout le reste se passe bien au-dessus de lui.
+
         step(5, mc -> fly(mc));
         step(5, mc -> command(mc, "tp @s " + ORIGIN.getX() + " " + ORIGIN.getY() + " " + ORIGIN.getZ() + " 0 20"));
-        // Sol à coordonnées fixes, une fois la zone chargée par le téléport.
+
         step(60, mc -> command(mc, "fill " + (ORIGIN.getX() - 4) + " " + (ORIGIN.getY() - 1) + " " + (ORIGIN.getZ() - 2) + " "
                 + (ORIGIN.getX() + 16) + " " + (ORIGIN.getY() - 1) + " " + (ORIGIN.getZ() + 16) + " minecraft:smooth_stone"));
         step(10, mc -> onServer(mc, level -> {
             build(level, small, YafsBlocks.GREENHOUSE_T1.get(), List.of(), 0);
-            // La source créative collée contre le socle : l'énergie doit monter à l'écran.
+
             level.setBlock(small.offset(2, 0, 1), YafsBlocks.CREATIVE_ENERGY_SOURCE.get().defaultBlockState(), 3);
             build(level, big, YafsBlocks.GREENHOUSE_T3.get(),
                     List.of(YafsItems.ACCELERATOR_1.get(), YafsItems.GROW_LAMP.get(), YafsItems.DENSITY_1.get(), YafsItems.CAPACITY.get()), 1_000_000);
@@ -148,7 +132,7 @@ public final class GuiPreview {
         step(40, mc -> use(mc, small));
         step(5, mc -> hover(mc, 0.0, 0.0));
         step(20, mc -> shot("greenhouse_t1"));
-        // L'interrupteur de l'onglet Contrôle : la serre doit passer à « Éteinte ».
+
         step(5, mc -> clickTab(mc, 3));
         step(15, mc -> clickTabContent(mc, 3, 10, 8));
         step(20, mc -> shot("greenhouse_t1_switched_off"));
@@ -161,12 +145,12 @@ public final class GuiPreview {
         step(20, mc -> shot("greenhouse_t3"));
         step(5, mc -> clickTab(mc, 2));
         step(15, mc -> shot("greenhouse_t3_modules"));
-        // Un module posé, puis un emplacement vide : l'infobulle de l'item, puis l'aide.
+
         step(5, mc -> hoverGui(mc, 176 + 6 + 1 + 8, 4 + 22 + 1 + 8));
         step(10, mc -> shot("greenhouse_t3_module_tooltip"));
         step(5, mc -> hoverGui(mc, 176 + 6 + 1 + 18 + 8, 4 + 22 + 1 + 18 + 8));
         step(10, mc -> shot("greenhouse_t3_module_help"));
-        // La parcelle 3 est sur du sable : l'infobulle doit dire pourquoi et quoi faire.
+
         step(5, mc -> hoverGui(mc, 61 + 9, 30 + 9));
         step(10, mc -> shot("greenhouse_t3_plot_tooltip"));
         step(5, mc -> clickGui(mc, 25 + 9, 30 + 9));
@@ -178,7 +162,7 @@ public final class GuiPreview {
         step(5, mc -> clickGui(mc, 169 - 5, 20 + 4));
         step(5, mc -> clickTab(mc, 1));
         step(15, mc -> shot("greenhouse_t3_operations"));
-        // L'infobulle de l'énergie : d'où vient le besoin.
+
         step(5, mc -> hoverTab(mc, 1, 20, 10 + 4));
         step(10, mc -> shot("greenhouse_t3_energy_tooltip"));
         step(5, mc -> hover(mc, 0.0, 0.0));
@@ -189,13 +173,12 @@ public final class GuiPreview {
         step(15, mc -> shot("greenhouse_t3_tabs_closed"));
         step(5, mc -> mc.setScreen(null));
 
-        // Jade : le viseur sur le socle de la P3, l'infobulle doit dire ce que fait la serre.
         step(10, mc -> command(mc, "tp @s " + (big.getX() + 0.5) + " " + (ORIGIN.getY() + 0.5) + " " + (big.getZ() - 5.5) + " 0 10"));
         step(40, mc -> shot("greenhouse_jade"));
-        // La serre elle-même, vue de l'extérieur : socle en béton, plantes posées dessus.
+
         step(10, mc -> command(mc, "tp @s " + (big.getX() - 6) + " " + (ORIGIN.getY() + 4) + " " + (big.getZ() - 8) + " -35 25"));
         step(40, mc -> shot("greenhouse_world"));
-        // JEI : les pages de cultures, graine, sols, récolte, exigences et coûts.
+
         step(5, mc -> {
             if (net.neoforged.fml.ModList.get().isLoaded("jei")) dev.drimoz.yafs.client.compat.jei.YafsJeiPlugin.showCrops();
         });
@@ -203,21 +186,19 @@ public final class GuiPreview {
         step(10, Minecraft::stop);
     }
 
-    /** Une serre garnie : du blé partout, de l'eau, des modules et de l'énergie si on en donne. */
     private static void build(ServerLevel level, BlockPos master, GreenhouseBlock block, List<Item> modules, int energy) {
         level.setBlock(master, block.defaultBlockState().setValue(MultiblockBlock.FACING, Direction.NORTH), 3);
         block.placeParts(level, master, Direction.NORTH);
         if (!(level.getBlockEntity(master) instanceof GreenhouseBlockEntity greenhouse)) return;
 
         for (int plot = 0; plot < greenhouse.plotCount(); plot++) {
-            if (plot % 5 == 4) continue; // quelques parcelles vides, pour voir une case vide
+            if (plot % 5 == 4) continue;
             greenhouse.setPlotItem(plot, GreenhouseBlockEntity.CROP, new ItemStack(plot % 3 == 0 ? Items.CARROT : Items.WHEAT_SEEDS));
             greenhouse.setPlotItem(plot, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(plot == 2 ? Items.SAND : Items.DIRT));
         }
         greenhouse.water().fill(new FluidStack(Fluids.WATER, 2_000), IFluidHandler.FluidAction.EXECUTE);
         for (int tick = 0; tick < 3; tick++) greenhouse.grow(GreenhouseBlockEntity.STEP * 20);
 
-        // Modules, eau et énergie après la croissance de départ : l'écran les montre pleins, et en marche.
         for (int slot = 0; slot < modules.size() && slot < greenhouse.modules().getSlots(); slot++) {
             greenhouse.modules().setStackInSlot(slot, new ItemStack(modules.get(slot)));
         }
@@ -228,7 +209,6 @@ public final class GuiPreview {
         greenhouse.output().setStackInSlot(1, new ItemStack(Items.WHEAT_SEEDS, 41));
     }
 
-    /** Le joueur est en créatif : il peut voler, il suffit de l'y mettre. */
     static void fly(Minecraft minecraft) {
         minecraft.player.getAbilities().flying = true;
         minecraft.player.onUpdateAbilities();
@@ -242,7 +222,6 @@ public final class GuiPreview {
         pendingShot = name;
     }
 
-    /** Dans le niveau où se trouve le joueur, pas forcément l'Overworld. Une erreur se journalise, au lieu de se perdre. */
     static void onServer(Minecraft minecraft, Consumer<ServerLevel> action) {
         var server = minecraft.getSingleplayerServer();
         var dimension = minecraft.player.level().dimension();
@@ -256,7 +235,6 @@ public final class GuiPreview {
         });
     }
 
-    /** Exécutée par le serveur intégré, avec tous les droits. */
     static void command(Minecraft minecraft, String command) {
         var server = minecraft.getSingleplayerServer();
         server.execute(() -> {
@@ -272,7 +250,6 @@ public final class GuiPreview {
                 new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
     }
 
-    /** Clique l'en-tête du n-ième onglet de l'écran de serre : 0 Environnement, 1 Fonctionnement, 2 Modules, 3 Contrôle. */
     static void clickTab(Minecraft minecraft, int index) {
         if (minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen) {
             var area = screen.tabAreas().get(index);
@@ -280,7 +257,6 @@ public final class GuiPreview {
         }
     }
 
-    /** Clique dans le contenu du n-ième onglet, en coordonnées de ce contenu (sous l'en-tête). */
     static void clickTabContent(Minecraft minecraft, int index, int x, int y) {
         if (minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen) {
             var area = screen.tabAreas().get(index);
@@ -301,7 +277,6 @@ public final class GuiPreview {
                 (screen.getGuiTop() + y) * scale / minecraft.getWindow().getScreenHeight());
     }
 
-    /** Survole le contenu du n-ième onglet, en coordonnées de ce contenu. */
     static void hoverTab(Minecraft minecraft, int index, int x, int y) {
         if (!(minecraft.screen instanceof dev.drimoz.yafs.client.greenhouse.GreenhouseScreen screen)) return;
         var area = screen.tabAreas().get(index);
@@ -310,7 +285,6 @@ public final class GuiPreview {
                 (area.getY() + 22 + y) * scale / minecraft.getWindow().getScreenHeight());
     }
 
-    /** Place le curseur, en fraction de la fenêtre : les infobulles suivent la vraie souris. */
     static void hover(Minecraft minecraft, double fx, double fy) {
         try {
             MouseHandler mouse = minecraft.mouseHandler;

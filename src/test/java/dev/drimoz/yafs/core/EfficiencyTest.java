@@ -24,7 +24,7 @@ class EfficiencyTest {
 
     @Test
     void onlyTheWorstFactorCounts() {
-        // Lumière un peu basse (-2 niveaux) et froid marqué (-6 °C) : la température l'emporte.
+
         Verdict verdict = Efficiency.evaluate(WHEAT, new Conditions(7, 4D, 1D));
 
         assertEquals(Factor.TEMPERATURE, verdict.limiting());

@@ -40,32 +40,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * L'écran d'une serre, sur la charte de FactoryIO.
- *
- * <ul>
- *   <li>La fenêtre : énergie en colonne 0 (rouge, comme partout dans la charte), grille de
- *       parcelles, eau en colonne 5 (bleue, à la texture de l'eau), sortie 3×3.</li>
- *   <li>Un clic sur une parcelle ouvre son détail par-dessus la grille (YAF-032).</li>
- *   <li>L'onglet jaune, à gauche, renseigne : environnement, vitesse, ce qui limite, cadence (YAF-033).</li>
- *   <li>À droite, ce qui se règle : l'onglet bleu des modules et ce qu'ils font ensemble (YAF-060),
- *       l'onglet rouge de contrôle, interrupteur et condition redstone.</li>
- *   <li>Les onglets se replient, un seul ouvert par côté, le dernier ouvert mémorisé (SideTabs).</li>
- * </ul>
- *
- * <p>Fenêtre et onglets sont centrés ensemble : centrée seule, la fenêtre laissait l'onglet de
- * gauche sortir de l'écran aux petites résolutions.
- */
 public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
     private static final int ENV_TAB_WIDTH = 120;
-    /** Environnement : trois conditions et un verdict ; Fonctionnement : trois groupes sous leur titre, et un verdict. */
+
     private static final int ENV_ROWS = 4;
 
-    /** L'eau entre la grille et la sortie, en colonne 5, libre à tous les paliers. */
     private static final int WATER_X = GuiMetrics.column(5) + (GuiMetrics.SLOT - GuiMetrics.GAUGE_WIDTH) / 2;
 
-    /** Le détail couvre la grille, l'eau et la sortie, colonnes 1 à 8. */
     private static final int DETAIL_LEFT = GuiMetrics.column(1);
     private static final int DETAIL_RIGHT = GuiMetrics.column(8) + GuiMetrics.SLOT;
     private static final int DETAIL_TEXT_X = GuiMetrics.column(4) + 4;
@@ -91,13 +73,12 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     @Override
     protected void init() {
         super.init();
-        // Le plus large des onglets de droite ouvert : Contrôle, 96 de contenu et ses marges.
+
         int right = Math.max(GreenhouseMenu.MODULE_TAB_WIDTH, ControlTab.WIDTH + 2 * GuiMetrics.TAB_PADDING);
         int total = ENV_TAB_WIDTH + this.imageWidth + right;
         this.leftPos = Math.max(ENV_TAB_WIDTH, (this.width - total) / 2 + ENV_TAB_WIDTH);
     }
 
-    /** Les onglets, en coordonnées d'écran : JEI s'en écarte. */
     public List<Rect2i> tabAreas() {
         return this.tabs.areas();
     }
@@ -123,7 +104,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         int left = this.leftPos;
         int top = this.topPos;
 
-        // Les fonds d'onglets d'abord : la fenêtre recouvre leur bord intérieur, ils semblent en sortir.
         this.tabs.renderBackgrounds(graphics, left, top);
         GuiSprites.panel(graphics, left, top, this.imageWidth, this.imageHeight);
         GuiSprites.statusLight(graphics, theme(this.menu.worstStatus()), left + GuiMetrics.LED_X, top + GuiMetrics.LED_Y);
@@ -149,7 +129,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         this.tabs.renderForegrounds(graphics, this.font, mouseX, mouseY);
     }
 
-    /** Les deux grilles se ressemblent : un nom au-dessus de chacune. Les jauges se disent par leur infobulle. */
     private void renderHeaders(GuiGraphics graphics, int left, int top) {
         int y = top + GuiMetrics.CONTENT_TOP + 1;
         graphics.drawString(this.font, Component.translatable("yafs.gui.header.plots"), left + GuiMetrics.column(1) + 1, y, GuiTheme.TEXT_MUTED, false);
@@ -157,9 +136,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 GuiTheme.TEXT_MUTED, false);
     }
 
-    // Parcelles
-
-    /** Vide : un « + » estompé, on peut y semer. Semée : culture, barre de croissance, liseré si ça coince. */
     private void renderPlot(GuiGraphics graphics, int plot, int frameX, int frameY) {
         GuiSprites.slot(graphics, frameX + 1, frameY + 1);
 
@@ -180,19 +156,13 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         if (status != PlotStatus.WORKING) graphics.renderOutline(frameX, frameY, GuiMetrics.SLOT, GuiMetrics.SLOT, colour);
     }
 
-    // Détail d'une parcelle (YAF-032)
-
-    /**
-     * Par-dessus la grille : un bandeau, les trois emplacements (de vrais slots du menu), et à leur
-     * droite ce que la culture attend face à ce qu'elle a, en rouge quand ça ne va pas.
-     */
     private void renderDetail(GuiGraphics graphics, int left, int top) {
         int x = left + DETAIL_LEFT;
         int y = top + GuiMetrics.CONTENT_TOP;
         int plot = this.menu.selected();
 
         GuiSprites.inset(graphics, x, y, DETAIL_RIGHT - DETAIL_LEFT, top + this.menu.contentBottom() - y);
-        // Le titre porte la culture : toute la largeur du détail, un nom long n'y est pas coupé.
+
         Crop crop = Crops.of(crop(plot).getItem());
         Component title = crop == null ? Component.translatable("yafs.gui.plot.title", plot + 1)
                 : Component.translatable("yafs.gui.plot.title_crop", plot + 1, crop(plot).getHoverName());
@@ -230,13 +200,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                     textX, lineY + 3 * GuiTheme.LINE, GuiTheme.TEXT_MUTED, false);
         }
 
-        // En bas, sur toute la largeur : ce qui se passe, et quoi faire si ça coince.
         PlotStatus status = this.menu.status(plot);
         graphics.drawString(this.font, this.font.plainSubstrByWidth(reason(plot).getString(), DETAIL_RIGHT - DETAIL_LEFT - 6),
                 x + 3, top + this.menu.contentBottom() - 11, status == PlotStatus.WORKING ? GuiTheme.TEXT : GuiTheme.TEXT_PROBLEM, false);
     }
 
-    /** Dans les emplacements vides du détail, voilé, ce qui y va : une graine, un sol qui convient, le catalyseur demandé. */
     private void renderDetailGhosts(GuiGraphics graphics, int left, int top) {
         Crop crop = Crops.of(crop(this.menu.selected()).getItem());
         Item[] hints = {
@@ -252,12 +220,9 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    // Onglets : Environnement et Fonctionnement à gauche (renseignent), Modules et Contrôle à droite (se règlent)
-
     private static final int ENV_CONTENT_WIDTH = ENV_TAB_WIDTH - 2 * GuiMetrics.TAB_PADDING;
     private static final int MODULE_CONTENT_WIDTH = GreenhouseMenu.MODULE_TAB_WIDTH - 2 * GuiMetrics.TAB_PADDING;
 
-    /** L'onglet jaune : les conditions, et ce qui limite la parcelle la plus lente (YAF-033). */
     private final class EnvironmentTab extends SideTab {
 
         EnvironmentTab() {
@@ -290,7 +255,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    /** L'onglet vert : énergie, eau, cadence ; la serre en marche, en chiffres. */
     private final class OperationsTab extends SideTab {
 
         OperationsTab() {
@@ -322,7 +286,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             renderOperations(graphics, x, y);
         }
 
-        /** Sur la ligne d'énergie : d'où vient le besoin, et ce qui se passe quand il n'est pas couvert. */
         @Override
         protected List<Component> contentTooltip(int x, int y, double mouseX, double mouseY) {
             if (mouseX < x || mouseX >= x + ENV_CONTENT_WIDTH || mouseY < y + GuiTheme.LINE || mouseY >= y + 2 * GuiTheme.LINE) return List.of();
@@ -345,7 +308,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return lines;
     }
 
-    /** L'onglet bleu : les emplacements (slots du menu, cachés quand l'onglet est replié), puis leur bilan. */
     private final class ModulesTab extends SideTab {
 
         ModulesTab() {
@@ -367,10 +329,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             return MODULE_CONTENT_WIDTH;
         }
 
-        /**
-         * Les emplacements de modules, puis chaque module posé avec son plafond par serre. Ce que les
-         * modules font ensemble se lit dans Fonctionnement, l'effet d'un module dans son infobulle.
-         */
         @Override
         protected int contentHeight() {
             return moduleRows() * GuiMetrics.SLOT + 6 + Math.max(1, installedModules().size()) * GuiTheme.LINE;
@@ -386,7 +344,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 GuiTheme.tabValue(graphics, font, Component.translatable("yafs.gui.modules.none"), x, lineY, GuiTheme.TAB_MUTED);
                 lineY += GuiTheme.LINE;
             }
-            // Au plafond : grisé, on n'en ajoute plus. Au-delà (une vieille sauvegarde) : rouge, le surplus ne compte pas.
+
             for (ItemStack stack : installed) {
                 int max = ModuleItem.maxStack(stack, minecraft.level.registryAccess());
                 String count = stack.getCount() + "/" + max;
@@ -404,7 +362,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    /** Ce que l'onglet Contrôle lit dans le menu, et ce qu'il envoie au serveur par boutons de menu. */
     private final class Controls implements ControlTab.Controls {
 
         @Override
@@ -444,7 +401,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    /** Les conditions que voient les parcelles, puis ce qu'elles en font : idéal, ou ce qui limite. */
     private void renderEnvironment(GuiGraphics graphics, int x, int y) {
         int row = y;
         row(graphics, x, row, "yafs.gui.env.light", String.valueOf(this.menu.light()), GuiTheme.TAB_VALUE);
@@ -480,11 +436,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiTheme.tabValue(graphics, this.font, verdict, x, row, colour);
     }
 
-    /**
-     * Trois groupes, chacun sous son titre : ce que la serre consomme (par tick, comme les câbles et
-     * les tuyaux le comptent), ce que les modules font à chaque parcelle, puis les parcelles. Ce qui
-     * dépend d'une parcelle (sa culture, son cycle) se lit sur elle, pas ici.
-     */
     private void renderOperations(GuiGraphics graphics, int x, int y) {
         int growing = 0;
         int problems = 0;
@@ -499,9 +450,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
             fastest = Math.max(fastest, this.menu.speed(plot));
         }
 
-        // Quatre groupes, chacun d'une seule nature : ce qui se consomme, ce qui se produit, ce que
-        // la sortie tient, et l'état des parcelles. L'engrais n'a pas de groupe à lui : sa
-        // consommation est une consommation, son effet une production.
         FertilizerDefinition fertilizer = fertilizerInSlot();
 
         int row = y;
@@ -516,7 +464,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
 
         separator(graphics, x, row += GuiTheme.LINE + 3);
         header(graphics, x, row, "yafs.gui.ops.section.production");
-        // La vitesse est la totale : énergie, modules, engrais et sol des parcelles qui poussent.
+
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.speed", "×" + number(fastest), fastest > 1D ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
         if (fertilizer != null && fertilizer.yield() > 1D) {
             row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.yield", "×" + number(fertilizer.yield()), GuiTheme.Status.WORKING.tabColour);
@@ -524,7 +472,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         int plants = plantsPerPlot();
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.plants", String.valueOf(plants), plants > 1 ? GuiTheme.Status.WORKING.tabColour : GuiTheme.TAB_VALUE);
 
-        // Ce qu'une case de sortie tient : 64, plus ce que donnent les modules de capacité.
         separator(graphics, x, row += GuiTheme.LINE + 3);
         header(graphics, x, row, "yafs.gui.ops.section.output");
         row(graphics, x, row += GuiTheme.LINE, "yafs.gui.ops.output.slot", compact(outputLimit()), GuiTheme.TAB_VALUE);
@@ -557,18 +504,15 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         GuiTheme.tabValue(graphics, this.font, verdict, x, row + GuiTheme.LINE, colour);
     }
 
-    /** Les lignes de Fonctionnement : 11 de base, plus celles de l'engrais quand il y en a un. */
     private int opsLines() {
         FertilizerDefinition fertilizer = fertilizerInSlot();
         return 11 + (fertilizer != null ? 1 : 0) + (fertilizer != null && fertilizer.yield() > 1D ? 1 : 0);
     }
 
-    /** Le titre d'un groupe de lignes, en retrait de couleur. */
     private void header(GuiGraphics graphics, int x, int y, String key) {
         GuiTheme.tabValue(graphics, this.font, Component.translatable(key), x, y, GuiTheme.TAB_MUTED);
     }
 
-    /** L'engrais de l'emplacement, s'il y en a un. */
     @Nullable
     private FertilizerDefinition fertilizerInSlot() {
         if (this.minecraft == null || this.minecraft.level == null) return null;
@@ -579,21 +523,15 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         graphics.fill(x, y - 2, x + ENV_CONTENT_WIDTH, y - 1, 0x40FFFFFF);
     }
 
-    /** Une ligne d'onglet : le libellé à gauche, la valeur alignée à droite. */
     private void row(GuiGraphics graphics, int x, int y, String label, String value, int colour) {
         GuiTheme.tabLabel(graphics, this.font, Component.translatable(label), x, y);
         GuiTheme.tabValue(graphics, this.font, Component.literal(value), x + ENV_CONTENT_WIDTH - this.font.width(value), y, colour);
     }
 
-    /**
-     * Le besoin n'est pas couvert, dit le serveur : des parcelles retombent à vitesse 1, des modules
-     * s'arrêtent. Sans le dire, on croirait les modules cassés.
-     */
     private boolean starved() {
         return this.menu.starved();
     }
 
-    /** Les plants de chaque parcelle : un, plus ce qu'ajoutent les modules de densité, comme au serveur. */
     private int plantsPerPlot() {
         if (this.minecraft == null || this.minecraft.level == null) return 1;
         Registry<ModuleDefinition> registry = this.minecraft.level.registryAccess().registry(ModuleDefinition.REGISTRY).orElse(null);
@@ -616,9 +554,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return installed;
     }
 
-    // Clics
-
-    /** Une case ouvre son détail ; la croix le referme. Le serveur l'apprend par un bouton de menu. */
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (this.tabs.mouseClicked(mouseX, mouseY, button)) return true;
@@ -652,8 +587,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
     protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
         return !this.tabs.contains(mouseX, mouseY) && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
     }
-
-    // Infobulles
 
     private void renderOwnTooltips(GuiGraphics graphics, int mouseX, int mouseY) {
         if (within(mouseX, mouseY, this.leftPos + GuiMetrics.GAUGE_X, this.topPos + GreenhouseMenu.GRID_TOP, GuiMetrics.GAUGE_WIDTH, gaugeHeight())) {
@@ -696,7 +629,7 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
                 lines.add(Component.translatable("yafs.gui.plot.growth", Math.round(this.menu.progress(plot) * 100)).withStyle(ChatFormatting.GRAY));
                 double cycle = cycleTicks(plot);
                 if (cycle > 0D) lines.add(Component.translatable("yafs.gui.plot.cycle", duration(cycle)).withStyle(ChatFormatting.GRAY));
-                // Le sol de cette parcelle, s'il rend plus : c'est ici, parcelle par parcelle, qu'il se lit.
+
                 GreenhouseBlockEntity soilOwner = greenhouse();
                 if (soilOwner != null) {
                     lines.addAll(SoilTooltips.lines(soilOwner.plots().getStackInSlot(plot * GreenhouseBlockEntity.SLOTS_PER_PLOT + GreenhouseBlockEntity.SUBSTRATE).getItem()));
@@ -710,10 +643,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         }
     }
 
-    /**
-     * Ce qui se passe dans la parcelle, et ce qu'il faut faire quand ça coince : le joueur ne doit
-     * jamais avoir à deviner pourquoi elle est rouge.
-     */
     private Component reason(int plot) {
         GreenhouseBlockEntity greenhouse = greenhouse();
         PlotStatus status = this.menu.status(plot);
@@ -749,14 +678,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return Component.translatable("yafs.gui.status.problem");
     }
 
-    // Inner work
-
     private GreenhouseBlockEntity greenhouse() {
         return this.minecraft != null && this.minecraft.level != null
                 && this.minecraft.level.getBlockEntity(this.menu.pos()) instanceof GreenhouseBlockEntity greenhouse ? greenhouse : null;
     }
 
-    /** La culture d'une parcelle, lue sur le block entity du client, qu'YAF-040 tient à jour. */
     private ItemStack crop(int plot) {
         if (this.minecraft == null || this.minecraft.level == null
                 || !(this.minecraft.level.getBlockEntity(this.menu.pos()) instanceof GreenhouseBlockEntity greenhouse)) {
@@ -769,7 +695,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return this.menu.contentRows() * GuiMetrics.SLOT;
     }
 
-    /** La jauge d'eau laisse la dernière case de sa colonne à l'emplacement d'engrais. */
     private int waterHeight() {
         return gaugeHeight() - GuiMetrics.SLOT - 2;
     }
@@ -779,7 +704,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return index >= GreenhouseBlockEntity.OUTPUT_SLOTS && index < GreenhouseBlockEntity.OUTPUT_SLOTS + this.menu.moduleSlots();
     }
 
-    /** Ce qu'une case de sortie tient : 64, plus ce que donnent les modules de capacité (même calcul que la serre). */
     private long outputLimit() {
         long limit = 64;
         if (this.minecraft == null || this.minecraft.level == null) return limit;
@@ -796,7 +720,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return (this.menu.moduleSlots() + GreenhouseMenu.MODULE_COLUMNS - 1) / GreenhouseMenu.MODULE_COLUMNS;
     }
 
-
     private int plotX(int plot) {
         return GuiMetrics.column(1 + plot % this.menu.tier().plotSide());
     }
@@ -809,13 +732,11 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
-    /** Sans décimale quand il n'y en a pas (×16 plutôt que ×16.0), abrégé quand c'est grand (×12.8k). */
     public static String number(double value) {
         if (value >= 10_000D) return compact((long) value);
         return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
     }
 
-    /** 76 800 → 76.8k ; 1 000 000 → 1.0M ; au-delà, G : ça tient dans la colonne des valeurs. */
     private static String compact(long value) {
         if (value >= 1_000_000_000L) return String.format(Locale.ROOT, "%.1fG", value / 1_000_000_000D);
         if (value >= 1_000_000L) return String.format(Locale.ROOT, "%.1fM", value / 1_000_000D);
@@ -823,10 +744,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return String.valueOf(value);
     }
 
-    /**
-     * Les ticks d'un cycle de cette parcelle, au rythme actuel : la durée de sa culture, divisée
-     * par son efficacité et sa vitesse. 0 si elle ne pousse pas.
-     */
     private double cycleTicks(int plot) {
         Crop crop = Crops.of(crop(plot).getItem());
         double rate = this.menu.efficiency(plot) * this.menu.speed(plot);
@@ -834,7 +751,6 @@ public class GreenhouseScreen extends AbstractContainerScreen<GreenhouseMenu> {
         return crop.cost().ticks() / rate;
     }
 
-    /** 0.4 s, 12 s, 3 min 20, 1 h 05 : la précision qui compte à cette échelle. */
     public static String duration(double ticks) {
         double seconds = ticks / 20D;
         if (seconds < 10D) return String.format(Locale.ROOT, "%.1f s", seconds);

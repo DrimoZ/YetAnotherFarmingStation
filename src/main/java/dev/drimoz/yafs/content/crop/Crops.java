@@ -36,34 +36,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Les cultures reconnues sans configuration (YAF-013), voir {@code docs/01-DESIGN.md} §5.1.
- *
- * <p>Une culture, c'est l'item d'un buisson (vanilla {@code BushBlock}) qui a un âge. Ses substrats
- * sont trouvés en lui posant la question sur un mini-monde de deux blocs : le sol en dessous, elle
- * au-dessus. On interroge d'abord le sol (le crochet {@code canSustainPlant} de NeoForge, par où
- * passent les mods), puis la plante ({@code mayPlaceOn}, protégée, appelée par {@link #MAY_PLACE_ON}).
- *
- * <p>Ni la lumière ni l'eau n'entrent en jeu : c'est l'environnement de la serre qui en décide.
- *
- * <p>Calculé à la première demande, des deux côtés : le client en a besoin pour l'écran, et le
- * résultat ne dépend que des registres et des tags, qu'il possède aussi. Vidé quand les tags
- * changent, ou quand les datapacks ({@link CropData}) disent autre chose.
- */
 public final class Crops {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Le sol au-dessus de la plante : la seule position qui compte pour {@code mayPlaceOn}. */
     private static final BlockPos SOIL = BlockPos.ZERO;
     private static final BlockPos PLANT = SOIL.above();
 
-    /**
-     * {@code BushBlock#mayPlaceOn}, protégée. Un access transformer aurait dû ouvrir aussi chacune
-     * des 19 classes vanilla qui la redéfinissent, sans quoi Minecraft ne se recompile plus ; un
-     * handle suffit, et NeoForge garde les noms Mojang à l'exécution. L'appel reste virtuel : c'est
-     * bien la redéfinition de chaque plante qui répond.
-     */
     private static final MethodHandle MAY_PLACE_ON;
 
     static {
@@ -76,10 +55,9 @@ public final class Crops {
         }
     }
 
-
     @Nullable
     private static Map<Item, Crop> crops;
-    /** Le bonus de chaque sol qui en porte un ; refait avec les cultures. */
+
     @Nullable
     private static Map<Item, SubstrateDefinition.Bonus> bonuses;
 
@@ -99,7 +77,6 @@ public final class Crops {
         return known;
     }
 
-    /** Ce que ce sol apporte à sa parcelle ; rien (×1, ×1) pour un sol ordinaire. */
     public static SubstrateDefinition.Bonus bonus(Item substrate) {
         Map<Item, SubstrateDefinition.Bonus> known = bonuses;
         if (known == null) {
@@ -114,13 +91,10 @@ public final class Crops {
         return known.getOrDefault(substrate, SubstrateDefinition.Bonus.NONE);
     }
 
-    /** À l'arrivée de nouveaux tags : les substrats en dépendent. */
     public static void invalidate() {
         crops = null;
         bonuses = null;
     }
-
-    // Détection
 
     private static Map<Item, Crop> detect() {
         long start = System.nanoTime();
@@ -134,7 +108,7 @@ public final class Crops {
         Map<Item, Crop> found = new HashMap<>();
         for (Item item : BuiltInRegistries.ITEM) {
             if (!(item instanceof BlockItem blockItem) || !(blockItem.getBlock() instanceof BushBlock bush)) continue;
-            // Tiges et plantes de deux blocs : la détection se tromperait de récolte. Elles passent par un JSON livré (YAF-015).
+
             if (bush instanceof StemBlock || bush instanceof DoublePlantBlock) continue;
 
             IntegerProperty age = ageOf(bush);
@@ -145,7 +119,7 @@ public final class Crops {
             for (Block soil : soils) {
                 if (accepts(bush, plant, soil.defaultBlockState())) substrates.add(soil.asItem());
             }
-            // Ce qui compte comme un autre sol : la terre comme terre labourée, par exemple.
+
             for (SubstrateDefinition definition : CropData.substrates()) {
                 if (accepts(bush, plant, definition.countsAs().defaultBlockState())) {
                     definition.items().stream().flatMap(ItemMatch::items).forEach(substrates::add);
@@ -156,10 +130,8 @@ public final class Crops {
             }
         }
 
-        // Mystical Agriculture : une graine à crux exige son crux ; un datapack peut encore dire autre chose.
         if (ModList.get().isLoaded("mysticalagriculture")) MysticalCruxes.apply(found);
 
-        // Une surcharge désigne une graine ou un #tag de graines : un modpack règle toute une famille d'un coup.
         for (CropOverride override : CropData.overrides()) {
             override.seed().items().forEach(seed -> {
                 Crop crop = found.get(seed);
@@ -172,7 +144,6 @@ public final class Crops {
         return Map.copyOf(found);
     }
 
-    /** Chaque champ présent remplace celui de la détection. */
     private static Crop apply(CropOverride override, Crop crop) {
         Set<Item> substrates = override.substrates()
                 .map(matches -> matches.stream().flatMap(ItemMatch::items).collect(Collectors.toUnmodifiableSet()))
@@ -187,10 +158,6 @@ public final class Crops {
                         override.residueItem().orElse(crop.cost().residueItem())));
     }
 
-    /**
-     * Une surcharge pour une graine que la détection a écartée. Elle doit au moins nommer ses
-     * substrats, et la graine poser un bloc à âge ; sinon on ne sait pas la faire pousser.
-     */
     @Nullable
     private static Crop undetected(CropOverride override, Item seed) {
         IntegerProperty age = seed instanceof BlockItem item ? ageOf(item.getBlock()) : null;
@@ -217,12 +184,11 @@ public final class Crops {
             if (!decision.isDefault()) return decision.isTrue();
             return (boolean) MAY_PLACE_ON.invoke(bush, soil, world, SOIL);
         } catch (Throwable e) {
-            // Un bloc qui veut lire plus que ses voisins immédiats : il ne sera pas substrat, rien de plus.
+
             return false;
         }
     }
 
-    /** Le plus petit monde où une plante peut juger son sol : deux blocs, de l'air partout ailleurs. */
     private record TwoBlocks(BlockState soil, BlockState plant) implements BlockGetter {
 
         @Nullable

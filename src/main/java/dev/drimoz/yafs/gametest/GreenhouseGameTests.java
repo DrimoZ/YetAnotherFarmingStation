@@ -47,11 +47,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * La serre posée, cassée (YAF-002), et ses parcelles qui poussent (YAF-012). Plateforme 11×8×11 ({@code tools/GenerateTestStructure.java}),
- * sol de pierre en y = 0 de la structure, soit y = 1 pour {@link GameTestHelper} : le maître se
- * pose en (5, 2, 5).
- */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class GreenhouseGameTests {
@@ -60,12 +55,8 @@ public class GreenhouseGameTests {
 
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
 
-    /** Plein jour, plaines, réserve pleine. */
     private static final Conditions IDEAL = new Conditions(15, 20D, 1D);
 
-    // Tests (Pose)
-
-    /** L'item pose les 27 positions, chaque partie rattachée au maître. */
     @GameTest(template = PLATFORM)
     public static void placingFillsTheWholeVolume(GameTestHelper helper) {
         use(helper, MASTER.below());
@@ -86,7 +77,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Un seul bloc dans le volume suffit à refuser la pose : rien n'est posé, l'item reste. */
     @GameTest(template = PLATFORM)
     public static void anObstacleBlocksPlacement(GameTestHelper helper) {
         helper.setBlock(MASTER.offset(1, 2, 1), Blocks.STONE);
@@ -99,9 +89,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    // Tests (Casse)
-
-    /** Casser n'importe laquelle des 27 positions retire tout le volume ; l'item tombe une seule fois. */
     @GameTest(template = PLATFORM)
     public static void breakingAnyPositionRemovesEverythingAndDropsOnce(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -129,7 +116,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Le contenu de la serre tombe lui aussi, une seule fois, quelle que soit la partie cassée. */
     @GameTest(template = PLATFORM)
     public static void breakingDropsTheContentsOnce(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -150,9 +136,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    // Tests (Croissance)
-
-    /** Un blé sur de la terre mûrit en BASE_TICKS, se récolte dans la sortie et se replante. */
     @GameTest(template = PLATFORM)
     public static void wheatGrowsAndIsHarvested(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -172,7 +155,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Sortie pleine : la parcelle reste mûre en BLOCKED, rien ne se perd, et repart dès qu'il y a de la place. */
     @GameTest(template = PLATFORM)
     public static void aFullOutputBlocksWithoutLosingAnything(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -187,7 +169,6 @@ public class GreenhouseGameTests {
         helper.assertTrue(greenhouse.growth(0).isMature(), "Une parcelle bloquée a perdu sa maturité");
         helper.assertTrue(count(greenhouse.output(), Items.STONE) == 64 * GreenhouseBlockEntity.OUTPUT_SLOTS, "La sortie a changé");
 
-        // Trois places : la récolte du blé, ce sont du blé, des graines, et parfois du compost.
         greenhouse.output().setStackInSlot(0, ItemStack.EMPTY);
         greenhouse.output().setStackInSlot(1, ItemStack.EMPTY);
         greenhouse.output().setStackInSlot(2, ItemStack.EMPTY);
@@ -196,10 +177,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /**
-     * Une culture plus rapide que le pas récolte en lot, sans rien perdre ; elle boit et coûte ce
-     * que dit son JSON, pas le défaut.
-     */
     @GameTest(template = PLATFORM)
     public static void aFastCropHarvestsInBatchesAtItsOwnCost(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -215,11 +192,10 @@ public class GreenhouseGameTests {
             greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
             greenhouse.energy().receiveEnergy(10_000, false);
 
-            // Énergie : vitesse ×2, donc 10 cycles de 20 ticks en 100 ticks, récoltés d'un coup.
             int water = greenhouse.water().getFluidAmount();
             greenhouse.grow(100);
             helper.assertTrue(count(greenhouse.output(), Items.WHEAT) == 10, count(greenhouse.output(), Items.WHEAT) + " blés pour 10 cycles");
-            // 10 cycles à 30 mB, à la vitesse de l'énergie : l'eau par cycle est divisée par sa racine.
+
             double expected = 10 * 30 / Math.sqrt(YafsConfig.ENERGIZED_SPEED.get());
             helper.assertTrue(Math.abs(water - greenhouse.water().getFluidAmount() - expected) <= 2, (water - greenhouse.water().getFluidAmount()) + " mB bus pour 10 cycles, attendu " + expected);
             helper.assertTrue(greenhouse.energy().getEnergyStored() == 10_000 - 3 * 100, "Énergie " + greenhouse.energy().getEnergyStored());
@@ -228,8 +204,6 @@ public class GreenhouseGameTests {
         }
         helper.succeed();
     }
-
-    // Tests (Cas exotiques, YAF-015) : chacun vient d'un JSON livré dans data/yafs/yafs/crop.
 
     @GameTest(template = PLATFORM)
     public static void sugarCaneGrowsOnSand(GameTestHelper helper) {
@@ -241,7 +215,6 @@ public class GreenhouseGameTests {
         harvests(helper, Items.CACTUS, Items.SAND, Items.CACTUS);
     }
 
-    /** La tige ne lâche que des graines : c'est le melon qu'on récolte. */
     @GameTest(template = PLATFORM)
     public static void aMelonStemYieldsMelonSlices(GameTestHelper helper) {
         harvests(helper, Items.MELON_SEEDS, Items.DIRT, Items.MELON_SLICE);
@@ -252,7 +225,6 @@ public class GreenhouseGameTests {
         harvests(helper, Items.PUMPKIN_SEEDS, Items.DIRT, Items.PUMPKIN);
     }
 
-    /** Une culture de deux blocs : on récolte la plante entière, en une fois. */
     @GameTest(template = PLATFORM)
     public static void aPitcherPodYieldsAPitcherPlant(GameTestHelper helper) {
         harvests(helper, Items.PITCHER_POD, Items.DIRT, Items.PITCHER_PLANT);
@@ -263,7 +235,6 @@ public class GreenhouseGameTests {
         harvests(helper, Items.COCOA_BEANS, Items.JUNGLE_LOG, Items.COCOA_BEANS);
     }
 
-    /** À 30 °C, plein jour : dans la plage de chaque cas exotique livré. */
     private static void harvests(GameTestHelper helper, Item seed, Item substrate, Item expected) {
         GreenhouseBlockEntity greenhouse = place(helper);
         greenhouse.setEnvironment(new Conditions(15, 30D, 1D));
@@ -277,9 +248,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    // Tests (Écran)
-
-    /** Le menu lit la croissance et le statut côté serveur, et Maj-clic vide la sortie dans l'inventaire. */
     @GameTest(template = PLATFORM)
     public static void theMenuShowsGrowthAndEmptiesTheOutput(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -301,14 +269,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    // Tests (Environnement)
-
-    /**
-     * Un toit opaque coupe le jour : lumière 0, et le blé pousse au plancher, dix fois moins vite.
-     *
-     * <p>Le moteur de lumière recalcule après coup, pas dans le tick qui pose le toit : on attend
-     * qu'il ait rattrapé avant de juger. La croissance ne se joue qu'une fois, quand il l'a fait.
-     */
     @GameTest(template = PLATFORM)
     public static void underARoofThereIsNoLightAndWheatCrawls(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -322,12 +282,11 @@ public class GreenhouseGameTests {
 
             greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
             float progress = greenhouse.growth(0).progress();
-            // Marge : la serre pousse aussi d'elle-même pendant les ticks d'attente.
+
             helper.assertTrue(Math.abs(progress - Efficiency.FLOOR) < 0.01F, "Progression " + progress + " au lieu du plancher");
         });
     }
 
-    /** La température vient du biome : la plateforme de test est en plaines. */
     @GameTest(template = PLATFORM)
     public static void theTemperatureComesFromTheBiome(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -340,7 +299,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** La verrue veut de la chaleur : à 20 °C, elle pousse au plancher ; à 40 °C, à pleine vitesse, même dans le noir. */
     @GameTest(template = PLATFORM)
     public static void netherWartWantsHeatNotLight(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -360,9 +318,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    // Tests (Eau)
-
-    /** Sans eau, rien ne pousse, et le statut le dit. */
     @GameTest(template = PLATFORM)
     public static void withoutWaterNothingGrows(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -377,7 +332,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Une croissance complète boit WATER_PER_CYCLE mB, et la réserve se remplit par le socle. */
     @GameTest(template = PLATFORM)
     public static void growingDrinksTheReserveFilledThroughTheBase(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -398,7 +352,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    /** Une culture que la serre ne sait pas faire pousser est un problème, pas une attente. */
     @GameTest(template = PLATFORM)
     public static void anUnsupportedCropIsAProblem(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -412,9 +365,6 @@ public class GreenhouseGameTests {
         helper.succeed();
     }
 
-    // Inner work
-
-    /** Pose la serre face au nord, sans passer par un joueur. */
     private static GreenhouseBlockEntity place(GameTestHelper helper) {
         helper.setBlock(MASTER, YafsBlocks.GREENHOUSE_T1.get().defaultBlockState().setValue(MultiblockBlock.FACING, Direction.NORTH));
         YafsBlocks.GREENHOUSE_T1.get().placeParts(helper.getLevel(), helper.absolutePos(MASTER), Direction.NORTH);
@@ -425,7 +375,6 @@ public class GreenhouseGameTests {
         return greenhouse;
     }
 
-    /** Un joueur en survie clique la face du dessus de {@code floor} avec l'item ; renvoie sa pile. */
     private static ItemStack use(GameTestHelper helper, BlockPos floor) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
         ItemStack stack = new ItemStack(YafsItems.GREENHOUSE_T1.get());

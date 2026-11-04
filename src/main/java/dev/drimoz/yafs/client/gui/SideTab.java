@@ -9,22 +9,10 @@ import net.minecraft.util.Mth;
 
 import java.util.List;
 
-/**
- * Onglet latéral, à la manière de Thermal (FIO-071).
- *
- * <p>Fermé, c'est un carré coloré portant une icône ; ouvert, il glisse jusqu'à sa taille et
- * montre son contenu. La couleur dit la fonction, et le côté la nature : à gauche ce qui
- * renseigne, à droite ce qui se règle.
- *
- * <p>Le contenu n'est dessiné et cliquable qu'une fois l'onglet <b>entièrement</b> ouvert :
- * un bouton qui glisse sous le curseur pendant l'animation recevrait des clics destinés à
- * autre chose.
- */
 public abstract class SideTab {
 
     public enum Side { LEFT, RIGHT }
 
-    /** Durée d'ouverture, en millisecondes. */
     private static final float OPENING_MS = 160f;
 
     private final String id;
@@ -34,7 +22,6 @@ public abstract class SideTab {
     private boolean open;
     private float openness;
 
-    // Position absolue de l'image courante, posée par SideTabs.
     int x;
     int y;
 
@@ -44,21 +31,16 @@ public abstract class SideTab {
         this.colour = colour;
     }
 
-    // Contenu, fourni par chaque onglet
-
     protected abstract Component title();
 
-    /** Icône de l'en-tête, dans un carré de 16×16. */
     protected abstract void renderIcon(GuiGraphics graphics, int x, int y);
 
     protected abstract int contentWidth();
 
     protected abstract int contentHeight();
 
-    /** {@code x, y} : origine du contenu, sous l'en-tête. */
     protected abstract void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY);
 
-    /** @return {@code true} si le clic a été pris */
     protected boolean contentClicked(int x, int y, double mouseX, double mouseY, int button) {
         return false;
     }
@@ -67,10 +49,7 @@ public abstract class SideTab {
         return List.of();
     }
 
-    /** Appelé à chaque image : l'onglet des améliorations y montre ou cache ses slots. */
     protected void onOpennessChanged(boolean fullyOpen) {}
-
-    // Interface
 
     public String id() {
         return this.id;
@@ -92,7 +71,6 @@ public abstract class SideTab {
         this.open = open;
     }
 
-    /** Ouvre sans animation : l'onglet mémorisé est déjà ouvert quand l'écran apparaît. */
     void snapOpen() {
         this.open = true;
         this.openness = 1f;
@@ -117,32 +95,23 @@ public abstract class SideTab {
         return Math.round(Mth.lerp(eased(), GuiMetrics.TAB_HEADER, fullHeight()));
     }
 
-    /** Assez large pour le contenu, et pour le titre : il ne déborde jamais de son onglet. */
     private int fullWidth() {
         int titled = TITLE_X + Minecraft.getInstance().font.width(title()) + GuiMetrics.TAB_PADDING;
 
         return Math.max(titled, contentWidth() + 2 * GuiMetrics.TAB_PADDING);
     }
 
-    /** Abscisse du titre dans l'en-tête, après l'icône. */
     private static final int TITLE_X = 24;
 
     private int fullHeight() {
         return GuiMetrics.TAB_HEADER + contentHeight() + GuiMetrics.TAB_PADDING;
     }
 
-    /** Ralentit en fin de course : l'onglet se pose au lieu de s'arrêter net. */
     private float eased() {
         float t = this.openness;
         return 1f - (1f - t) * (1f - t);
     }
 
-    // Géométrie absolue
-
-    /**
-     * Le rectangle dessiné déborde de quatre pixels sous la fenêtre principale, dessinée
-     * par-dessus : l'onglet semble en sortir plutôt que d'y être accolé.
-     */
     int drawX() {
         return this.side == Side.RIGHT ? this.x - 4 : this.x - width();
     }

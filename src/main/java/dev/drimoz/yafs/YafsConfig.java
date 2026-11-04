@@ -2,7 +2,6 @@ package dev.drimoz.yafs;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/** Réglages serveur : ce qu'un modpack équilibre sans toucher aux données. */
 public final class YafsConfig {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();

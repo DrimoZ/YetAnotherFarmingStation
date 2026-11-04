@@ -26,17 +26,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * La détection automatique des cultures (YAF-013). Elle ne demande pas de monde, mais des
- * registres et des tags chargés : c'est ce que fournit le serveur de test.
- */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class CropDetectionGameTests {
 
     private static final String PLATFORM = "platform";
 
-    /** Les cultures des champs poussent sur terre (comptée comme labourée) et terre labourée, pas sur du sable. */
     @GameTest(template = PLATFORM)
     public static void fieldCropsTakeDirtAndFarmland(GameTestHelper helper) {
         for (Item seed : List.of(Items.WHEAT_SEEDS, Items.CARROT, Items.POTATO, Items.BEETROOT_SEEDS)) {
@@ -48,7 +43,6 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    /** La verrue du Nether pousse sur du sable des âmes, et seulement là. */
     @GameTest(template = PLATFORM)
     public static void netherWartTakesSoulSandOnly(GameTestHelper helper) {
         Crop wart = known(helper, Items.NETHER_WART);
@@ -59,7 +53,6 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    /** Ce qui n'est pas une culture n'est pas reconnu : pousses d'arbre, champignons, blocs de sol. */
     @GameTest(template = PLATFORM)
     public static void nonCropsAreNotDetected(GameTestHelper helper) {
         for (Item item : List.of(Items.OAK_SAPLING, Items.RED_MUSHROOM, Items.DIRT)) {
@@ -68,9 +61,6 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    // Datapack (YAF-014)
-
-    /** Les exigences vanilla viennent des JSON livrés dans data/yafs/yafs/crop. */
     @GameTest(template = PLATFORM)
     public static void shippedRequirementsComeFromTheDatapack(GameTestHelper helper) {
         helper.assertTrue(known(helper, Items.WHEAT_SEEDS).requirements().equals(new Requirements(9, 10D, 30D)),
@@ -80,7 +70,6 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    /** Une plage inversée ou une graine inconnue sont refusées, pas corrigées. */
     @GameTest(template = PLATFORM)
     public static void anInvalidEntryIsRefused(GameTestHelper helper) {
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, helper.getLevel().registryAccess());
@@ -94,7 +83,6 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    /** Une surcharge remplace ce que la détection a trouvé ; la retirer le rend. */
     @GameTest(template = PLATFORM)
     public static void anOverrideReplacesWhatWasDetected(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -115,7 +103,6 @@ public class CropDetectionGameTests {
         helper.succeed();
     }
 
-    /** Mystical Agriculture (YAF-082) : une graine à crux est reconnue et exige son crux. Sans MA, rien à vérifier. */
     @GameTest(template = PLATFORM)
     public static void aCruxSeedNeedsItsCrux(GameTestHelper helper) {
         if (!ModList.get().isLoaded(MysticalCruxes.MOD_ID)) {

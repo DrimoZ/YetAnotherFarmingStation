@@ -13,19 +13,12 @@ import net.neoforged.neoforge.items.IItemHandler;
 import javax.annotation.Nullable;
 import java.util.List;
 
-/**
- * Un module de serre : un item par module, comme un bloc par palier. Ce qu'il fait vient de la
- * {@link ModuleDefinition} de même identifiant ({@code yafs:module_heater} → {@code data/yafs/yafs/module/module_heater.json}),
- * qu'un datapack peut retoucher. Empilés dans un emplacement, ils combinent leurs effets.
- */
 public class ModuleItem extends Item {
-
 
     public ModuleItem(Properties properties) {
         super(properties.stacksTo(64));
     }
 
-    /** Combien de ce module une serre accepte, d'après sa définition ; 1 si on ne la trouve pas. */
     public static int maxStack(ItemStack stack, @Nullable HolderLookup.Provider registries) {
         ModuleDefinition module = definition(stack, registries);
         return module == null ? 1 : module.maxStack();
@@ -38,10 +31,6 @@ public class ModuleItem extends Item {
         return registries.lookup(ModuleDefinition.REGISTRY).flatMap(lookup -> lookup.get(kind)).map(holder -> holder.value()).orElse(null);
     }
 
-    /**
-     * Le même jugement au client et au serveur : une sorte de module par serre, et un seul module
-     * par effet qui garde le plus fort (densité, lumière), puisqu'un second ne ferait rien.
-     */
     public static boolean fits(IItemHandler modules, int slot, ItemStack stack, @Nullable HolderLookup.Provider registries) {
         ResourceKey<ModuleDefinition> kind = kind(stack);
         if (kind == null) return false;
@@ -56,7 +45,6 @@ public class ModuleItem extends Item {
         return true;
     }
 
-    /** La définition de ce module, nommée comme son item ; {@code null} si ce n'est pas un module. */
     @Nullable
     public static ResourceKey<ModuleDefinition> kind(ItemStack stack) {
         return stack.getItem() instanceof ModuleItem
@@ -64,7 +52,6 @@ public class ModuleItem extends Item {
                 : null;
     }
 
-    /** Ce que fait un module, gains en vert, coûts en or ; puis où il se pose. */
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("yafs.tooltip.module").withStyle(ChatFormatting.BLUE));
@@ -85,7 +72,7 @@ public class ModuleItem extends Item {
                 if (module.energyMultiplier() > 1D) cost(tooltip, "yafs.module.energy_cost", times(module.energyMultiplier()));
                 if (module.waterMultiplier() > 1D) cost(tooltip, "yafs.module.water_cost", times(module.waterMultiplier()));
                 if (module.energyPerTick() > 0) cost(tooltip, "yafs.module.energy_per_tick", module.energyPerTick());
-                // Chaque plant boit et consomme comme une parcelle : la densité multiplie les deux.
+
                 if (module.extraPlants() > 0) cost(tooltip, "yafs.module.per_plant", module.extraPlants());
                 if (module.speedMultiplier() > 1D || module.energyPerTick() > 0) {
                     tooltip.add(Component.translatable("yafs.tooltip.module.needs_energy").withStyle(ChatFormatting.DARK_GRAY));

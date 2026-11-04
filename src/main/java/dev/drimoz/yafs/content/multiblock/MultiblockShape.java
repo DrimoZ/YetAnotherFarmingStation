@@ -7,13 +7,6 @@ import net.minecraft.world.phys.AABB;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Le volume d'un multibloc, maître au <b>centre-bas</b>.
- *
- * <p>{@code width} se mesure en travers de la face, {@code depth} dans son axe : un volume
- * non carré tourne avec la machine. Largeur et profondeur sont impaires, sans quoi le
- * centre ne tomberait pas sur un bloc.
- */
 public record MultiblockShape(int width, int height, int depth) {
 
     public MultiblockShape {
@@ -23,7 +16,6 @@ public record MultiblockShape(int width, int height, int depth) {
         }
     }
 
-    /** Toutes les positions du volume, maître compris. */
     public List<BlockPos> positions(BlockPos master, Direction facing) {
         int halfX = halfX(facing);
         int halfZ = halfZ(facing);
@@ -39,7 +31,6 @@ public record MultiblockShape(int width, int height, int depth) {
         return positions;
     }
 
-    /** La boîte englobante, en coordonnées du monde. */
     public AABB bounds(BlockPos master, Direction facing) {
         int halfX = halfX(facing);
         int halfZ = halfZ(facing);
@@ -48,8 +39,6 @@ public record MultiblockShape(int width, int height, int depth) {
                 master.getX() - halfX, master.getY(), master.getZ() - halfZ,
                 master.getX() + halfX + 1, master.getY() + this.height, master.getZ() + halfZ + 1);
     }
-
-    // Une face orientée nord ou sud s'étend en X ; est ou ouest, en Z.
 
     private int halfX(Direction facing) {
         return (facing.getAxis() == Direction.Axis.Z ? this.width : this.depth) / 2;

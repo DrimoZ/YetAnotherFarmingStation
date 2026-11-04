@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** Engrais, résidus, Composteur et sols à bonus (YAF-022, 023, 065, 017). Serre P1 posée en (5, 2, 5). */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class FertilizerGameTests {
@@ -41,7 +40,6 @@ public class FertilizerGameTests {
     private static final String PLATFORM = "platform";
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
 
-    /** La poudre d'os accélère toutes les parcelles ×1,5, sans énergie, et un item est entamé. */
     @GameTest(template = PLATFORM)
     public static void boneMealSpeedsEveryPlotUp(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -56,7 +54,6 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /** Une serre où rien ne pousse n'use pas son engrais. */
     @GameTest(template = PLATFORM)
     public static void anIdleGreenhouseKeepsItsFertilizer(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -68,12 +65,11 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /** L'Engrais, lui, ne presse pas la croissance : il augmente la récolte (×1,5). */
     @GameTest(template = PLATFORM)
     public static void fertilizerRaisesTheHarvestNotTheSpeed(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
         plantWheat(greenhouse, 0);
-        // Deux plants : 2 × 1,5 = 3, exact. Avec un seul, l'arrondi non biaisé donnerait 1 ou 2 au hasard.
+
         greenhouse.modules().setStackInSlot(0, module("module_density_1"));
         greenhouse.fertilizer().setStackInSlot(0, new ItemStack(YafsItems.FERTILIZER.get()));
 
@@ -84,7 +80,6 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /** Un engrais que le registre ne connaît pas est refusé par l'emplacement. */
     @GameTest(template = PLATFORM)
     public static void theSlotOnlyTakesFertilizers(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -95,7 +90,6 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /** Une culture à résidu garanti laisse du compost avec la récolte, dans la sortie. */
     @GameTest(template = PLATFORM)
     public static void aHarvestLeavesCompost(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -117,10 +111,6 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /**
-     * Le Composteur change quatre composts en un Engrais par pas ; il ne touche pas à un
-     * emplacement qui tient autre chose, et n'invente rien.
-     */
     @GameTest(template = PLATFORM)
     public static void theComposterTurnsCompostIntoFertilizer(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -137,7 +127,6 @@ public class FertilizerGameTests {
         helper.assertTrue(greenhouse.fertilizer().getStackInSlot(0).getCount() == 2 && count(greenhouse, YafsItems.COMPOST.get()) == 1,
                 "Deux engrais, un compost de reste : " + greenhouse.fertilizer().getStackInSlot(0) + " / " + count(greenhouse, YafsItems.COMPOST.get()));
 
-        // Un emplacement tenu par de la poudre d'os n'est pas écrasé.
         greenhouse.fertilizer().setStackInSlot(0, new ItemStack(Items.BONE_MEAL));
         greenhouse.output().setStackInSlot(0, new ItemStack(YafsItems.COMPOST.get(), 8));
         greenhouse.grow(GreenhouseBlockEntity.STEP);
@@ -146,11 +135,6 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /**
-     * L'engrais s'use par parcelle et par temps : 60 secondes de pousse en prennent 60 secondes de
-     * parcelle, avec ou sans accélérateur ni densité. Sinon une serre à fond mangerait des dizaines
-     * d'items par seconde.
-     */
     @GameTest(template = PLATFORM)
     public static void fertilizerUseIgnoresSpeedAndDensity(GameTestHelper helper) {
         GreenhouseBlockEntity plain = place(helper);
@@ -160,8 +144,6 @@ public class FertilizerGameTests {
         double expected = 300D - 60D;
         helper.assertTrue(Math.abs(plain.fertilizerCharge() - expected) < 1e-6, "Sans module : charge " + plain.fertilizerCharge());
 
-        // Même serre, deuxième phase : accélérateur et densité posés, alimentés. Elle pousse bien plus vite,
-        // et l'engrais baisse pourtant d'autant : 60 secondes de parcelle de plus.
         float before = plain.growth(0).progress();
         plain.modules().setStackInSlot(0, module("module_accelerator_1"));
         plain.modules().setStackInSlot(1, module("module_density_1").copyWithCount(4));
@@ -177,7 +159,6 @@ public class FertilizerGameTests {
         return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, id)));
     }
 
-    /** Un ItemMatch désigne un item ou, avec #, tout un tag : c'est ce qui permet à un modpack de ranger ses engrais. */
     @GameTest(template = PLATFORM)
     public static void anItemMatchAcceptsTags(GameTestHelper helper) {
         ItemMatch logs = new ItemMatch(null, TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace("logs")));
@@ -187,7 +168,6 @@ public class FertilizerGameTests {
         helper.succeed();
     }
 
-    /** La Terre fertile est un sol que le blé accepte, et son bonus est celui de SA parcelle, pas des autres. */
     @GameTest(template = PLATFORM)
     public static void fertileSoilRaisesTheHarvestOfItsOwnPlotOnly(GameTestHelper helper) {
         helper.assertTrue(Crops.of(Items.WHEAT_SEEDS).accepts(YafsItems.FERTILE_SOIL.get()), "Le blé refuse la terre fertile");
@@ -200,13 +180,11 @@ public class FertilizerGameTests {
 
         greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
 
-        // 4 plants par parcelle : 4 × 1,25 = 5 sur la terre fertile, 4 sur la terre.
         int wheat = count(greenhouse, Items.WHEAT);
         helper.assertTrue(wheat == 9, wheat + " blés au lieu de 9 (5 + 4)");
         helper.succeed();
     }
 
-    /** Un sol de datapack, désigné par un tag, peut accélérer sa parcelle : le bonus n'a rien de propre au mod. */
     @GameTest(template = PLATFORM)
     public static void aDatapackSoilFromATagCanSpeedItsPlotUp(GameTestHelper helper) {
         List<CropOverride> overrides = CropData.overrides();
@@ -232,8 +210,6 @@ public class FertilizerGameTests {
         }
         helper.succeed();
     }
-
-    // Inner work
 
     private static void plantWheat(GreenhouseBlockEntity greenhouse, int plot) {
         greenhouse.setPlotItem(plot, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));

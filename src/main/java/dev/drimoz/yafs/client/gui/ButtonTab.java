@@ -7,7 +7,6 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Onglet à boutons : rendu, clic et infobulle délégués à la liste. */
 public abstract class ButtonTab extends SideTab {
 
     protected final List<IconButton> buttons = new ArrayList<>();

@@ -8,7 +8,6 @@ import net.minecraft.world.item.TooltipFlag;
 
 import java.util.List;
 
-/** L'item d'une serre : ce que donne ce palier, et comment on le pose ou l'ajoute. */
 public class GreenhouseItem extends BlockItem {
 
     private final GreenhouseTier tier;

@@ -15,13 +15,6 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * {@code en_us} et {@code fr_fr} portent les mêmes clés, les mêmes {@code %s} dans le même ordre,
- * et aucune valeur vide. Repris de Portable Beacons.
- *
- * <p>Les deux défauts sont invisibles jusqu'à ce qu'un joueur tombe dessus : une clé manquante
- * s'affiche brute, un {@code %s} perdu lève une exception dans une infobulle, chez lui seulement.
- */
 class TranslationsTest {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("%%|%s");
@@ -59,10 +52,6 @@ class TranslationsTest {
         return found.toString();
     }
 
-    /**
-     * Le dossier de travail n'est pas la racine : ModDevGradle lance les tests depuis
-     * {@code build/minecraft-junit}. On remonte jusqu'au {@code gradle.properties}.
-     */
     private static Path projectRoot() {
         for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
             if (Files.isRegularFile(dir.resolve("gradle.properties"))) return dir;

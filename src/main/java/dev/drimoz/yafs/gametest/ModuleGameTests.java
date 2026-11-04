@@ -36,7 +36,6 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
-/** Les modules (YAF-060 à 062). Serre P1 en (5, 2, 5), deux emplacements de module. */
 @GameTestHolder(YetAnotherFarmingStation.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class ModuleGameTests {
@@ -44,7 +43,6 @@ public class ModuleGameTests {
     private static final String PLATFORM = "platform";
     private static final BlockPos MASTER = new BlockPos(5, 2, 5);
 
-    /** Les modules livrés sont des entrées de datapack, lues au chargement du monde. */
     @GameTest(template = PLATFORM)
     public static void shippedModulesComeFromTheDatapack(GameTestHelper helper) {
         var registry = helper.getLevel().registryAccess().registryOrThrow(ModuleDefinition.REGISTRY);
@@ -55,10 +53,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /**
-     * Un chauffage alimenté fait pousser la verrue à 20 °C ; sans énergie, il ne fait rien. Ce qui
-     * reste d'énergie après le chauffage alimente la parcelle, qui pousse alors plus vite encore.
-     */
     @GameTest(template = PLATFORM)
     public static void aPoweredHeaterGrowsNetherWartInTheOverworld(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -70,7 +64,6 @@ public class ModuleGameTests {
         greenhouse.grow(GreenhouseBlockEntity.STEP);
         float cold = greenhouse.growth(0).progress();
 
-        // La réserve n'accepte que 1 000 FE par appel, comme d'un câble.
         int given = greenhouse.energy().receiveEnergy(10_000, false);
         greenhouse.grow(GreenhouseBlockEntity.STEP);
         float heated = greenhouse.growth(0).progress() - cold;
@@ -84,7 +77,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Une lampe alimentée fait pousser le blé à pleine vitesse dans le noir. */
     @GameTest(template = PLATFORM)
     public static void aPoweredLampLightsTheDark(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -102,7 +94,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Le collecteur remplit la réserve sous la pluie, et pas par temps sec. */
     @GameTest(template = PLATFORM)
     public static void theRainCollectorFillsUnderRainOnly(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -119,7 +110,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Deux modules de la même sorte ne vont pas dans une serre ; un item qui n'est pas un module non plus. Chaque module est son propre item. */
     @GameTest(template = PLATFORM)
     public static void oneModuleOfEachKind(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -129,16 +119,12 @@ public class ModuleGameTests {
         helper.assertTrue(greenhouse.modules().isItemValid(1, module("cooler")), "Refroidisseur refusé");
         helper.assertTrue(!greenhouse.modules().isItemValid(1, new ItemStack(Items.DIRT)), "De la terre acceptée en module");
 
-        // Les densités s'additionnent : plusieurs sortes vont ensemble. La lumière garde la plus forte : une seule lampe.
         greenhouse.modules().setStackInSlot(0, module("density_1"));
         helper.assertTrue(greenhouse.modules().isItemValid(1, module("density_3")), "Une deuxième densité refusée");
         helper.assertTrue(greenhouse.modules().insertItem(1, module("grow_lamp").copyWithCount(4), false).getCount() == 3, "Plus d'une lampe acceptée");
         helper.succeed();
     }
 
-    // Augments (YAF-063, YAF-064) : la vitesse se multiplie, ce qu'elle coûte aussi.
-
-    /** Alimentée, une parcelle pousse ENERGIZED_SPEED fois plus vite ; sans énergie, à vitesse 1. */
     @GameTest(template = PLATFORM)
     public static void energySpeedsGrowthUp(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -154,7 +140,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Trois accélérateurs : 2 × 4 × 8 = ×64 de plus, et l'énergie × 4 × 16 × 64 ; l'eau croît comme la racine de la vitesse. */
     @GameTest(template = PLATFORM)
     public static void acceleratorsMultiplySpeedAndCost(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -176,7 +161,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Une pile additionne : deux Accélérateurs I, vitesse ×3 et énergie ×7 ; une serre n'en prend que 16. */
     @GameTest(template = PLATFORM)
     public static void stackedModulesCombine(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -200,7 +184,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Sans énergie, les accélérateurs ne font rien, et ne coûtent rien en eau. */
     @GameTest(template = PLATFORM)
     public static void unpoweredAcceleratorsIdle(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -214,10 +197,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /**
-     * Les densités s'additionnent, sans plafond de palier : deux Densité I (+1 chacune) et une
-     * Densité II (+2), cinq plants par parcelle en P1 ; cinq fois la récolte et l'eau.
-     */
     @GameTest(template = PLATFORM)
     public static void densityAddsPlantsWithoutATierCap(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -237,7 +216,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /** Une Batterie agrandit la réserve ; une pile trop grosse (vieille sauvegarde) ne compte que jusqu'au plafond. */
     @GameTest(template = PLATFORM)
     public static void batteriesGrowTheReserveUpToTheirCap(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -256,7 +234,6 @@ public class ModuleGameTests {
         greenhouse.setPlotItem(plot, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
     }
 
-    /** Tous les modules portent le préfixe {@code module_} : le test dit « heater », le jeu « module_heater ». */
     private static ResourceKey<ModuleDefinition> key(String name) {
         return ResourceKey.create(ModuleDefinition.REGISTRY, ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "module_" + name));
     }
@@ -265,11 +242,6 @@ public class ModuleGameTests {
         return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(YetAnotherFarmingStation.MOD_ID, "module_" + name)));
     }
 
-    /**
-     * Payée tick par tick : une réserve de 1 M FE fait tourner une serre qui demande ~500 k FE/t,
-     * tant qu'une source la remplit à chaque tick. L'ancien modèle voulait 10 ticks d'avance en
-     * stock (5 M), et la déclarait à court pour toujours.
-     */
     @GameTest(template = PLATFORM, timeoutTicks = 100)
     public static void aSmallReserveRunsAHungryGreenhouseFedEveryTick(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -285,10 +257,6 @@ public class ModuleGameTests {
         });
     }
 
-    /**
-     * Bue tick par tick : une serre gourmande avec presque pas d'eau est freinée par l'eau, au lieu
-     * de pousser à plein en accumulant une dette que le prochain seau effacerait.
-     */
     @GameTest(template = PLATFORM, timeoutTicks = 200)
     public static void aShortWaterSupplySlowsGrowthInsteadOfOwing(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -304,10 +272,6 @@ public class ModuleGameTests {
         });
     }
 
-    /**
-     * Une culture qui exige le noir (max_light 0, par datapack) est freinée par la lumière du jour
-     * et poussée à plein avec l'Obscurité alimentée ; la lampe et l'obscurité s'excluent.
-     */
     @GameTest(template = PLATFORM)
     public static void blackoutPlungesTheGreenhouseIntoDarkness(GameTestHelper helper) {
         List<CropOverride> shipped = CropData.overrides();
@@ -338,10 +302,6 @@ public class ModuleGameTests {
         helper.succeed();
     }
 
-    /**
-     * Les modules de capacité agrandissent chaque case de sortie, au-delà de 64 et même de 99 ; et
-     * une pile de 500 survit à la sauvegarde (le format vanilla borne à 99 ailleurs).
-     */
     @GameTest(template = PLATFORM)
     public static void capacityModulesGrowTheOutputSlots(GameTestHelper helper) {
         GreenhouseBlockEntity greenhouse = place(helper);
@@ -353,7 +313,6 @@ public class ModuleGameTests {
         ItemStack left = greenhouse.output().insertItem(0, new ItemStack(Items.WHEAT, 500), false);
         helper.assertTrue(left.isEmpty() && greenhouse.output().getStackInSlot(0).getCount() == 500, "500 blés non acceptés : reste " + left.getCount());
 
-        // La vraie sauvegarde de la serre : vidée, puis relue.
         var registries = helper.getLevel().registryAccess();
         var saved = greenhouse.saveWithoutMetadata(registries);
         greenhouse.output().setStackInSlot(0, ItemStack.EMPTY);

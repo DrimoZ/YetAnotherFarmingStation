@@ -11,25 +11,14 @@ import net.minecraft.world.item.Items;
 
 import java.util.List;
 
-/**
- * L'onglet de contrôle, porté de FactoryIO (FIO-167, FIO-183) : l'interrupteur, puis la condition
- * redstone. L'interrupteur est en tête, il l'emporte sur tout signal ; le signal reçu est affiché,
- * c'est ce qui permet de comprendre pourquoi la machine est arrêtée sans aller chercher un
- * comparateur.
- *
- * <p>L'onglet ne connaît aucune machine : il lit et règle à travers {@link Controls}, et n'applique
- * rien lui-même. Ici, pas de module de redstone avancée : modes et seuil sont toujours réglables.
- */
 public final class ControlTab extends ButtonTab {
 
-    /** Ce qu'une machine expose pour être pilotée. */
     public interface Controls {
 
         boolean isSwitchedOn();
 
         RedstoneCondition condition();
 
-        /** Le signal que la machine reçoit, de 0 à 15. */
         int signal();
 
         void sendSwitchedOn(boolean on);
@@ -42,7 +31,7 @@ public final class ControlTab extends ButtonTab {
     public static final String ID = "control";
 
     private static final int LINE = GuiTheme.LINE;
-    /** Étroit : à côté d'une fenêtre de 176 et de l'onglet Environnement, il doit tenir sur un écran de 427 de large. */
+
     public static final int WIDTH = 96;
     private static final int BUTTON = 14;
 

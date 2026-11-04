@@ -16,7 +16,6 @@ class MultiblockShapeTest {
 
     private static final BlockPos MASTER = new BlockPos(10, 64, -3);
 
-    /** Le volume d'une serre P1 : 27 positions distinctes, maître au centre-bas, dans la boîte. */
     @Test
     void aFirstTierGreenhouseIsCentredOnItsMaster() {
         MultiblockShape shape = new MultiblockShape(3, 3, 3);
@@ -31,7 +30,6 @@ class MultiblockShapeTest {
         assertTrue(positions.stream().allMatch(pos -> bounds.contains(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
     }
 
-    /** Un volume non carré tourne avec sa face : la largeur court en travers d'elle. */
     @Test
     void aNonSquareFootprintTurnsWithItsFacing() {
         MultiblockShape shape = new MultiblockShape(5, 1, 1);

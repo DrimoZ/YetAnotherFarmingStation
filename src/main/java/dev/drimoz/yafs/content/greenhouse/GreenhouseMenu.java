@@ -28,35 +28,24 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Le menu d'une serre : la sortie en vrais slots, la croissance et le statut de chaque parcelle en
- * {@link ContainerData}, calculés côté serveur. Ce que contient chaque parcelle, le client le
- * connaît déjà par la synchronisation du block entity (YAF-040).
- *
- * <p>La disposition se fixe ici, des deux côtés, sur la grille {@link GuiMetrics} : jauge en
- * colonne 0, parcelles à partir de la colonne 1 (jusqu'à la 4 en P3), sortie 3×3 en colonnes 6 à 8.
- */
 public class GreenhouseMenu extends AbstractContainerMenu {
 
     public static final int OUTPUT_COLUMN = 6;
     public static final int OUTPUT_SIDE = 3;
 
-    /** Une ligne d'en-têtes (énergie, parcelles, eau, récolte) au-dessus des zones, puis la grille. */
     public static final int HEADER_HEIGHT = 10;
     public static final int GRID_TOP = GuiMetrics.CONTENT_TOP + HEADER_HEIGHT;
 
-    /** L'onglet bleu des modules, premier à droite de la fenêtre (SideTabs) : trois colonnes de slots, puis leur bilan. */
     public static final int MODULE_TAB_X = GuiMetrics.WIDTH;
     public static final int MODULE_COLUMNS = 3;
     public static final int MODULE_TAB_WIDTH = 116;
-    /** La colonne de la réserve d'eau ; l'engrais y prend la dernière case. */
+
     public static final int WATER_COLUMN = 5;
 
-    /** Croissance transmise en millièmes : un {@code DataSlot} ne porte qu'un entier court. */
     public static final int PROGRESS_SCALE = 1000;
-    /** Par parcelle : croissance, statut, facteur limitant (-1 : aucun), efficacité en %, vitesse en dixièmes. */
+
     public static final int DATA_PER_PLOT = 5;
-    /** Après les parcelles : l'eau en mB, la lumière, la température en dixièmes de degré, l'énergie en deux moitiés. */
+
     public static final int WATER = 0;
     public static final int LIGHT = 1;
     public static final int TEMPERATURE = 2;
@@ -66,32 +55,30 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     public static final int REDSTONE_MODE = 6;
     public static final int REDSTONE_THRESHOLD = 7;
     public static final int SIGNAL = 8;
-    /** L'eau bue, en mB par minute, au rythme du dernier pas. */
+
     public static final int WATER_USE_HIGH = 9;
-    /** Le besoin en énergie, FE/t, en deux moitiés comme la réserve. */
+
     public static final int DEMAND_HIGH = 10;
     public static final int DEMAND_LOW = 11;
-    /** La capacité de la réserve, ce qui entre par tick, la part des modules dans le besoin : en deux moitiés. */
+
     public static final int CAPACITY_HIGH = 12;
     public static final int CAPACITY_LOW = 13;
     public static final int INPUT_HIGH = 14;
     public static final int INPUT_LOW = 15;
     public static final int MODULE_DEMAND_HIGH = 16;
     public static final int MODULE_DEMAND_LOW = 17;
-    /** Le besoin n'était pas couvert au dernier pas. */
+
     public static final int STARVED = 18;
     public static final int WATER_USE_LOW = 19;
     private static final int SHARED_DATA = 20;
 
-    /** Boutons de menu de l'onglet Contrôle, au-dessus des rangs de parcelle (0 à 15) et de CLOSE_DETAIL. */
     public static final int SWITCH_OFF = 300;
     public static final int SWITCH_ON = 301;
     public static final int MODE_BASE = 310;
     public static final int THRESHOLD_BASE = 320;
 
-    /** Bouton de menu qui ferme le détail ; 0 à n-1 ouvrent la parcelle de ce rang. */
     public static final int CLOSE_DETAIL = 255;
-    /** Le détail d'une parcelle (YAF-032) : ses trois emplacements, sur une ligne, sous un bandeau. */
+
     public static final int DETAIL_SLOTS_Y = GuiMetrics.CONTENT_TOP + 11;
 
     private static final int OUTPUT_SLOTS = GreenhouseBlockEntity.OUTPUT_SLOTS;
@@ -100,23 +87,20 @@ public class GreenhouseMenu extends AbstractContainerMenu {
     private final GreenhouseTier tier;
     private final BlockPos pos;
     private final ContainerLevelAccess access;
-    /** Les parcelles de la serre ; au client, une copie que seules les cases du détail remplissent. */
+
     private final ItemStackHandler plots;
     private final ContainerData data;
-    /** Sortie, modules, détail de parcelle ; l'inventaire du joueur vient après. */
+
     private final int containerSlots;
     private final int detailStart;
 
-    /** La parcelle dont le détail est ouvert, -1 pour aucune. Tenue des deux côtés : le serveur l'apprend par bouton de menu. */
     private int selected = -1;
 
-    /** Côté serveur. */
     public GreenhouseMenu(int id, Inventory inventory, GreenhouseBlockEntity greenhouse) {
         this(id, inventory, greenhouse.tier(), greenhouse.getBlockPos(), greenhouse.output(), greenhouse.modules(), greenhouse.fertilizer(), greenhouse.plots(),
                 greenhouse.menuData(), ContainerLevelAccess.create(greenhouse.getLevel(), greenhouse.getBlockPos()));
     }
 
-    /** Côté client : position et palier suffisent, le reste arrive par la synchronisation du menu. */
     public GreenhouseMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
         this(id, inventory, buffer.readBlockPos(), buffer.readEnum(GreenhouseTier.class));
     }
@@ -127,7 +111,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 new SimpleContainerData(dataSize(tier)), ContainerLevelAccess.NULL);
     }
 
-    /** Côté client aussi : le registre des engrais est synchronisé, le slot sait ce qu'il refuse. */
     private static ItemStackHandler clientFertilizer(Inventory inventory) {
         return new ItemStackHandler(1) {
             @Override
@@ -137,7 +120,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         };
     }
 
-    /** Côté client, la même règle qu'au serveur, pour que le slot refuse sans aller-retour. */
     private static ItemStackHandler clientModules(GreenhouseTier tier, Inventory inventory) {
         return new ItemStackHandler(tier.moduleSlots()) {
             @Override
@@ -176,7 +158,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                     return false;
                 }
 
-                /** Cachée sous le détail d'une parcelle. */
                 @Override
                 public boolean isActive() {
                     return GreenhouseMenu.this.selected < 0;
@@ -194,7 +175,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
                 }
             });
         }
-        // L'engrais, dans la colonne de l'eau, tout en bas : sous la jauge, qui est raccourcie pour lui. Caché avec elle sous le détail.
+
         addSlot(new SlotItemHandler(fertilizer, 0, GuiMetrics.column(WATER_COLUMN) + 1, GRID_TOP + (contentRows() - 1) * GuiMetrics.SLOT + 1) {
             @Override
             public boolean isActive() {
@@ -221,7 +202,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         addDataSlots(data);
     }
 
-    /** Le premier index après les parcelles : la réserve d'eau, puis lumière et température. */
     public static int waterData(GreenhouseTier tier) {
         return tier.plots() * DATA_PER_PLOT;
     }
@@ -238,7 +218,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.data.get(waterData(this.tier) + TEMPERATURE) / 10D;
     }
 
-    /** Le facteur qui limite cette parcelle, {@code null} si elle ne pousse pas. */
     @Nullable
     public Efficiency.Factor limiting(int plot) {
         int ordinal = this.data.get(plot * DATA_PER_PLOT + 2);
@@ -250,23 +229,18 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return (this.data.get(waterData(this.tier) + ENERGY_HIGH) << 16) | (this.data.get(waterData(this.tier) + ENERGY_LOW) & 0xFFFF);
     }
 
-    /** La vitesse de cette parcelle au dernier pas : 1 sans énergie, davantage avec. */
     public double speed(int plot) {
         return this.data.get(plot * DATA_PER_PLOT + 4) / 10D;
     }
 
-    /** L'efficacité de cette parcelle, de 0 à 1. */
     public double efficiency(int plot) {
         return this.data.get(plot * DATA_PER_PLOT + 3) / 100D;
     }
-
-    // Détail d'une parcelle (YAF-032)
 
     public int selected() {
         return this.selected;
     }
 
-    /** L'emplacement {@code slot} (culture, substrat, catalyseur) du détail ouvert. */
     public Slot detailSlot(int slot) {
         return this.slots.get(this.detailStart + slot);
     }
@@ -284,7 +258,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.data.get(waterData(this.tier) + SIGNAL);
     }
 
-    /** L'eau bue, en mB par tick, comme les tuyaux la comptent. */
     public double waterUse() {
         return halves(WATER_USE_HIGH, WATER_USE_LOW) / 10D;
     }
@@ -305,7 +278,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.data.get(waterData(this.tier) + STARVED) != 0;
     }
 
-    /** Un entier passé en deux moitiés de 16 bits : un DataSlot n'en porte pas plus. */
     private int halves(int high, int low) {
         return (this.data.get(waterData(this.tier) + high) << 16) | (this.data.get(waterData(this.tier) + low) & 0xFFFF);
     }
@@ -314,15 +286,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return (this.data.get(waterData(this.tier) + DEMAND_HIGH) << 16) | (this.data.get(waterData(this.tier) + DEMAND_LOW) & 0xFFFF);
     }
 
-    /** Le client ouvre ou ferme localement, et prévient le serveur par {@link #clickMenuButton}. */
     public void select(int plot) {
         this.selected = plot >= 0 && plot < this.tier.plots() ? plot : -1;
     }
 
-    /**
-     * Validé ici, côté serveur : les réglages de l'onglet Contrôle d'abord, bornés ; sinon un rang
-     * de parcelle, et un rang hors de la serre ferme le détail sans rien ouvrir d'autre.
-     */
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id == SWITCH_OFF || id == SWITCH_ON) {
@@ -343,14 +310,12 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         });
     }
 
-    /** Les modules sont dans un onglet qui se replie : fermé, ses slots n'existent pas. Côté client seulement. */
     private boolean modulesVisible = true;
 
     public void setModulesVisible(boolean visible) {
         this.modulesVisible = visible;
     }
 
-    /** Les trois emplacements de la parcelle ouverte, vus comme un petit inventaire. */
     private final class SelectedPlot implements IItemHandlerModifiable {
 
         private final ItemStackHandler plots;
@@ -378,7 +343,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
             if (GreenhouseMenu.this.selected >= 0) this.plots.setStackInSlot(index(slot), stack);
         }
 
-        /** Un seul item par case, quel que soit ce qu'on tend : un maj-clic ne pose pas toute la pile. */
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             if (GreenhouseMenu.this.selected < 0 || stack.isEmpty() || !getStackInSlot(slot).isEmpty() || !isItemValid(slot, stack)) return stack;
@@ -401,11 +365,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
             return GreenhouseMenu.this.selected >= 0 && accepts(slot, stack);
         }
 
-        /**
-         * Le même jugement des deux côtés, puisque le client refait la détection : une graine
-         * reconnue, un substrat que la culture semée accepte (ou qu'une culture accepte, s'il n'y
-         * en a pas encore), le catalyseur qu'elle demande.
-         */
         private boolean accepts(int slot, ItemStack stack) {
             Crop sown = Crops.of(getStackInSlot(GreenhouseBlockEntity.CROP).getItem());
             return switch (slot) {
@@ -439,7 +398,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.tier;
     }
 
-    /** Les lignes du contenu : la grille de parcelles, ou la sortie 3×3 si elle est plus haute. */
     public int contentRows() {
         return Math.max(this.tier.plotSide(), OUTPUT_SIDE);
     }
@@ -466,7 +424,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return ordinal >= 0 && ordinal < statuses.length ? statuses[ordinal] : PlotStatus.WAITING;
     }
 
-    /** La serre prend le statut le plus grave de ses parcelles. */
     public PlotStatus worstStatus() {
         List<PlotStatus> statuses = new ArrayList<>();
         for (int plot = 0; plot < this.tier.plots(); plot++) statuses.add(status(plot));
@@ -477,15 +434,10 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return this.detailStart - OUTPUT_SLOTS - 1;
     }
 
-    /** L'emplacement d'engrais, juste après les modules. */
     public Slot fertilizerSlot() {
         return this.slots.get(OUTPUT_SLOTS + moduleSlots());
     }
 
-    /**
-     * Maj-clic : sortie, modules et détail vers l'inventaire. Depuis l'inventaire : un module vers
-     * les modules ; sinon, parcelle ouverte, vers ses cases ; sinon, réparti sur les parcelles.
-     */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = this.slots.get(index);
@@ -503,7 +455,7 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         } else if (this.selected >= 0) {
             moved = moveItemStackTo(stack, this.detailStart, this.containerSlots, false);
         } else {
-            // Les parcelles n'ont pas de slot : seul le serveur les connaît, il répartit et renvoie l'inventaire.
+
             if (!player.level().isClientSide && sow(stack)) slot.setChanged();
             return ItemStack.EMPTY;
         }
@@ -515,12 +467,6 @@ public class GreenhouseMenu extends AbstractContainerMenu {
         return original;
     }
 
-    /**
-     * Un item par parcelle, sur autant de parcelles que la pile en couvre : une graine dans chaque
-     * parcelle vide, un substrat ou un catalyseur dans chaque parcelle semée qui le veut et ne l'a pas.
-     *
-     * @return {@code true} si quelque chose a été posé
-     */
     private boolean sow(ItemStack stack) {
         boolean seed = Crops.of(stack.getItem()) != null;
         int before = stack.getCount();

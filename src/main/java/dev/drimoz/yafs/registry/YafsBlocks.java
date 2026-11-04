@@ -23,11 +23,9 @@ public final class YafsBlocks {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, YetAnotherFarmingStation.MOD_ID);
 
-    /** Un sol qui rend plus (YAF-017) : même solidité que la terre, un bonus par sa définition de substrat. */
     public static final DeferredBlock<net.minecraft.world.level.block.Block> FERTILE_SOIL = BLOCKS.registerSimpleBlock("fertile_soil",
             BlockBehaviour.Properties.ofFullCopy(net.minecraft.world.level.block.Blocks.DIRT));
 
-    /** Un seul bloc de partie pour tous les multiblocs, sans item ni loot. */
     public static final DeferredBlock<MultiblockPartBlock> MULTIBLOCK_PART = BLOCKS.register("multiblock_part",
             () -> new MultiblockPartBlock(BlockBehaviour.Properties.of()
                     .strength(2.0F)
@@ -40,7 +38,6 @@ public final class YafsBlocks {
     public static final DeferredBlock<GreenhouseBlock> GREENHOUSE_T2 = greenhouse("greenhouse_t2", GreenhouseTier.II);
     public static final DeferredBlock<GreenhouseBlock> GREENHOUSE_T3 = greenhouse("greenhouse_t3", GreenhouseTier.III);
 
-    // build(null) : aucun type de data fixer, comme pour tout block entity moddé.
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MultiblockPartBlockEntity>> MULTIBLOCK_PART_ENTITY =
             BLOCK_ENTITIES.register("multiblock_part",
