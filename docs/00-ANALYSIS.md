@@ -134,4 +134,4 @@ vanilla farms.
 - [BotanyPotsAdditions — CurseForge](https://www.curseforge.com/minecraft/mc-mods/botanypotsadditions)
 - [Oritech — moddedmc.wiki](https://moddedmc.wiki/project/oritech)
 - `FactoryIO/docs/12-DESIGN-CRAFTER.md`, `FactoryIO/shared/GuiMetrics.java`,
-  `FactoryIO/client/gui/GuiTheme.java`, `BeaconPack/DESIGN.md`, `BeaconPack/CLAUDE.md`
+  `FactoryIO/client/gui/GuiTheme.java`, `BeaconPack/DESIGN.md`

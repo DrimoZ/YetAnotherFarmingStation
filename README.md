@@ -48,8 +48,7 @@ Every integration is optional.
 
 ## Building
 
-Java 21, Gradle 9, ModDevGradle. Commands, code rules and vocabulary are in [`CLAUDE.md`](CLAUDE.md)
-and [`CONTEXT.md`](CONTEXT.md).
+Java 21, Gradle 9, ModDevGradle. The vocabulary is in [`CONTEXT.md`](CONTEXT.md).
 
 ```
 gradlew build              compile and run the JUnit tests
