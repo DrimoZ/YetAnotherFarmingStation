@@ -2,9 +2,9 @@
   "parent": "minecraft:block/block",
   "render_type": "minecraft:cutout",
   "textures": {
-    "particle": "yafs:block/greenhouse_base",
-    "base": "yafs:block/greenhouse_base",
-    "glass": "yafs:block/greenhouse_glass"
+    "particle": "minecraft:block/light_gray_concrete",
+    "base": "minecraft:block/light_gray_concrete",
+    "glass": "minecraft:block/glass"
   },
   "elements": [
     {

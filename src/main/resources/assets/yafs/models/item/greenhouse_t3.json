@@ -1,4 +1,3 @@
 {
-  "parent": "minecraft:block/cube_all",
-  "textures": { "all": "yafs:block/greenhouse_icon_3" }
+  "parent": "minecraft:block/glass"
 }

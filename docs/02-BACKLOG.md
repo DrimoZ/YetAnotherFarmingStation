@@ -110,5 +110,5 @@ un monde).
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| 🟡 YAF-090 | P2 | M | **Textures** — **faites, en pixel art généré** (`tools/GenTextures.java`, un objet par module, compost, engrais, Terre fertile, socle, vitrage, icônes des trois serres) ; remplaçables par des PNG dessinés à la main, mêmes noms. **Reste** : un vrai modèle 3D de la serre (cadre, vitrage) et des textures d'artiste. | — |
+| YAF-090 | P2 | M | Modèles et textures définitifs de la serre, des modules et du port. | — |
 | YAF-091 | P2 | S | README, page de store, wiki joueur. | chaque chiffre cité existe dans les données |
