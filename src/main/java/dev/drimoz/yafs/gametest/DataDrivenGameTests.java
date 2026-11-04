@@ -2,6 +2,7 @@ package dev.drimoz.yafs.gametest;
 
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
+import dev.drimoz.yafs.YafsConfig;
 import dev.drimoz.yafs.YetAnotherFarmingStation;
 import dev.drimoz.yafs.content.crop.Crop;
 import dev.drimoz.yafs.content.crop.CropData;
@@ -132,6 +133,61 @@ public class DataDrivenGameTests {
             helper.assertTrue(Crops.of(Items.BEETROOT_SEEDS).cost().ticks() == 1234, "Betterave : " + Crops.of(Items.BEETROOT_SEEDS).cost().ticks());
         } finally {
             CropData.set(shipped, substrates);
+        }
+        helper.succeed();
+    }
+
+    /** Le réglage « residues » coupe les résidus partout, même pour une culture qui en laisse à coup sûr. */
+    @GameTest(template = PLATFORM)
+    public static void theResiduesSwitchTurnsThemOffEverywhere(GameTestHelper helper) {
+        List<CropOverride> shipped = CropData.overrides();
+        List<SubstrateDefinition> substrates = CropData.substrates();
+        boolean before = YafsConfig.RESIDUES.get();
+        try {
+            List<CropOverride> changed = new ArrayList<>(shipped);
+            changed.add(new CropOverride(new ItemMatch(Items.WHEAT_SEEDS, null), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(1D), Optional.empty()));
+            CropData.set(changed, substrates);
+            YafsConfig.RESIDUES.set(false);
+
+            GreenhouseBlockEntity greenhouse = place(helper);
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+            greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS);
+
+            int compost = 0;
+            int wheat = 0;
+            for (int slot = 0; slot < GreenhouseBlockEntity.OUTPUT_SLOTS; slot++) {
+                ItemStack stack = greenhouse.output().getStackInSlot(slot);
+                if (stack.is(YafsItems.COMPOST.get())) compost += stack.getCount();
+                if (stack.is(Items.WHEAT)) wheat += stack.getCount();
+            }
+            helper.assertTrue(wheat == 1 && compost == 0, "Blé " + wheat + ", compost " + compost);
+        } finally {
+            YafsConfig.RESIDUES.set(before);
+            CropData.set(shipped, substrates);
+        }
+        helper.succeed();
+    }
+
+    /** Le multiplicateur global accélère toute croissance, sans toucher à l'eau par cycle (qui suit la vitesse des modules). */
+    @GameTest(template = PLATFORM)
+    public static void theGlobalGrowthSpeedMultipliesEveryGrowth(GameTestHelper helper) {
+        double before = YafsConfig.GROWTH_SPEED.get();
+        try {
+            GreenhouseBlockEntity greenhouse = place(helper);
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.CROP, new ItemStack(Items.WHEAT_SEEDS));
+            greenhouse.setPlotItem(0, GreenhouseBlockEntity.SUBSTRATE, new ItemStack(Items.DIRT));
+            YafsConfig.GROWTH_SPEED.set(3.0D);
+
+            int water = greenhouse.water().getFluidAmount();
+            greenhouse.grow(GreenhouseBlockEntity.BASE_TICKS / 3 / 2);
+
+            helper.assertTrue(Math.abs(greenhouse.growth(0).progress() - 0.5F) < 1e-3F, "Progression " + greenhouse.growth(0).progress());
+            int drunk = water - greenhouse.water().getFluidAmount();
+            helper.assertTrue(Math.abs(drunk - GreenhouseBlockEntity.WATER_PER_CYCLE / 2) <= 3, "Eau bue " + drunk + " pour la moitié d'un cycle");
+        } finally {
+            YafsConfig.GROWTH_SPEED.set(before);
         }
         helper.succeed();
     }

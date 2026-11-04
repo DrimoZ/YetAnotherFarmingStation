@@ -93,7 +93,7 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | ~~YAF-070~~ | ✅ | S | Recettes : paliers, port, modules — **fait**, en JSON écrits à la main plutôt qu'en datagen (huit recettes ne valent pas l'outillage). P3 demande du melon scintillant. | `RecipeGameTests` : tout se fabrique en survie |
-| 🟡 YAF-071 | P2 | XS | Config serveur — **commencée** : vitesse sous énergie (`energizedSpeed`, ×2). Le coût d'énergie, la durée et l'eau sont passés par culture (JSON), et la densité n'a plus de plafond de palier. Reste : résidus on/off. | — |
+| ~~YAF-071~~ | ✅ | XS | **Config serveur** — **fait** : `energizedSpeed` (vitesse sous énergie), `growthSpeed` (multiplicateur global de croissance, sans effet sur la règle de l'eau), `residues` (résidus on/off). Le coût d'énergie, la durée, l'eau et le résidu sont par culture (JSON). | GameTests : résidus coupés partout, vitesse globale |
 | ~~YAF-072~~ | ✅ | XS | **Source d'énergie créative** — **faite** : pousse sans limite vers ses six voisins ; sans recette. | — |
 
 ## Épic I — Intégrations

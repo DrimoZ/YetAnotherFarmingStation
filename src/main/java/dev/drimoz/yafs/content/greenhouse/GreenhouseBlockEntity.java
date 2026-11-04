@@ -943,12 +943,14 @@ public class GreenhouseBlockEntity extends BlockEntity {
         double total = 1D;
         if (!before.isMature()) {
             // La part payée du pas donne la part du bonus : 7 ticks sur 10 payés, 70 % de l'accélération.
-            this.speeds[plot] = (1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered) * fertilizerSpeed() * soil.speed();
+            // La config globale entre dans la vitesse affichée, mais pas dans la règle de l'eau ci-dessous.
+            double global = YafsConfig.GROWTH_SPEED.get();
+            this.speeds[plot] = (1D + (YafsConfig.ENERGIZED_SPEED.get() * this.speedMultiplier - 1D) * powered) * fertilizerSpeed() * soil.speed() * global;
             // ponytail: MAX_CYCLES_PER_STEP récoltes par pas au plus ; le surplus d'une culture plus rapide encore est perdu.
             total = Math.min(before.progress() + verdict.value() * this.speeds[plot] * elapsed / cost.ticks(), MAX_CYCLES_PER_STEP);
             // Un cycle accéléré boit moins : l'eau par cycle est divisée par la racine du bonus de vitesse.
             // Sans accélération (vitesse 1), rien ne change ; ×4 en vitesse, un cycle boit moitié moins.
-            double water = (1D + (this.waterMultiplier - 1D) * powered) / Math.sqrt(Math.max(1D, this.speeds[plot]));
+            double water = (1D + (this.waterMultiplier - 1D) * powered) / Math.sqrt(Math.max(1D, this.speeds[plot] / global));
             this.thirstOfStep = (total - before.progress()) * cost.water() * this.density * water;
             consumeFertilizer((double) elapsed / STEP);
         }
@@ -957,7 +959,7 @@ public class GreenhouseBlockEntity extends BlockEntity {
             return PlotStatus.WORKING;
         }
 
-        int harvested = harvest(level, known.harvestState(), (int) total, yieldUp, cost.residue(), cost.residueItem() != null ? cost.residueItem() : YafsItems.COMPOST.get());
+        int harvested = harvest(level, known.harvestState(), (int) total, yieldUp, YafsConfig.RESIDUES.get() ? cost.residue() : 0D, cost.residueItem() != null ? cost.residueItem() : YafsItems.COMPOST.get());
         // Ce qui n'a pas trouvé place reste mûr, pour le pas suivant.
         this.growth[plot] = new PlotGrowth((float) Math.min(1D, total - harvested), before.density());
         return harvested == 0 ? PlotStatus.BLOCKED : PlotStatus.WORKING;
