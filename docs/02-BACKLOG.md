@@ -111,4 +111,4 @@ un monde).
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
 | YAF-090 | P2 | M | Modèles et textures définitifs de la serre, des modules et du port. | — |
-| YAF-091 | P2 | S | README, page de store, wiki joueur. | chaque chiffre cité existe dans les données |
+| ~~YAF-091~~ | ✅ | S | **README, page de store, guide joueur** — **fait** : `README.md`, `docs/05-STORE.md`, `docs/04-JOUEUR.md` (tableaux générés depuis les données par `java tools/GenGuide.java`, `--check` en échoue si périmé). | chaque chiffre cité existe dans les données |
