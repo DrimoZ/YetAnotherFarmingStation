@@ -1,187 +1,183 @@
-# 01 — Design : la serre
+# 01 — Design: the greenhouse
 
-> Mod NeoForge 1.21.1, Java 21. Port prévu vers 26.x (voir §13).
-> Vocabulaire : [`CONTEXT.md`](../CONTEXT.md). Origine des choix : [`00-ANALYSE.md`](00-ANALYSE.md).
-> Chaque section dit aussi ce qui a été écarté, pour ne pas rouvrir le débat par accident.
-> Les chiffres sont des valeurs de départ, tous en datapack ou en config : à régler en jeu.
+> NeoForge 1.21.1 mod, Java 21. Port planned to 26.x (see §13).
+> Vocabulary: [`CONTEXT.md`](../CONTEXT.md). Origin of the choices: [`00-ANALYSIS.md`](00-ANALYSIS.md).
+> Each section also says what was ruled out, so the debate is not reopened by accident.
+> The figures are starting values, all in datapack or config: to be tuned in game.
 
 ---
 
 ## 1. Concept
 
-Une **serre** multibloc où l'on fait pousser des cultures en parallèle. Ce n'est pas une boîte
-noire : l'**environnement** du lieu (lumière, eau, température), corrigé par des **modules**,
-décide de la vitesse, et l'écran dit toujours *pourquoi* ça pousse lentement.
+A multiblock **greenhouse** where crops grow in parallel. It is not a black box: the place's
+**environment** (light, water, temperature), corrected by **modules**, decides the speed, and the
+screen always says *why* things grow slowly.
 
-Trois promesses, dans l'ordre :
+Three promises, in order:
 
-1. **On voit** les plantes pousser dans la serre.
-2. **On comprend** : statut, facteur limitant, cadence en items/min.
-3. **Ça marche avec tout** : les cultures des autres mods sont reconnues sans configuration.
+1. **You see** the plants grow in the greenhouse.
+2. **You understand**: status, limiting factor, rate in items/min.
+3. **It works with everything**: crops from other mods are recognised with no configuration.
 
-Le nom est ironique, et c'est voulu : « encore une ferme de plus », alors que le mod ne ressemble
-à aucune autre. Dans le jeu comme dans le code, on dit **serre**, jamais « station ».
+The name is ironic, and meant to be: "yet another farm", when the mod looks like none other. In the
+game as in the code, it is a **greenhouse**, never a "station".
 
 ---
 
-## 2. La serre
+## 2. The greenhouse
 
-### 2.1 Pose
+### 2.1 Placing
 
-Un item pose tout le volume d'un coup (voir [ADR 0001](adr/0001-serre-posee-pas-construite.md)).
-On reprend le cadre multibloc de FactoryIO (`docs/12` §2) :
+One item places the whole volume at once (see [ADR 0001](adr/0001-greenhouse-placed-not-built.md)).
+We reuse FactoryIO's multiblock framework (`docs/12` §2):
 
-- Le bloc visé devient le **centre-bas** du volume ; la façade regarde le joueur.
-- Tenir l'item dessine un **contour fantôme**, vert si la pose est possible, rouge sinon. Le
-  verdict vient de la même méthode `canPlace` qui décide réellement de la pose.
-- Le **maître** porte toute la logique. Les **parties** sont invisibles et ne connaissent que le
-  décalage relatif vers le maître.
-- Casser n'importe quel bloc retire tout le volume. Seul le maître lâche l'item et le
-  **contenu entier** : graines, substrats, catalyseurs, modules, réserves.
-- Avant toute conclusion, on vérifie `level.isLoaded(masterPos)` : le volume peut chevaucher
-  une frontière de chunk.
+- The targeted block becomes the **bottom centre** of the volume; the front faces the player.
+- Holding the item draws a **ghost outline**, green if placing is possible, red otherwise. The
+  verdict comes from the same `canPlace` method that actually decides the placement.
+- The **master** carries all the logic. The **parts** are invisible and only know their relative
+  offset to the master.
+- Breaking any block removes the whole volume. Only the master drops the item and the **entire
+  contents**: seeds, substrates, catalysts, modules, reserves.
+- Before any conclusion, we check `level.isLoaded(masterPos)`: the volume may straddle a chunk
+  boundary.
 
-Écarté : la serre bâtie bloc par bloc puis validée (Forestry, Firmalife).
+Ruled out: the greenhouse built block by block and then validated (Forestry, Firmalife).
 
-### 2.2 Paliers
+### 2.2 Tiers
 
-| Palier | Volume (l×h×p) | Parcelles | Emplacements de module |
+| Tier | Volume (w×h×d) | Plots | Module slots |
 |---|---|---|---|
-| P1 | 3×3×3 | 4 (2×2) | 2 |
-| P2 | 5×4×5 | 9 (3×3) | 4 |
-| P3 | 7×5×7 | 16 (4×4) | 6 |
+| I | 3×3×3 | 4 (2×2) | 2 |
+| II | 5×4×5 | 9 (3×3) | 4 |
+| III | 7×5×7 | 16 (4×4) | 6 |
 
-Un palier ne donne **jamais de vitesse**. Il donne de la place : plus de parcelles et de modules.
+A tier **never gives speed**. It gives room: more plots and more modules.
 
-### 2.3 Monter de palier
+### 2.3 Upgrading a tier
 
-On utilise l'item du palier suivant **sur une serre posée**. Le contour fantôme montre le nouveau
-volume, centré sur le même maître. Si la place manque, il est rouge et rien ne change. Sinon, le
-volume s'agrandit en conservant parcelles, modules et réserves, et l'item est consommé.
+You use the next tier's item **on a placed greenhouse**. The ghost outline shows the new volume,
+centred on the same master. If room is missing, it is red and nothing changes. Otherwise the volume
+grows, keeping plots, modules and reserves, and the item is consumed.
 
-Il n'est pas possible de redescendre : on casse la serre et on repose un palier inférieur.
-
----
-
-## 3. Parcelle
-
-### 3.1 Contenu
-
-| Emplacement | Obligatoire | Rôle |
-|---|---|---|
-| **Culture** | oui | la graine ou le plant |
-| **Substrat** | oui | ce dans quoi elle pousse : terre, sable, sable des âmes, terre moddée… |
-| **Catalyseur** | non | le bloc sous le substrat (le crux de Mystical Agriculture, par exemple) |
-
-Les trois sont **permanents**, comme dans Botany Pots : une graine posée replante à l'infini.
-Les graines produites en plus sortent avec la récolte.
-
-### 3.2 État
-
-Pour chaque parcelle : progression de 0 à 1, densité, statut. La croissance est **simulée** : la
-parcelle n'est pas un vrai bloc du monde et ne reçoit pas de *random ticks*.
-
-### 3.3 Densité
-
-Une parcelle densifiée représente N plants. **Tout** est multiplié par N : la récolte, l'eau,
-l'engrais, les résidus et l'énergie des modules. Le joueur gagne de la place et de la
-simplicité, pas des ressources gratuites. Les modules de densité s'additionnent (Densité I/II/III :
-+1/+2/+3 plants chacun) ; aucun plafond de palier (décidé le 31/10/2026), seul le maximum de chaque
-module borne.
-
-Écarté : un « parallélisme » qui multiplie la sortie sans multiplier le coût. C'était un module de
-vitesse déguisé, qui aurait rendu les paliers inutiles.
-
-### 3.4 Plusieurs cultures
-
-Chaque parcelle a sa propre culture, et une même serre peut en mélanger. Comme la serre n'a
-qu'**un seul environnement**, mélanger une culture du chaud et une du froid oblige à un compromis.
-C'est un choix intéressant pour le joueur, sans ajouter de règle.
-
-Plus tard : les bonus entre plantes voisines.
+You cannot go back down: you break the greenhouse and place a lower tier again.
 
 ---
 
-## 4. Environnement
+## 3. Plot
 
-### 4.1 Les trois facteurs
+### 3.1 Contents
 
-| Facteur | Valeur de base (le lieu) | Corrigé par |
+| Slot | Required | Role |
 |---|---|---|
-| **Lumière** | lumière du ciel au maître, qui suit le cycle jour/nuit ; 0 sans ciel visible | Lampe de croissance |
-| **Eau** | ce que contient la réserve, rapporté à la consommation | Collecteur de pluie, tuyau branché au socle |
-| **Température** | température du biome au maître, convertie en °C | Chauffage / Refroidisseur |
+| **Crop** | yes | the seed or the plant |
+| **Substrate** | yes | what it grows in: dirt, sand, soul sand, modded soil… |
+| **Catalyst** | no | the block under the substrate (Mystical Agriculture's crux, for example) |
 
-Le climat est **une valeur de la serre entière**, pas un calcul par bloc. On le recalcule rarement
-(§11), jamais à chaque tick.
+All three are **permanent**, as in Botany Pots: a seed placed once replants forever. Extra seeds
+produced come out with the harvest.
 
-Écartés : l'humidité, qui ferait doublon avec l'eau, et la dimension. Le Nether devient
-simplement « très chaud » : la verrue du Nether pousse dans l'Overworld si on la chauffe.
+### 3.2 State
 
-### 4.2 Exigences
+For each plot: progress from 0 to 1, density, status. Growth is **simulated**: the plot is not a
+real block of the world and receives no *random ticks*.
 
-Chaque culture déclare une plage idéale par facteur :
+### 3.3 Density
+
+A densified plot stands for N plants. **Everything** is multiplied by N: the harvest, the water, the
+fertilizer, the residues and the modules' energy. The player gains room and simplicity, not free
+resources. Density modules add up (Density I/II/III: +1/+2/+3 plants each); no tier cap (decided
+2026-10-31), only each module's maximum limits it.
+
+Ruled out: a "parallelism" that multiplies the output without multiplying the cost. It was a speed
+module in disguise, and would have made the tiers pointless.
+
+### 3.4 Several crops
+
+Each plot has its own crop, and one greenhouse can mix them. Since the greenhouse has only **one
+environment**, mixing a warm crop and a cold one forces a compromise. It is an interesting choice for
+the player, with no extra rule.
+
+Later: bonuses between neighbouring plants.
+
+---
+
+## 4. Environment
+
+### 4.1 The three factors
+
+| Factor | Base value (the place) | Corrected by |
+|---|---|---|
+| **Light** | sky light at the master, following the day/night cycle; 0 with no visible sky | Grow Lamp |
+| **Water** | what the reserve holds, relative to consumption | Rain Collector, a pipe into the base |
+| **Temperature** | the biome's temperature at the master, converted to °C | Heater / Cooler |
+
+Climate is **one value for the whole greenhouse**, not a per-block calculation. It is rarely
+recomputed (§11), never every tick.
+
+Ruled out: humidity, which would duplicate water, and the dimension. The Nether simply becomes
+"very hot": nether wart grows in the Overworld if you heat it.
+
+### 4.2 Requirements
+
+Each crop declares an ideal range per factor:
 
 ```json
 { "min_light": 9, "min_temperature": 15, "max_temperature": 30 }
 ```
 
-L'eau n'est pas une exigence par culture, mais un **coût**. Chaque culture a le sien, que le JSON
-peut changer : `ticks` (durée d'un cycle, 28 672 par défaut, un blé vanilla idéal), `water_per_cycle`
-(500 mB) et `energy_per_tick` (10 FE/t, payés seulement quand la parcelle est alimentée). Chaque
-parcelle paie sa culture ; la serre affiche la somme.
+Water is not a per-crop requirement but a **cost**. Each crop has its own, which the JSON can
+change: `ticks` (length of a cycle, 28,672 by default, an ideal vanilla wheat), `water_per_cycle`
+(500 mB) and `energy_per_tick` (10 FE/t, only paid when the plot is powered). Each plot pays for its
+crop; the greenhouse shows the sum.
 
-La serre travaille **tous les 10 ticks**. Une parcelle récolte au plus une fois par pas : si sa
-culture a fini plusieurs cycles entre-temps, elle les récolte en un lot (64 au plus), la table de
-loot étant tirée pour 8 plants puis mise à l'échelle. Un lot qui ne tient pas dans la sortie est
-coupé en deux, jusqu'à un seul cycle ; le reste attend, mûr.
+The greenhouse works **every 10 ticks**. A plot harvests at most once per step: if its crop has
+finished several cycles in the meantime, it harvests them as one batch (64 at most), the loot table
+being sampled for 8 plants and then scaled. A batch that does not fit in the output is cut in half,
+down to a single cycle; the rest waits, ripe.
 
-- **Cultures vanilla** : des valeurs livrées avec le mod (canne à sucre et cactus aiment le chaud,
-  baies sucrées le froid, verrue du Nether le très chaud…).
-- **Cultures moddées détectées automatiquement** : exigence **tolérante** par défaut (large plage
-  de température, lumière 9 comme en vanilla), qu'un JSON peut corriger.
+- **Vanilla crops**: values shipped with the mod (sugar cane and cactus like heat, sweet berries
+  cold, nether wart extreme heat…).
+- **Automatically detected modded crops**: a **tolerant** requirement by default (wide temperature
+  range, light 9 as in vanilla), which a JSON can correct.
 
-### 4.3 Calcul (loi du minimum)
+### 4.3 Calculation (law of the minimum)
 
-Chaque facteur donne une efficacité entre `0.1` et `1.0`. Elle vaut 1.0 dans la plage idéale et
-baisse linéairement avec l'écart, sans descendre sous le plancher de 0.1. La vitesse de la
-parcelle vaut :
+Each factor gives an efficiency between `0.1` and `1.0`. It is 1.0 inside the ideal range and drops
+linearly with the gap, never below the 0.1 floor. The plot's speed is:
 
 ```
-vitesse = vitesse_de_base × min(eff_lumière, eff_eau, eff_température) × modules
+speed = base_speed × min(light_eff, water_eff, temperature_eff) × modules
 ```
 
-Seul le **pire** facteur compte : l'écran l'affiche en une ligne, par exemple
-`Limité par : température — 12 °C (idéal 15–30)`.
+Only the **worst** factor counts: the screen shows it on one line, for example
+`Limited by temperature: 12 °C (ideal 15–30)`.
 
-Le plancher de 0.1 tient la promesse : un écart **ralentit**, il ne bloque jamais. Exception :
-quand la réserve d'eau est vide, l'efficacité de l'eau tombe à 0. C'est une ressource qui manque,
-pas un écart d'environnement, et le statut le dit (§9.2).
+The 0.1 floor keeps the promise: a gap **slows down**, it never blocks. Exception: when the water
+reserve is empty, water efficiency drops to 0. That is a resource running out, not an environment
+gap, and the status says so (§9.2).
 
-Écarté : multiplier les pénalités de chaque facteur. Trois petits écarts donnaient un résultat que
-personne ne savait expliquer.
+Ruled out: multiplying each factor's penalties. Three small gaps gave a result nobody could explain.
 
 ---
 
-## 5. Cultures : détection et compatibilité
+## 5. Crops: detection and compatibility
 
-### 5.1 Détection automatique
+### 5.1 Automatic detection
 
-Au chargement des données, pour chaque item de graine candidat :
+When data loads, for each candidate seed item:
 
-1. Trouver le bloc qu'il pose (`BlockItem` → bloc de culture).
-2. Pour chaque substrat candidat, poser **virtuellement** la culture dessus, dans un mini-monde
-   fictif (un `BlockGetter` de quelques blocs), et demander `canSurvive`. On obtient ainsi la
-   liste des substrats acceptés.
-3. Obtenir la récolte en **simulant la table de loot** de l'état mûr.
+1. Find the block it places (`BlockItem` → crop block).
+2. For each candidate substrate, place the crop **virtually** on it, in a fake mini-world (a
+   `BlockGetter` of a few blocks), and ask `canSurvive`. This gives the list of accepted substrates.
+3. Get the harvest by **simulating the loot table** of the ripe state.
 
-Ce résultat est mis en cache par rechargement de datapack et envoyé au client (network codec), pour
-que l'interface et JEI n'aient pas besoin de demander au serveur.
+The result is cached per datapack reload and sent to the client (network codec), so the interface and
+JEI do not need to ask the server.
 
-### 5.2 Surcharges JSON
+### 5.2 JSON overrides
 
-Fichiers `data/<ns>/yafs/crop/*.json`, relus à chaque `/reload` et envoyés aux joueurs. Chaque
-champ présent **remplace** ce que la détection a trouvé ; un champ absent le laisse :
+Files `data/<ns>/yafs/crop/*.json`, re-read on every `/reload` and sent to players. Each field present
+**replaces** what detection found; an absent field leaves it:
 
 ```json
 {
@@ -192,304 +188,296 @@ champ présent **remplace** ce que la détection a trouvé ; un champ absent le 
 }
 ```
 
-Le résidu (`residue`) s'y ajoutera avec YAF-023.
+An entry is mandatory for **exotic cases**, each covered by a GameTest:
 
-Une entrée est obligatoire pour les **cas exotiques**, chacun couvert par un GameTest :
+- sugar cane and cactus, which grow upward;
+- 2-block crops (like the pitcher plant);
+- plants with a block entity;
+- plants that check their soil during growth rather than with `canSurvive` (Mystical Agriculture's
+  crux).
 
-- la canne à sucre et le cactus, qui poussent en hauteur ;
-- les cultures sur 2 blocs (comme la plante carnivore) ;
-- les plantes avec un bloc-entité ;
-- les plantes qui vérifient leur sol pendant la croissance plutôt qu'avec `canSurvive` (le crux
-  de Mystical Agriculture).
+An invalid JSON is **refused and reported in the log**, never silently fixed: a bounded `Codec`, as
+in FactoryIO.
 
-Un JSON invalide est **refusé et signalé dans le journal**, jamais corrigé en silence : un `Codec`
-borné, comme dans FactoryIO.
+### 5.3 Substrates
 
-### 5.3 Substrats
-
-Fichiers `data/<ns>/yafs/substrate/*.json` : quels items comptent comme quel bloc de sol. La terre
-compte comme une terre labourée irriguée, pour éviter de manipuler des houes :
+Files `data/<ns>/yafs/substrate/*.json`: which items count as which soil block. Dirt counts as
+watered farmland, to avoid handling hoes:
 
 ```json
 { "items": ["minecraft:dirt", "minecraft:grass_block"], "counts_as": "minecraft:farmland" }
 ```
 
-Un substrat peut aussi porter un bonus (`speed`, `yield`, 1 par défaut), **par parcelle** puisque chaque
-parcelle a le sien : c'est une progression sans passer par les modules. La **Terre fertile**
-(`yafs:fertile_soil`, huit pour une terre ×8 et un compost) donne ×1,25 de rendement. Le bonus d'un
-sol se cumule avec l'engrais, qui est pour toute la serre ; l'arrondi de la récolte est non biaisé
-(un ×1,25 donne un item de plus une fois sur quatre). `items` accepte des items et des `#tags`.
+A substrate can also carry a bonus (`speed`, `yield`, 1 by default), **per plot** since each plot has
+its own: a progression that bypasses modules. **Fertile Soil** (`yafs:fertile_soil`, eight dirt and
+one compost) gives ×1.25 yield. A soil's bonus stacks with fertilizer, which is for the whole
+greenhouse; harvest rounding is unbiased (a ×1.25 gives one more item one time in four). `items`
+accepts items and `#tags`.
 
-### 5.4 Tout se règle par datapack
+### 5.4 Everything is set by datapack
 
-Rien de ce qui suit n'est figé dans le code ; un modpack le change sans y toucher. Partout où un
-champ désigne des items, il accepte un item (`minecraft:dirt`) ou un `#tag` (`#c:seeds`).
+Nothing below is frozen in code; a modpack changes it without touching it. Wherever a field names
+items, it accepts an item (`minecraft:dirt`) or a `#tag` (`#c:seeds`).
 
-| Fichier (`data/<ns>/yafs/…`) | Champs |
+| File (`data/<ns>/yafs/…`) | Fields |
 |---|---|
-| `crop/*.json` | `seed` (item ou `#tag` : toute une famille), `substrates`, `catalyst` (item ou `#tag`), `requirements` (`min_light`, `max_light`, `min_temperature`, `max_temperature`), `harvest`, `ticks`, `water_per_cycle`, `energy_per_tick`, `residue_chance`, `residue_item` |
-| `substrate/*.json` | `items`, `counts_as`, `speed`, `yield` (le bonus de la parcelle) |
-| `fertilizer/*.json` | `item` (item ou `#tag`), `speed`, `yield`, `seconds` |
-| `module/module_*.json` | tout ce qu'un module fait : `max_stack`, effets, coûts, `output_capacity`, `energy_capacity`, et le Composteur (`composting`, `compost_input`, `compost_count`, `compost_output`) |
-| `recipe/*.json` | les recettes du mod sont des recettes ordinaires, remplaçables, ingrédients en tag compris |
+| `crop/*.json` | `seed` (item or `#tag`: a whole family), `substrates`, `catalyst` (item or `#tag`), `requirements` (`min_light`, `max_light`, `min_temperature`, `max_temperature`), `harvest`, `ticks`, `water_per_cycle`, `energy_per_tick`, `residue_chance`, `residue_item` |
+| `substrate/*.json` | `items`, `counts_as`, `speed`, `yield` (the plot's bonus) |
+| `fertilizer/*.json` | `item` (item or `#tag`), `speed`, `yield`, `seconds` |
+| `module/module_*.json` | everything a module does: `max_stack`, effects, costs, `output_capacity`, `energy_capacity`, and the Composter (`composting`, `compost_input`, `compost_count`, `compost_output`) |
+| `recipe/*.json` | the mod's recipes are ordinary recipes, replaceable, tag ingredients included |
 
-Un module reste lié à **son** item (`module_*`) : un datapack règle ce qu'il fait, pas quel item
-d'un autre mod devient module. Les valeurs par défaut du Composteur sont 4 composts pour 1 Engrais.
+A module stays tied to **its** item (`module_*`): a datapack sets what it does, not which item from
+another mod becomes a module. The Composter's defaults are 4 compost for 1 Fertilizer.
 
 ---
 
-## 6. Ressources
+## 6. Resources
 
-| Ressource | Statut | Détail |
+| Resource | Status | Detail |
 |---|---|---|
-| **Eau** | obligatoire | réserve interne en fluide ; consommée à chaque cycle de croissance, × densité |
-| **Engrais** | facultatif | un emplacement dans la colonne de l'eau, rempli à la main ou par un tuyau au socle ; poudre d'os (vitesse ×1,5) ou Engrais (rendement ×1,5) : vitesse **ou** rendement, à la Stardew |
-| **Énergie (FE)** | modules seulement | une serre au soleil et arrosée tourne sans énergie |
+| **Water** | required | internal fluid reserve; consumed every growth cycle, × density |
+| **Fertilizer** | optional | one slot in the water column, filled by hand or through a pipe into the base; bone meal (speed ×1.5) or Fertilizer (yield ×1.5): speed **or** yield, Stardew-style |
+| **Energy (FE)** | modules only | a greenhouse in the sun with water runs without energy |
 
-Le mod **ne produit pas d'énergie**, comme FactoryIO.
+The mod **produces no energy**, like FactoryIO.
 
-### 6.1 Résidus
+### 6.1 Residues
 
-À chaque récolte, une culture peut donner un **Résidu**. Par défaut, c'est du **compost**, avec
-une probabilité définie par culture. Le compost **se recycle en engrais** : à la main, ou
-automatiquement avec le module Composteur. La boucle est fermée.
+On every harvest, a crop may give a **Residue**. By default it is **compost**, with a per-crop
+probability. Compost **recycles into fertilizer**: by hand, or automatically with the Composter
+module. The loop is closed.
 
-**Décidé le 1/11/2026.** Le résidu arrive dans la sortie avec la récolte, tout ou rien comme le reste :
-une sortie pleine bloque la parcelle (BLOCKED), résidu compris. Chance par plant et par cycle,
-0,2 par défaut, réglable par culture (`residue_chance`). Quatre composts font un Engrais, au
-établi ou par le Composteur (un lot de quatre par pas, sans énergie). La boucle ne se ferme que
-si on investit : le compost suit la production (plants × cycles), l'engrais suit le nombre de
-parcelles. Une serre de base en couvre à peine 2 %, une serre poussée à fond bien plus que ce qu'il
-lui faut.
+**Decided 2026-11-01.** The residue arrives in the output with the harvest, all or nothing like the
+rest: a full output blocks the plot (BLOCKED), residue included. Chance per plant and per cycle, 0.2
+by default, adjustable per crop (`residue_chance`). Four compost make a Fertilizer, at a crafting
+table or through the Composter (a batch of four per step, no energy). The loop only closes if you
+invest: compost follows production (plants × cycles), fertilizer follows the number of plots. A base
+greenhouse barely covers 2 % of it, a greenhouse pushed to the limit far more than it needs.
 
-Un engrais est une entrée de datapack (`data/<ns>/yafs/fertilizer/*.json` : `item`, `speed`, `yield`,
-`cycles`). Il est entamé quand une parcelle en a besoin, jamais pour rien. **Un item nourrit une parcelle qui
-pousse pendant N secondes** (`seconds`) : l'engrais s'use par parcelle et par temps, jamais par
-plant ni par vitesse. Une seule sorte à la fois, appliquée à toutes les parcelles qui poussent ;
-accélérer ou densifier ne le fait pas partir plus vite. Écarté : l'user à la production, qui
-faisait partir une quarantaine d'items par seconde dans une P3 à fond.
+A fertilizer is a datapack entry (`data/<ns>/yafs/fertilizer/*.json`: `item`, `speed`, `yield`,
+`seconds`). It is started when a plot needs it, never for nothing. **One item feeds a growing plot
+for N seconds** (`seconds`): fertilizer wears out per plot and per time, never per plant or per
+speed. One kind at a time, applied to every growing plot; speeding up or densifying does not make it
+go faster. Ruled out: wearing it out with production, which burnt about forty items per second in a
+full Tier III.
 
-**Identifiants** : tout module s'appelle `module_*` (item, définition, modèle), pour les retrouver d'un coup.
+**Identifiers**: every module is named `module_*` (item, definition, model), to find them all at once.
 
-Plus tard : des résidus fluides (une « boue »), qui sortiraient par le socle.
+Later: fluid residues (a "sludge"), which would leave through the base.
 
 ---
 
 ## 7. Modules
 
-**Un item par module**, comme un bloc par palier (`yafs:module_heater`, `yafs:module_grow_lamp`…). Ce que fait un
-module vient de la définition de même identifiant dans le registre datapack `yafs/module` : un
-modpack retouche les chiffres d'un module sans code, mais un nouveau module demande un item.
+**One item per module**, like one block per tier (`yafs:module_heater`, `yafs:module_grow_lamp`…).
+What a module does comes from the definition with the same identifier in the `yafs/module` datapack
+registry: a modpack tweaks a module's numbers without code, but a new module needs an item.
 
-Écarté : un seul item `yafs:module` à composant, sur le modèle des augments de Portable Beacons. Un
-modpack aurait pu ajouter un module sans code, mais des items distincts se lisent mieux dans JEI,
-les recettes et l'inventaire.
+Ruled out: a single `yafs:module` item with a component, on the model of Portable Beacons' augments.
+A modpack could have added a module without code, but distinct items read better in JEI, recipes and
+the inventory.
 
-| Module | Effet | Coût | Cumulable |
+| Module | Effect | Cost | Stackable |
 |---|---|---|---|
-| Lampe de croissance | + lumière | FE | non |
-| Chauffage | + température | FE | non |
-| Refroidisseur | − température | FE | non |
-| Collecteur de pluie | + eau quand il pleut, ciel visible requis | — | non |
-| Accélérateur | + vitesse | FE + eau, proportionnels | oui, coût croissant |
-| Composteur | résidus → engrais | — | non |
-| Obscurité | lumière à 0 (pour une culture qui exige le noir, `max_light`) ; exclut la lampe | FE | non |
-| Capacité | + 64 items par case de sortie, jusqu'à 64 modules | — | oui |
-| Batterie | + 10 000 000 FE de réserve (64 au plus) | — | oui |
-| Densité | + plants par parcelle (+1/+2/+3) | tout × plants | oui |
+| Grow Lamp | + light | FE | no |
+| Heater | + temperature | FE | yes |
+| Cooler | − temperature | FE | yes |
+| Rain Collector | + water when it rains, sky visibility required | — | yes |
+| Accelerator | + speed | FE + water, proportional | yes, growing cost |
+| Composter | residues → fertilizer | — | yes |
+| Blackout | light capped at 0 (for a crop that demands darkness, `max_light`); excludes the lamp | FE | no |
+| Capacity | + 64 items per output slot, up to 64 modules | — | yes |
+| Battery | + 1,000,000 FE of storage (64 at most) | — | yes |
+| Density | + plants per plot (+1/+2/+3) | everything × plants | yes |
 
-**Règle du mod : aucun bonus n'est gratuit.** Tout ce qui accélère multiplie aussi ce qu'il
-consomme.
+**The mod's rule: nothing is free.** Everything that speeds things up also multiplies what it
+consumes.
 
-**Énergie et augments** (décidé le 30/10/2026). Une parcelle qui a son énergie pour le pas pousse
-plus vite (×2, réglable en config) pour un coût de base par parcelle (10 FE/t, réglable). Les
-modules d'augment **multiplient** : la vitesse (Accélérateur I/II/III : ×2/×4/×8), et en même temps
-l'énergie (×4/×16/×64) et l'eau (×2/×4/×8). Trois accélérateurs et le bonus de base font ×128 : on
-peut aller absurdement vite, à un prix absurde. La densité
-(+1/+2/+3 plants par module, cumulables) multiplie récolte, eau et énergie.
+**Energy and augments** (decided 2026-10-30). A plot that has its energy for the step grows faster
+(×2, adjustable in config) for a base cost per plot (10 FE/t, adjustable). Augment modules
+**multiply**: speed (Accelerator I/II/III: ×2/×4/×8), and at the same time energy (×4/×16/×64) and
+water (×2/×4/×8). Three accelerators and the base bonus make ×128: you can go absurdly fast, at an
+absurd price. Density (+1/+2/+3 plants per module, stackable) multiplies harvest, water and energy.
 
-**Empilement** (décidé le 31/10/2026) : une serre prend jusqu'à 16 modules d'une même sorte par
-défaut, et leurs bonus s'additionnent ; chaque module fixe son maximum dans son JSON (`max_stack`,
-jusqu'à 64). Seule la lampe reste à 1 : la lumière 15 est déjà le plafond. Une pile au-delà de son
-maximum (vieille sauvegarde) ne compte que jusqu'à lui, et l'écran l'affiche en rouge. Sans énergie, vitesse 1 et accélérateurs à l'arrêt.
+**Stacking** (decided 2026-10-31): a greenhouse takes up to 16 modules of one kind by default, and
+their bonuses add up; each module sets its maximum in its JSON (`max_stack`, up to 64). Only the
+lamp stays at 1: light 15 is already the ceiling. A stack above its maximum (an old save) only counts
+up to it, and the screen shows it in red. Without energy, speed is 1 and accelerators idle.
 
-**L'eau suit la racine de la vitesse** (décidé le 31/10/2026). Une parcelle accélérée finit plus de
-cycles par tick ; si chaque cycle buvait autant, l'eau par tick croîtrait comme la vitesse
-(~3 000 mB/t pour une serre P3 poussée à fond, injouable). L'eau par cycle est donc divisée par la
-racine du bonus de vitesse : ×4 en vitesse, un cycle boit moitié moins ; le même rendement coûte
-moins d'eau que sans accélération, mais l'eau par tick croît quand même (comme la racine).
-Sans accélération, rien ne change. La densité reste linéaire : chaque plant boit.
+**Water follows the square root of speed** (decided 2026-10-31). An accelerated plot finishes more
+cycles per tick; if each cycle drank as much, water per tick would grow like the speed (about 3,000
+mB/t for a Tier III pushed to the limit, unplayable). Water per cycle is therefore divided by the
+square root of the speed bonus: ×4 speed, a cycle drinks half as much; the same yield costs less
+water than without acceleration, but water per tick still grows (as the root). Without
+acceleration, nothing changes. Density stays linear: every plant drinks.
 
-**Paiement tick par tick** (décidé le 31/10/2026). À chaque tick, la serre prélève tout son besoin
-(modules et parcelles qui poussent), ou rien. Au pas suivant, la part des ticks payés donne la part
-du bonus : 7 ticks sur 10 payés, 70 % de l'accélération. La réserve n'a donc qu'à tenir un tick de
-besoin, et l'entrée n'est bornée que par la place libre. Écarté : réserver tout le pas d'avance, qui
-exigeait dix ticks de besoin en stock et bloquait une serre gourmande même alimentée sans limite.
+**Tick-by-tick payment** (decided 2026-10-31). Every tick, the greenhouse draws its whole need
+(modules and growing plots), or nothing. At the next step, the share of paid ticks gives the share
+of the bonus: 7 ticks out of 10 paid, 70 % of the acceleration. The reserve only has to hold one
+tick of need, and input is limited only by free room. Ruled out: reserving the whole step in
+advance, which required ten ticks of need in stock and blocked a hungry greenhouse even when fed
+without limit.
 
 ---
 
-## 8. Le socle
+## 8. The base
 
-La couche du bas de la serre est un bloc plein, façon béton, et **chacun de ses blocs se branche
-de partout** : l'eau et l'énergie y entrent, la récolte en sort. Pas d'entrée d'items : graines,
-sols et catalyseurs se posent une fois, à la main, et restent ; une entrée reviendra avec ce qui se
-consomme en continu (l'engrais). Les murs au-dessus du socle ne laissent rien passer. Un seau
-marche sur n'importe quel bloc.
+The bottom layer of the greenhouse is a solid, concrete-like block, and **each of its blocks plugs in
+from everywhere**: water and energy go in, the harvest comes out. No item input: seeds, soils and
+catalysts are placed once, by hand, and stay; an input will come back with whatever is consumed
+continuously (fertilizer). The walls above the base let nothing through. A bucket works on any
+block.
 
-Écarté (30/10/2026) : un item « Port » qui spécialisait un bloc (sortie filtrée, entrée d'eau,
-entrée d'énergie), plafonné par palier. Le socle prend déjà tout ; trier la récolte, les mods de
-logistique le font très bien.
+Ruled out (2026-10-30): a "Port" item that specialised a block (filtered output, water input,
+energy input), capped per tier. The base already takes everything; sorting the harvest is something
+logistics mods do very well.
 
-Le socle délègue au maître ses handlers tels quels, sans les envelopper : inserters de FactoryIO,
-tuyaux et mods tiers voient un inventaire ordinaire.
+The base hands its handlers to the master as they are, without wrapping them: FactoryIO's inserters,
+pipes and third-party mods see an ordinary inventory.
 
-**Rien n'est jamais détruit** : quand la sortie ou la réserve de résidus est pleine, la parcelle
-reste mûre et passe au statut BLOCKED.
+**Nothing is ever destroyed**: when the output or the residue reserve is full, the plot stays ripe
+and goes to the BLOCKED status.
 
 ---
 
 ## 9. Interface
 
-Même famille visuelle que FactoryIO et Portable Beacons : on recopie et on porte `GuiMetrics`,
-`GuiTheme` et `GuiSprites`.
+Same visual family as FactoryIO and Portable Beacons: we copy and port `GuiMetrics`, `GuiTheme` and
+`GuiSprites`.
 
-### 9.1 Disposition
+### 9.1 Layout
 
 ```
 ┌──────────────────────────────────────┐
-│ Serre III                       ●    │ ← titre, voyant d'état
+│ Greenhouse III                  ●    │ ← title, status indicator
 │ ▐█▌  ┌──┬──┬──┬──┐                   │
-│ ▐█▌  │🌾│🥕│🌾│🥔│   colonne 0 :      │
-│ ▐█▌  ├──┼──┼──┼──┤   jauge d'eau      │
-│ ▐█▌  │🌾│  │🎃│🌵│   (+ FE si un      │
-│ ▐░▌  ├──┼──┼──┼──┤   module en        │
-│ ▐░▌  │…  grille 4×4 de parcelles…│    │   consomme)
+│ ▐█▌  │🌾│🥕│🌾│🥔│   column 0:        │
+│ ▐█▌  ├──┼──┼──┼──┤   water gauge      │
+│ ▐█▌  │🌾│  │🎃│🌵│   (+ FE if a       │
+│ ▐░▌  ├──┼──┼──┼──┤   module uses      │
+│ ▐░▌  │…  4×4 grid of plots…      │    │   it)
 │      └──┴──┴──┴──┘                   │
-│ inventaire du joueur + hotbar        │
+│ player inventory + hotbar            │
 └──────────────────────────────────────┘
- [onglet jaune ◀ Environnement]    [Modules ▶ onglet bleu]
+ [yellow tab ◀ Environment]       [Modules ▶ blue tab]
 ```
 
-- **Case de parcelle** : icône de la culture, barre de croissance, liseré de la couleur du statut,
-  badge de densité (×2…). Une case vide affiche `+`.
-- **Onglet jaune, à gauche** : les trois facteurs (valeur actuelle / plage idéale), la ligne
-  « Limité par », la production en items/min et la consommation d'eau par minute.
-- **Onglet bleu, à droite** : les emplacements de modules. Comme dans Portable Beacons, l'effet
-  d'un module est recalculé en direct pour que le joueur le voie avant de fermer.
-- **Clic sur une parcelle** : une fenêtre superposée avec les emplacements Culture / Substrat /
-  Catalyseur et les exigences de la culture comparées à l'environnement actuel. Les entrées
-  bloquées restent **affichées et grisées**, avec la raison.
+- **Plot cell**: crop icon, growth bar, edge in the status colour, density badge (×2…). An empty
+  cell shows `+`.
+- **Yellow tab, left**: the three factors (current value / ideal range), the "Limited by" line,
+  production in items/min and water consumption per minute.
+- **Blue tab, right**: the module slots. As in Portable Beacons, a module's effect is recomputed
+  live so the player sees it before closing.
+- **Click a plot**: an overlay with the Crop / Substrate / Catalyst slots and the crop's
+  requirements compared to the current environment. Blocked inputs stay **shown and greyed out**,
+  with the reason.
 
-### 9.2 Statuts
+### 9.2 Statuses
 
-Ce sont les cinq statuts de `GuiTheme.Status`, appliqués à la serre comme à chaque parcelle :
+These are the five statuses of `GuiTheme.Status`, applied to the greenhouse as to each plot:
 
-| Statut | Cas |
+| Status | Case |
 |---|---|
-| WORKING | pousse |
-| WAITING | parcelle vide, ou pas de lumière la nuit sans lampe |
-| BLOCKED | sortie ou réserve de résidus pleine |
-| PROBLEM | eau à zéro, substrat incompatible, catalyseur manquant |
-| OFF | éteinte (redstone ou interrupteur) |
+| WORKING | growing |
+| WAITING | empty plot, or no light at night without a lamp |
+| BLOCKED | output or residue reserve full |
+| PROBLEM | water at zero, incompatible substrate, missing catalyst |
+| OFF | switched off (redstone or switch) |
 
-Le statut d'une serre est celui de sa parcelle **la plus grave**. Une couleur ne sert qu'à une
-chose : le rouge n'est jamais décoratif.
+A greenhouse's status is that of its **most serious** plot. A colour is used for one thing only: red
+is never decorative.
 
 ### 9.3 Synchronisation
 
-Les valeurs affichées sont calculées **côté serveur** et transmises par `ContainerData`, seulement
-quand le menu est ouvert. Les boutons passent par `clickMenuButton(id)`. Aucun paquet périodique
-du serveur vers le client.
+Displayed values are computed **server-side** and sent through `ContainerData`, only while the menu
+is open. Buttons go through `clickMenuButton(id)`. No periodic packet from server to client.
 
 ---
 
-## 10. Rendu
+## 10. Rendering
 
-Le maître dessine les plantes de toutes les parcelles, stade par stade, avec les modèles baked de
-l'état de chaque culture. C'est la promesse n°1 du mod, et aussi son **risque n°1**.
+The master draws the plants of every plot, stage by stage, with the baked models of each crop's
+state. It is the mod's promise number 1, and also its **risk number 1**.
 
-- Le niveau de détail baisse avec la distance : au-delà d'environ 32 blocs, on ne montre que le
-  dernier stade figé, et au-delà d'environ 64 blocs, plus rien (à mesurer).
-- Le client ne reçoit la progression d'une parcelle que lorsque son **stade** change, jamais à
-  chaque tick.
-- La boîte de rendu (`getRenderBoundingBox`) couvre tout le volume.
+- Level of detail drops with distance: beyond about 32 blocks, only the last frozen stage is shown,
+  and beyond about 64 blocks, nothing (to be measured).
+- The client only receives a plot's progress when its **stage** changes, never every tick.
+- The render box (`getRenderBoundingBox`) covers the whole volume.
 
-C'est le premier chantier à mesurer, avec un budget versionné comme dans `FactoryIO/docs/10`.
-
----
-
-## 11. Équilibre et performance
-
-- **Vitesse de base** : une parcelle à 1.0 d'efficacité pousse comme une culture vanilla bien
-  éclairée, en moyenne, sur de la terre labourée irriguée. Le gain de la serre vient du
-  parallélisme, de l'automatisation et du fait de cultiver n'importe où, **pas** d'un
-  multiplicateur.
-- **Chunk non chargé** : rien ne pousse, pas de rattrapage au rechargement. Le rattrapage
-  fausserait l'équilibre et risquerait la duplication en multijoueur.
-- **Ticks** : la serre avance par pas de 20 ticks. L'environnement de base (biome, ciel, pluie)
-  est recalculé toutes les 100 ticks et à chaque changement de module. Pas de `stream()` ni
-  d'allocation dans `tick()`.
-- **Config serveur** : un multiplicateur global de vitesse, les résidus activables ou non.
+It is the first thing to measure, with a versioned budget as in `FactoryIO/docs/10` (see
+[`03-PERF.md`](03-PERF.md)).
 
 ---
 
-## 12. Progression et recettes
+## 11. Balance and performance
 
-Toutes les recettes sont en datapack.
+- **Base speed**: a plot at 1.0 efficiency grows like a well-lit vanilla crop, on average, on watered
+  farmland. The greenhouse's gain comes from parallelism, automation and growing anywhere, **not**
+  from a multiplier.
+- **Unloaded chunk**: nothing grows, no catch-up on reload. Catch-up would distort the balance and
+  risk duplication in multiplayer.
+- **Ticks**: the greenhouse advances in steps of 10 ticks. The base environment (biome, sky, rain)
+  is recomputed every 100 ticks and on every module change. No `stream()` or allocation in `tick()`.
+- **Server config**: a global speed multiplier, residues switchable on or off.
 
-| Palier | Moment de la partie | Ingrédients de départ |
+---
+
+## 12. Progression and recipes
+
+All recipes are in datapack.
+
+| Tier | Moment of the game | Starting ingredients |
 |---|---|---|
-| P1 | début | verre, bois, fer ; aucune énergie, marche au soleil avec le Collecteur de pluie |
-| P2 | milieu | or, redstone, un composant qui demande de l'énergie |
-| P3 | fin | diamant, plus un item **issu d'une culture de serre** |
+| I | start | glass, wood, iron; no energy, works in the sun with the Rain Collector |
+| II | middle | gold, redstone, a component that needs energy |
+| III | end | diamond, plus an item **from a greenhouse crop** |
 
 ---
 
-## 13. Architecture technique
+## 13. Technical architecture
 
-- `core/` : la logique pure (efficacité, loi du minimum, densité, coûts, résolution d'une
-  culture). Aucune référence au jeu ; elle est testée en JUnit.
-- `content/` : la serre, les parcelles, les modules, le socle, et le cadre multibloc porté de
+- `core/`: pure logic (efficiency, law of the minimum, density, costs, crop resolution). No
+  reference to the game; tested with JUnit.
+- `content/`: the greenhouse, plots, modules, the base, and the multiblock framework ported from
   FactoryIO.
-- `client/` : les écrans, le rendu, l'aperçu de pose. C'est le seul endroit où
-  `net.minecraft.client` est autorisé.
-- Registres datapack avec network codec : `crop`, `substrate`, `module`, `fertilizer`.
-- **Code de FactoryIO** : recopié et porté (charte GUI, cadre multibloc), pas partagé en
-  bibliothèque. On en extraira une le jour où deux mods sur la même version auront besoin du même
-  correctif.
-- **Port 26.x** : la logique de `core/` ne bouge pas ; seule la plateforme se réécrit (voir
+- `client/`: screens, rendering, placement preview. The only place `net.minecraft.client` is
+  allowed.
+- Datapack registries with a network codec: `crop`, `substrate`, `module`, `fertilizer`.
+- **FactoryIO code**: copied and ported (GUI charter, multiblock framework), not shared as a
+  library. One will be extracted the day two mods on the same version need the same fix.
+- **26.x port**: `core/` logic does not move; only the platform is rewritten (see
   `BeaconPack/PORTING.md`).
 
 ### Tests
 
-| Type | Couvre |
+| Type | Covers |
 |---|---|
-| JUnit | codecs, calcul d'efficacité, loi du minimum, densité, coûts |
-| GameTest | pose, montée de palier, casse avec conservation du contenu, socle, chaque cas exotique de §5.2, persistance au rechargement |
+| JUnit | codecs, efficiency calculation, law of the minimum, density, costs |
+| GameTest | placing, tier upgrade, breaking with contents kept, the base, every exotic case of §5.2, persistence across reload |
 
-Les invariants vérifiés en permanence : **aucun item n'est créé ni détruit** en dehors de la
-récolte, persistance après rechargement, budgets de performance.
+The invariants checked all the time: **no item is created or destroyed** outside a harvest,
+persistence after reload, performance budgets.
 
 ---
 
-## 14. Intégrations
+## 14. Integrations
 
-Toutes sont des dépendances facultatives, déclarées `compileOnly`, et protégées comme dans
-Portable Beacons : le mod tourne sans aucune d'elles.
+All are optional dependencies, declared `compileOnly`, and guarded as in Portable Beacons: the mod
+runs without any of them.
 
-| Mod | Version du mod | Contenu |
+| Mod | Mod version | Content |
 |---|---|---|
-| JEI | première | pages cultures : substrats, catalyseur, exigences, récolte |
-| Jade | première | statut et facteur limitant au survol |
-| Mystical Agriculture | première | JSON de surcharge pour les cruxes |
-| Serene Seasons | deuxième | la saison décale la température de base |
-| Agricraft | deuxième | les statistiques de la graine modifient vitesse et rendement |
+| JEI | first | crop pages: substrates, catalyst, requirements, harvest |
+| Jade | first | status and limiting factor on hover |
+| Mystical Agriculture | first | override JSON for the cruxes |
+| Serene Seasons | second | the season shifts the base temperature |
+| AgriCraft | second | seed statistics change speed and yield |
 
 ---
 
-## 15. Hors de la première version
+## 15. Out of the first version
 
-Explicitement exclus de la première version : les arbres, les champignons, les cultures aquatiques,
-les animaux et mobs simulés, les bonus entre plantes voisines, les résidus fluides, le rattrapage
-hors chargement et la génétique. Le modèle de **Culture** est prévu pour accueillir les arbres
-ensuite. Les animaux et les mobs demanderont leur propre conception.
+Explicitly excluded from the first version: trees, mushrooms, aquatic crops, simulated animals and
+mobs, bonuses between neighbouring plants, fluid residues, catch-up outside loading, and genetics.
+The **Crop** model is designed to host trees afterwards. Animals and mobs will need their own design.

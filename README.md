@@ -1,53 +1,68 @@
 # Yet Another Farming Station
 
-Une serre multibloc pour NeoForge **1.21.1**, posée d'un geste, où l'environnement décide de la
-croissance. Le nom est ironique, à dessein : dans le jeu, on dit *serre*, jamais « station ».
+A greenhouse for NeoForge **1.21.1** that you place in one click, where the environment decides how
+fast things grow. The name is ironic, on purpose: in the game it is a *greenhouse*, never a
+"station".
 
-Posez la serre, plantez, branchez de l'eau : elle fait pousser toute plante qui pousse par stades,
-vanilla ou moddée, et vous rend la récolte à sa sortie. Lumière, température et eau décident de la
-vitesse ; l'énergie, les modules, l'engrais et le sol la poussent plus loin, chacun avec son prix.
+Place it, plant, plug in some water: it grows any crop that grows in stages, vanilla or modded, and
+hands you the harvest at its output. Light, temperature and water set the pace; energy, modules,
+fertilizer and soil push it further, each at a price.
 
-## Ce que ça apporte
+**Documentation:** [the wiki](docs/wiki/Home.md)
 
-- **Posée, pas construite.** Un item, un clic : tout le volume se forme. Trois paliers qui donnent
-  de la place, jamais de vitesse ; on monte de palier sur place, sans rien perdre.
-- **Toute culture reconnue.** La détection essaie chaque graine sur un sol virtuel : les cultures
-  d'autres mods marchent sans configuration, et un fichier peut corriger celles qui coincent.
-- **Un environnement lisible.** La lumière, la température et l'eau se lisent sur l'écran, avec
-  la raison, en clair, de ce qui bloque une parcelle.
-- **Des modules qui se cumulent.** Accélérateurs, densité, lampe, chauffage, refroidisseur, extinction, collecteur de pluie, batterie, capacité de sortie,
-  composteur. Aucun bonus n'est gratuit.
-- **Une boucle de ressources.** Les récoltes laissent du compost, qui devient de l'engrais.
-- **Un socle qui se branche de partout.** Eau, énergie et engrais y entrent, la récolte en sort.
-- **Tout se règle par données.** Cultures, sols, engrais et modules sont des fichiers de
-  datapack ; partout où l'on désigne des items, un `#tag` convient.
+## What it does
 
-Le guide complet, avec toutes les valeurs, est dans [`docs/04-JOUEUR.md`](docs/04-JOUEUR.md).
+- **Placed, not built.** One item, one click, and the whole volume forms. Three tiers that add
+  room, never speed; you upgrade in place without losing a thing.
+- **Recognises every crop.** The mod tries each seed on a virtual soil, so crops from other mods
+  work with no configuration, and a data file can fix the ones that need it.
+- **A readable environment.** Light, temperature and water are on screen, with a plain-language
+  reason for whatever is holding a plot back.
+- **Modules that stack.** Grow Lamp, Blackout, Heater, Cooler, Rain Collector, Accelerators,
+  Density, Battery, Capacity, Composter. Nothing is free: whatever speeds things up also costs
+  energy.
+- **A resource loop.** Harvests leave compost, compost becomes fertilizer.
+- **A base you can plug into anywhere.** Water, energy and fertilizer go in, the harvest comes out.
+- **Everything is data.** Crops, soils, fertilizers and modules are datapack files; wherever items
+  are named, a `#tag` works. Three server settings balance a whole pack at once.
 
-## Compatibilité
+## Using it
 
-Facultatives, jamais requises : **JEI** (une page par culture), **Jade** (l'état de la serre au
-survol), **Mystical Agriculture** (chaque graine à crux exige son crux). Le mod tourne pareil sans
-elles.
+| | |
+|---|---|
+| [Getting Started](docs/wiki/Getting-Started.md) | placing, tiers, the base |
+| [The Screen](docs/wiki/The-Screen.md) | every tab, plots, redstone |
+| [Growing](docs/wiki/Growing.md) | what a crop needs, water, energy |
+| [Modules](docs/wiki/Modules.md) | every module, its effect and its cost |
+| [Fertilizer and Soils](docs/wiki/Fertilizer-and-Soils.md) | compost, fertilizer, soil bonuses |
+| [Modpacks and Datapacks](docs/wiki/Modpacks-and-Datapacks.md) | everything you can change without touching the mod |
+| [Compatibility](docs/wiki/Compatibility.md) | JEI, Jade, Mystical Agriculture |
 
-## Développer
+## Compatibility
 
-Java 21, Gradle 9, ModDevGradle. Les commandes, les règles de code et le vocabulaire sont dans
-[`CLAUDE.md`](CLAUDE.md) et [`CONTEXT.md`](CONTEXT.md).
+Every integration is optional.
+
+- **JEI**: one page per crop.
+- **Jade**: the greenhouse's state on hover.
+- **Mystical Agriculture**: each crux seed needs its crux as a catalyst.
+
+## Building
+
+Java 21, Gradle 9, ModDevGradle. Commands, code rules and vocabulary are in [`CLAUDE.md`](CLAUDE.md)
+and [`CONTEXT.md`](CONTEXT.md).
 
 ```
-gradlew build              compile et lance les tests JUnit
-gradlew runGameTestServer  les GameTests, sans interface
-gradlew runClient          un client de développement
-java tools/GenGuide.java   régénère les tableaux du guide joueur depuis les données
+gradlew build              compile and run the JUnit tests
+gradlew runGameTestServer  the GameTests, headless
+gradlew runClient          a development client
+java tools/GenGuide.java   regenerate the wiki tables from the data
 ```
 
-La spécification est dans [`docs/01-DESIGN.md`](docs/01-DESIGN.md), les tickets dans
-[`docs/02-BACKLOG.md`](docs/02-BACKLOG.md), le budget de performance dans
-[`docs/03-PERF.md`](docs/03-PERF.md), le texte des pages de store dans
-[`docs/05-STORE.md`](docs/05-STORE.md).
+The specification is in [`docs/01-DESIGN.md`](docs/01-DESIGN.md), the tickets in
+[`docs/02-BACKLOG.md`](docs/02-BACKLOG.md), the performance budget in
+[`docs/03-PERF.md`](docs/03-PERF.md). The text of the store pages is in [`STORE.md`](STORE.md).
 
-## Licence
+## License
 
-Code sous licence MIT ([`LICENSE`](LICENSE)). Les assets sont tous droits réservés
+Code under the MIT license ([`LICENSE`](LICENSE)). Assets are all rights reserved
 ([`LICENSE-ASSETS`](LICENSE-ASSETS)).

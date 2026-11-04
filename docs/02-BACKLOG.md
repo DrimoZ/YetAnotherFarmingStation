@@ -1,114 +1,113 @@
 # 02 — Backlog
 
-Backlog priorisé et estimé. Chaque ticket est autonome et vérifiable. La spécification est
-[`01-DESIGN.md`](01-DESIGN.md) ; un ticket qui la contredit se trompe, ou la fait évoluer.
+Prioritised, estimated backlog. Each ticket stands alone and can be verified. The specification is
+[`01-DESIGN.md`](01-DESIGN.md); a ticket that contradicts it is wrong, or makes it evolve.
 
-**Priorité** : `P0` socle, rien ne marche sans · `P1` première version · `P2` important · `P3` souhaitable
-**Estimation** : `XS` <1 h · `S` 1-4 h · `M` 0,5-2 j · `L` 3-5 j · `XL` >1 sem
+**Priority**: `P0` foundation, nothing works without it · `P1` first version · `P2` important · `P3` desirable
+**Estimate**: `XS` <1 h · `S` 1-4 h · `M` 0.5-2 d · `L` 3-5 d · `XL` >1 week
 
-Colonne « ✓ » = critère d'acceptation. `~~YAF-xxx~~ ✅` = fait. `❄️` = gelé : ni abandonné, ni planifié.
+"✓" column = acceptance criterion. `~~YAF-xxx~~ ✅` = done. `❄️` = frozen: neither dropped nor planned.
 
-## 🧭 Ordre de marche
+## 🧭 Order of march
 
-1. **Une serre P1 qu'on pose et qu'on casse** — A.
-2. **Une parcelle de blé qui pousse et se récolte** — B (sauf détection complète), C minimal.
-3. **Le risque n°1 tout de suite** : voir 4 plantes pousser dans la serre — E.
-4. **L'écran** — D.
-5. Ensuite, dans l'ordre : détection complète, socle, modules, paliers supérieurs, intégrations.
+1. **A Tier I greenhouse you can place and break** — A.
+2. **A wheat plot that grows and gets harvested** — B (except full detection), minimal C.
+3. **The number 1 risk right away**: see 4 plants grow in the greenhouse — E.
+4. **The screen** — D.
+5. Then, in order: full detection, base, modules, higher tiers, integrations.
 
-Règle : un ticket n'est fait qu'avec son test (JUnit pour `core/`, GameTest pour ce qui demande
-un monde).
+Rule: a ticket is only done with its test (JUnit for `core/`, GameTest for whatever needs a world).
 
 ---
 
-## Épic A — La serre posée
+## Epic A — The placed greenhouse
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| ~~YAF-001~~ | ✅ | M | **Porter le cadre multibloc** — **fait** de FactoryIO (`MultiblockShape`, `MultiblockBlock`, `MultiblockPartBlock`, `MultiblockPartBlockEntity`) vers NeoForge 1.21.1. Capabilities : enregistrement par `RegisterCapabilitiesEvent`, la partie renvoie celle du maître. | `MultiblockShapeTest` porté passe |
-| ~~YAF-002~~ | ✅ | S | **Serre P1 posable** — **fait** : item, bloc maître, volume 3×3×3, modèle provisoire. | GameTests : pose bloquée si un bloc gêne ; casse depuis chaque partie, l'item tombe une seule fois |
-| ~~YAF-003~~ | ✅ | S | **Contour fantôme de pose** (client) — **fait, vu en jeu** : vert si `canPlace`, rouge sinon. | vu en `runClient` |
-| ~~YAF-004~~ | ✅ | XS | **Fait** — onglet créatif, clés `en_us` / `fr_fr`. | `TranslationsTest` : les deux fichiers ont les mêmes clés |
-| ~~YAF-005~~ | ✅ | S | **Paliers P2 et P3** — **fait** (`GreenhouseTier` ; modèle provisoire réduit à un socle, contour du volume dessiné, en attendant YAF-090) : définition palier → volume, parcelles, emplacements de module, ports, densité max. | GameTests : pose de P2 et P3 |
-| ~~YAF-006~~ | ✅ | M | **Monter de palier sur place** — **fait, vu en jeu** : l'item du palier suivant utilisé sur une serre posée agrandit le volume, contour fantôme, refus si la place manque. | GameTests : contenu conservé ; place manquante → rien ne change, item non consommé |
+| ~~YAF-001~~ | ✅ | M | **Port the multiblock framework** — **done** from FactoryIO (`MultiblockShape`, `MultiblockBlock`, `MultiblockPartBlock`, `MultiblockPartBlockEntity`) to NeoForge 1.21.1. Capabilities: registered through `RegisterCapabilitiesEvent`, a part returns the master's. | the ported `MultiblockShapeTest` passes |
+| ~~YAF-002~~ | ✅ | S | **Placeable Tier I greenhouse** — **done**: item, master block, 3×3×3 volume, provisional model. | GameTests: placing blocked if a block is in the way; breaking from each part, the item drops exactly once |
+| ~~YAF-003~~ | ✅ | S | **Ghost placement outline** (client) — **done, seen in game**: green if `canPlace`, red otherwise. | seen in `runClient` |
+| ~~YAF-004~~ | ✅ | XS | **Done** — creative tab, `en_us` / `fr_fr` keys. | `TranslationsTest`: both files have the same keys |
+| ~~YAF-005~~ | ✅ | S | **Tiers II and III** — **done** (`GreenhouseTier`; provisional model reduced to a base, volume outline drawn, until YAF-090): tier definition → volume, plots, module slots, ports, max density. | GameTests: placing Tier II and III |
+| ~~YAF-006~~ | ✅ | M | **Upgrade a tier in place** — **done, seen in game**: the next tier's item used on a placed greenhouse grows the volume, ghost outline, refused if room is missing. | GameTests: contents kept; missing room → nothing changes, item not consumed |
 
-## Épic B — Parcelles et cultures
-
-| ID | P | Est. | Ticket | ✓ |
-|---|---|---|---|---|
-| ~~YAF-010~~ | ✅ | S | **`core/` : la parcelle** — **fait** : `PlotGrowth` (progression, densité) et son `Codec` borné. Culture, substrat et catalyseur sont un inventaire de la serre, pas une donnée de `core/`, qui ne connaît pas les items. | JUnit : aller-retour du codec |
-| ~~YAF-011~~ | ✅ | S | **`core/` : efficacité et loi du minimum** — **fait** (`Efficiency`) — plages, baisse linéaire, plancher 0.1, eau vide = 0, facteur limitant nommé. | JUnit : chaque facteur limitant, plancher, eau vide |
-| ~~YAF-012~~ | ✅ | M | **Croissance simulée** — **fait** dans le maître, par pas de 20 ticks ; récolte vers la réserve de sortie ; graines en trop ; parcelle mûre en BLOCKED si la sortie est pleine. Blé codé en dur en attendant YAF-013. | GameTest : un blé pousse et se récolte ; sortie pleine → rien de perdu |
-| ~~YAF-013~~ | ✅ | M | **Détection automatique** — **fait** (`Crops`, 8 cultures vanilla en 11 ms ; calculée des deux côtés plutôt que transmise, elle ne dépend que des registres et des tags) : `BlockItem` → bloc de culture, `canSurvive` sur un mini-monde fictif par substrat candidat, récolte par la table de loot de l'état mûr. Cache par rechargement, network codec. | GameTest : blé, carotte, pomme de terre, betterave, verrue du Nether reconnus avec les bons substrats |
-| ~~YAF-014~~ | ✅ | M | **Registres datapack** `yafs/crop` et `yafs/substrate` — **fait** : fichiers JSON relus à chaque `/reload` (et non registres dynamiques, qui ne se rechargent qu'au lancement du monde), codecs bornés, synchronisés aux joueurs ; une surcharge remplace la détection champ par champ. Les exigences vanilla et la règle « terre = terre labourée » sont passées en JSON. | JSON invalide refusé et journalisé ; surcharge appliquée après `/reload` |
-| ~~YAF-015~~ | ✅ | M | **Cas exotiques** — **fait** par des JSON livrés et un champ `harvest` (le bloc dont le loot donne la récolte) : canne à sucre, cactus, melon et citrouille (tige → fruit), urne (2 blocs), cacao. Aucune culture vanilla n'a de bloc-entité : ce cas n'est pas testé. | un GameTest par cas |
-| ~~YAF-016~~ | ✅ | S | **Exigences vanilla livrées** — **fait**, en dur dans `Crops` jusqu'à YAF-014 ; test fait sur la verrue, la canne attendant YAF-015 (températures par culture) ; défaut tolérant pour le reste. | GameTest : la canne pousse moins vite en taïga qu'en désert |
-| ~~YAF-017~~ | ✅ | S | **Substrats à bonus** — **fait** : `speed` / `yield` par définition de substrat, donc par parcelle ; bloc Terre fertile (×1,25 de rendement) ; l'infobulle de l'item et celle de la parcelle le disent. | GameTests : bonus de sa parcelle seule, sol de datapack par tag |
-
-## Épic C — Environnement et ressources
+## Epic B — Plots and crops
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| ~~YAF-020~~ | ✅ | S | **Environnement de base** — **fait** : lumière du ciel au maître, biome → °C, pluie ; recalcul toutes les 100 ticks. | JUnit : conversion biome → °C ; GameTest : sans ciel, lumière 0 |
-| ~~YAF-021~~ | ✅ | S | **Réserve d'eau** — **fait** (8 000 mB, 500 mB par croissance, seau ou tuyau sur n'importe quel bloc en attendant les ports) : réservoir de fluide, consommation par cycle × densité, eau vide → PROBLEM. | GameTest : sans eau, rien ne pousse et le statut le dit |
-| ~~YAF-022~~ | ✅ | S | **Engrais** — **fait** : registre datapack `yafs/fertilizer`, un emplacement dans la colonne de l'eau (aussi rempli par le socle), un item nourrit une parcelle N secondes, vitesse **ou** rendement. registre `yafs/fertilizer`, vitesse **ou** rendement. | GameTest : la poudre d'os accélère |
-| ~~YAF-023~~ | ✅ | S | **Résidus** — **fait** : compost par plant et par cycle (`residue_chance`), dans la sortie ; sortie pleine → BLOCKED. compost avec une probabilité par culture ; réserve pleine → BLOCKED. | GameTest : conservation, blocage |
+| ~~YAF-010~~ | ✅ | S | **`core/`: the plot** — **done**: `PlotGrowth` (progress, density) and its bounded `Codec`. Crop, substrate and catalyst are a greenhouse inventory, not `core/` data, which does not know items. | JUnit: codec round trip |
+| ~~YAF-011~~ | ✅ | S | **`core/`: efficiency and the law of the minimum** — **done** (`Efficiency`) — ranges, linear drop, 0.1 floor, empty water = 0, limiting factor named. | JUnit: every limiting factor, floor, empty water |
+| ~~YAF-012~~ | ✅ | M | **Simulated growth** — **done** in the master, in 20-tick steps; harvest goes to the output store; surplus seeds; ripe plot BLOCKED if the output is full. Wheat hard-coded until YAF-013. | GameTest: a wheat grows and is harvested; full output → nothing lost |
+| ~~YAF-013~~ | ✅ | M | **Automatic detection** — **done** (`Crops`, 8 vanilla crops in 11 ms; computed on both sides rather than transmitted, since it only depends on registries and tags): `BlockItem` → crop block, `canSurvive` on a fake mini-world per candidate substrate, harvest from the ripe state's loot table. Cache per reload, network codec. | GameTest: wheat, carrot, potato, beetroot, nether wart recognised with the right substrates |
+| ~~YAF-014~~ | ✅ | M | **Datapack registries** `yafs/crop` and `yafs/substrate` — **done**: JSON files re-read on every `/reload` (not dynamic registries, which only reload at world start), bounded codecs, synced to players; an override replaces detection field by field. Vanilla requirements and the "dirt = farmland" rule moved to JSON. | invalid JSON refused and logged; override applied after `/reload` |
+| ~~YAF-015~~ | ✅ | M | **Exotic cases** — **done** through shipped JSON and a `harvest` field (the block whose loot gives the harvest): sugar cane, cactus, melon and pumpkin (stem → fruit), pitcher (2 blocks), cocoa. No vanilla crop has a block entity: that case is untested. | one GameTest per case |
+| ~~YAF-016~~ | ✅ | S | **Shipped vanilla requirements** — **done**, hard-coded in `Crops` until YAF-014; tested on nether wart, sugar cane waiting for YAF-015 (per-crop temperatures); tolerant default for the rest. | GameTest: sugar cane grows slower in a taiga than in a desert |
+| ~~YAF-017~~ | ✅ | S | **Substrates with a bonus** — **done**: `speed` / `yield` per substrate definition, so per plot; Fertile Soil block (×1.25 yield); the item's tooltip and the plot's say so. | GameTests: bonus on its own plot only, datapack soil by tag |
 
-## Épic D — Interface
-
-| ID | P | Est. | Ticket | ✓ |
-|---|---|---|---|---|
-| ~~YAF-030~~ | ✅ | M | **Porter la charte GUI** — **fait** de FactoryIO (`GuiMetrics`, `GuiTheme`, `GuiSprites` et sa planche). | un écran vide de 176 px s'ouvre en `runClient` |
-| ~~YAF-031~~ | ✅ | M | **Écran de la serre** — **fait, vérifié sur captures (`GuiPreview`)** : énergie rouge en colonne 0, eau bleue en colonne 5, en-têtes Parcelles et Récolte, raisons explicites des problèmes ; grille de parcelles (barre de croissance, liseré de statut), jauge d'eau colonne 0, voyant. Valeurs par `ContainerData`, boutons par `clickMenuButton`. | `runClient` et `runServer` : la croissance avance à l'écran |
-| ~~YAF-032~~ | ✅ | M | **Détail d'une parcelle** en fenêtre superposée — **fait, vérifié sur captures** (trois vrais slots du menu, branchés sur la parcelle choisie par bouton de menu) : emplacements Culture / Substrat / Catalyseur, exigences comparées à l'environnement. | poser et retirer une culture depuis l'écran ; substrat incompatible refusé par le serveur |
-| ~~YAF-033~~ | ✅ | S | **Onglet Environnement** (jaune) — **fait, vérifié sur captures** ; onglets repliables (SideTabs de FactoryIO), onglet Contrôle (interrupteur, condition redstone) : 3 facteurs, « Limité par » (la parcelle la plus lente), récoltes/min plutôt qu'items/min (le nombre d'items d'une récolte est aléatoire), eau/min. | la ligne « Limité par » change quand on pose une lampe |
-| ~~YAF-034~~ | ✅ | S | **Statuts** — **fait** : les 5 états par parcelle, la serre prend le plus grave (`PlotStatus.worst`) ; un signal redstone sur le volume éteint tout (OFF). | JUnit sur la résolution du statut |
-
-## Épic E — Rendu
+## Epic C — Environment and resources
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| ~~YAF-040~~ | ✅ | M | **Prototype de rendu des plantes** — **fait, vu sur les captures** : le maître dessine chaque parcelle avec le modèle baked de son stade ; le client n'est prévenu que quand un stade change. | 4 blés visibles qui grandissent en `runClient` |
-| ~~YAF-041~~ | ✅ | S | **Budget de performance** — **fait** (`docs/03-PERF.md`, banc `YAFS_PERF_BENCH=1`) : plantes cuites dans le maillage du chunk au lieu d'un niveau de détail ; rendu 4,9 → 0,14 ms par image, serveur 5,8 µs par serre. mesure de 50 serres P3 pleines, niveau de détail selon la distance. Budget versionné dans `docs/`. | chiffres consignés, budget tenu |
+| ~~YAF-020~~ | ✅ | S | **Base environment** — **done**: sky light at the master, biome → °C, rain; recomputed every 100 ticks. | JUnit: biome → °C conversion; GameTest: no sky, light 0 |
+| ~~YAF-021~~ | ✅ | S | **Water reserve** — **done** (8,000 mB, 500 mB per growth, bucket or pipe on any block until the ports): fluid tank, consumption per cycle × density, empty water → PROBLEM. | GameTest: without water nothing grows and the status says so |
+| ~~YAF-022~~ | ✅ | S | **Fertilizer** — **done**: `yafs/fertilizer` datapack registry, one slot in the water column (also filled by the base), one item feeds one plot for N seconds, speed **or** yield. | GameTest: bone meal speeds growth up |
+| ~~YAF-023~~ | ✅ | S | **Residues** — **done**: compost per plant and per cycle (`residue_chance`), into the output; full output → BLOCKED. | GameTest: conservation, blocking |
 
-## Épic F — Socle
-
-| ID | P | Est. | Ticket | ✓ |
-|---|---|---|---|---|
-| ~~YAF-050~~ | ✅ | M | **Le socle** — **fait** : la couche du bas se branche de partout (eau, énergie, récolte). L'item Port, d'abord fait, a été retiré le 30/10/2026 : le socle le rendait inutile. | GameTests `BaseGameTests` |
-
-## Épic G — Modules
+## Epic D — Interface
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| ~~YAF-060~~ | ✅ | M | **Modules** (empilables jusqu'à 8 par case, effets combinés) : un item par module (et non plus un item à composant, décidé le 30/10/2026) + registre `yafs/module` ; emplacements dans l'onglet bleu, effet recalculé en direct. — **fait** (registre de datapack, rechargé au lancement du monde ; effets dans l'infobulle de l'item, l'effet sur la serre s'affichera avec l'onglet Environnement, YAF-033 ; onglet à voir en jeu) | un module retouché en datapack change d'effet |
-| ~~YAF-061~~ | ✅ | S | Lampe de croissance, Chauffage, Refroidisseur (FE) — **fait** : 20, 40 et 40 FE/t, sans énergie ils ne font rien. | GameTest : la verrue pousse dans l'Overworld avec un chauffage |
-| ~~YAF-062~~ | ✅ | S | Collecteur de pluie — **fait** : 25 mB par pas sous la pluie ; « ciel visible » vient de `isRainingAt`, le test impose la pluie. | GameTest : la réserve monte sous la pluie, ciel visible requis |
-| ~~YAF-063~~ | ✅ | S | **Accélérateurs I, II, III** — **fait** : vitesse ×2/×4/×8, énergie ×4/×16/×64, eau ×2/×4/×8, tout se multiplie entre modules et avec le bonus d'énergie de base (×2 réglable). Inactifs sans énergie. | GameTest : vitesse et coûts multipliés, inactifs sans énergie |
-| ~~YAF-064~~ | ✅ | S | **Densité, Batterie, Capacité — faits** : densité additive (+1/+2/+3 plants par module), Batterie (+1 M FE, 64 au plus), Capacité (+64 items par case de sortie, 64 au plus, sauvegarde faite à la main car le format vanilla borne les piles à 99). | GameTests : densité additive, batteries, capacité |
-| ~~YAF-065~~ | ✅ | S | **Composteur** — **fait** : quatre composts → un Engrais par pas, sans énergie. | GameTest : la boucle tourne seule |
+| ~~YAF-030~~ | ✅ | M | **Port the GUI charter** — **done** from FactoryIO (`GuiMetrics`, `GuiTheme`, `GuiSprites` and its sheet). | an empty 176 px screen opens in `runClient` |
+| ~~YAF-031~~ | ✅ | M | **Greenhouse screen** — **done, checked on captures (`GuiPreview`)**: red energy in column 0, blue water in column 5, Plots and Harvest headers, explicit reasons for problems; plot grid (growth bar, status edge), water gauge column 0, indicator. Values through `ContainerData`, buttons through `clickMenuButton`. | `runClient` and `runServer`: growth advances on screen |
+| ~~YAF-032~~ | ✅ | M | **Plot detail** in an overlay — **done, checked on captures** (three real menu slots, wired to the plot chosen by a menu button): Crop / Substrate / Catalyst slots, requirements compared to the environment. | place and remove a crop from the screen; incompatible substrate refused by the server |
+| ~~YAF-033~~ | ✅ | S | **Environment tab** (yellow) — **done, checked on captures**; foldable tabs (FactoryIO's SideTabs), Control tab (switch, redstone condition): 3 factors, "Limited by" (the slowest plot), harvests/min rather than items/min (the number of items in a harvest is random), water/min. | the "Limited by" line changes when a lamp is placed |
+| ~~YAF-034~~ | ✅ | S | **Statuses** — **done**: the 5 states per plot, the greenhouse takes the worst (`PlotStatus.worst`); a redstone signal on the volume switches everything off (OFF). | JUnit on status resolution |
 
-## Épic H — Progression
-
-| ID | P | Est. | Ticket | ✓ |
-|---|---|---|---|---|
-| ~~YAF-070~~ | ✅ | S | Recettes : paliers, port, modules — **fait**, en JSON écrits à la main plutôt qu'en datagen (huit recettes ne valent pas l'outillage). P3 demande du melon scintillant. | `RecipeGameTests` : tout se fabrique en survie |
-| ~~YAF-071~~ | ✅ | XS | **Config serveur** — **fait** : `energizedSpeed` (vitesse sous énergie), `growthSpeed` (multiplicateur global de croissance, sans effet sur la règle de l'eau), `residues` (résidus on/off). Le coût d'énergie, la durée, l'eau et le résidu sont par culture (JSON). | GameTests : résidus coupés partout, vitesse globale |
-| ~~YAF-072~~ | ✅ | XS | **Source d'énergie créative** — **faite** : pousse sans limite vers ses six voisins ; sans recette. | — |
-
-## Épic I — Intégrations
+## Epic E — Rendering
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| ~~YAF-080~~ | ✅ | M | **JEI** — **fait, vu sur capture** : une page par culture reconnue (graine, sols, catalyseur, récolte tirée au serveur puis synchronisée, exigences, durée, eau, énergie) ; les trois serres en catalyseurs. JEI : catégorie cultures (substrats, catalyseur, exigences, récolte). | lancé sans JEI : rien ne casse |
-| ~~YAF-081~~ | ✅ | S | **Jade** — **fait, vu sur capture** (`compat/jade`, chargé par Jade seul) : au survol de n'importe quel bloc, état de la serre, parcelles qui poussent, facteur limitant, FE/t. Jade : statut et facteur limitant au survol. | idem sans Jade |
-| ~~YAF-082~~ | ✅ | S | **Mystical Agriculture** — **fait** (`compat/mysticalagriculture`, par l'API de MA, lue seulement si MA est chargé) : chaque graine à crux exige son crux en catalyseur, sauf si un datapack dit autre chose. MA seul n'a pas de crux : ils viennent de Mystical Agradditions, vérifié avec lui. Mystical Agriculture : surcharges des cruxes. | une graine à crux pousse avec son catalyseur, pas sans |
-| ❄️ YAF-083 | P3 | S | Serene Seasons : la saison décale la température. | deuxième version |
-| ❄️ YAF-084 | P3 | M | Agricraft : statistiques des graines. | deuxième version |
+| ~~YAF-040~~ | ✅ | M | **Plant rendering prototype** — **done, seen on captures**: the master draws each plot with the baked model of its stage; the client is only told when a stage changes. | 4 growing wheat visible in `runClient` |
+| ~~YAF-041~~ | ✅ | S | **Performance budget** — **done** (`docs/03-PERF.md`, bench `YAFS_PERF_BENCH=1`): plants baked into the chunk mesh instead of a level of detail; rendering 4.9 → 0.14 ms per frame, server 5.8 µs per greenhouse. Budget versioned in `docs/`. | figures recorded, budget held |
 
-## Épic J — Publication
+## Epic F — Base
 
 | ID | P | Est. | Ticket | ✓ |
 |---|---|---|---|---|
-| YAF-090 | P2 | M | Modèles et textures définitifs de la serre, des modules et du port. | — |
-| ~~YAF-091~~ | ✅ | S | **README, page de store, guide joueur** — **fait** : `README.md`, `docs/05-STORE.md`, `docs/04-JOUEUR.md` (tableaux générés depuis les données par `java tools/GenGuide.java`, `--check` en échoue si périmé). | chaque chiffre cité existe dans les données |
+| ~~YAF-050~~ | ✅ | M | **The base** — **done**: the bottom layer plugs in from everywhere (water, energy, harvest). The Port item, made first, was removed on 2026-10-30: the base made it useless. | `BaseGameTests` GameTests |
+
+## Epic G — Modules
+
+| ID | P | Est. | Ticket | ✓ |
+|---|---|---|---|---|
+| ~~YAF-060~~ | ✅ | M | **Modules** (stackable up to 8 per slot, effects combined): one item per module (no longer a component item, decided 2026-10-30) + `yafs/module` registry; slots in the blue tab, effect recomputed live. — **done** (datapack registry, reloaded at world start; effects in the item's tooltip, the effect on the greenhouse shows with the Environment tab, YAF-033; tab to see in game) | a module edited in a datapack changes effect |
+| ~~YAF-061~~ | ✅ | S | Grow Lamp, Heater, Cooler (FE) — **done**: 20, 40 and 40 FE/t, without energy they do nothing. | GameTest: nether wart grows in the Overworld with a heater |
+| ~~YAF-062~~ | ✅ | S | Rain Collector — **done**: 25 mB per step in the rain; "sky visible" comes from `isRainingAt`, the test forces rain. | GameTest: the reserve rises in the rain, sky visibility required |
+| ~~YAF-063~~ | ✅ | S | **Accelerators I, II, III** — **done**: speed ×2/×4/×8, energy ×4/×16/×64, water ×2/×4/×8, everything multiplies between modules and with the base energy bonus (×2, configurable). Inactive without energy. | GameTest: speed and costs multiplied, inactive without energy |
+| ~~YAF-064~~ | ✅ | S | **Density, Battery, Capacity — done**: additive density (+1/+2/+3 plants per module), Battery (+1 M FE, 64 at most), Capacity (+64 items per output slot, 64 at most, saved by hand because vanilla's format caps stacks at 99). | GameTests: additive density, batteries, capacity |
+| ~~YAF-065~~ | ✅ | S | **Composter** — **done**: four compost → one Fertilizer per step, no energy. | GameTest: the loop runs on its own |
+
+## Epic H — Progression
+
+| ID | P | Est. | Ticket | ✓ |
+|---|---|---|---|---|
+| ~~YAF-070~~ | ✅ | S | Recipes: tiers, port, modules — **done**, in hand-written JSON rather than datagen (eight recipes do not justify the tooling). Tier III asks for glistering melon. | `RecipeGameTests`: everything is craftable in survival |
+| ~~YAF-071~~ | ✅ | XS | **Server config** — **done**: `energizedSpeed` (speed when powered), `growthSpeed` (global growth multiplier, no effect on the water rule), `residues` (residues on/off). Energy cost, duration, water and residue are per crop (JSON). | GameTests: residues switched off everywhere, global speed |
+| ~~YAF-072~~ | ✅ | XS | **Creative energy source** — **done**: pushes without limit into its six neighbours; no recipe. | — |
+
+## Epic I — Integrations
+
+| ID | P | Est. | Ticket | ✓ |
+|---|---|---|---|---|
+| ~~YAF-080~~ | ✅ | M | **JEI** — **done, seen on capture**: one page per recognised crop (seed, soils, catalyst, harvest drawn on the server then synced, requirements, duration, water, energy); the three greenhouses as catalysts. | launched without JEI: nothing breaks |
+| ~~YAF-081~~ | ✅ | S | **Jade** — **done, seen on capture** (`compat/jade`, loaded by Jade alone): on hover over any block, the greenhouse's state, growing plots, limiting factor, FE/t. | same without Jade |
+| ~~YAF-082~~ | ✅ | S | **Mystical Agriculture** — **done** (`compat/mysticalagriculture`, through MA's API, only read if MA is loaded): each crux seed requires its crux as a catalyst, unless a datapack says otherwise. MA alone has no cruxes: they come from Mystical Agradditions, checked with it. | a crux seed grows with its catalyst, not without |
+| ❄️ YAF-083 | P3 | S | Serene Seasons: the season shifts the temperature. | second version |
+| ❄️ YAF-084 | P3 | M | AgriCraft: seed statistics. | second version |
+
+## Epic J — Publication
+
+| ID | P | Est. | Ticket | ✓ |
+|---|---|---|---|---|
+| YAF-090 | P2 | M | Final models and textures for the greenhouse, the modules and the base. | — |
+| ~~YAF-091~~ | ✅ | S | **README, store page, player wiki** — **done**: `README.md`, `STORE.md`, `docs/wiki/` (tables generated from the data by `java tools/GenGuide.java`; `--check` fails if they are stale). All in English. | every number quoted exists in the data |

@@ -1,37 +1,37 @@
-# 03 — Budget de performance (YAF-041)
+# 03 — Performance budget (YAF-041)
 
-Le banc : 50 serres P3 pleines (16 parcelles de blé, densité ×4, quatre Accélérateurs III, une
-lampe), en ligne de mire. On le relance après tout changement du tick ou du rendu :
+The bench: 50 full Tier III greenhouses (16 wheat plots, density ×4, four Accelerator III, one
+lamp), in line of sight. Rerun it after any change to the tick or the rendering:
 
 ```
 YAFS_PERF_BENCH=1 ./gradlew runClient
 ```
 
-Il écrit `run/perf/bench.txt` et ferme le jeu (code : `gametest/PerfBench.java`).
+It writes `run/perf/bench.txt` and closes the game (code: `gametest/PerfBench.java`).
 
 ## Budget
 
-| Mesure | Budget | Mesuré le 31/10/2026 |
+| Measure | Budget | Measured on 2026-10-31 |
 |---|---|---|
-| Serveur, par serre P3 et par tick | ≤ 20 µs | 5,8 µs |
-| Serveur, 50 serres P3 | ≤ 2 % d'un tick (1 ms) | 0,29 ms (0,6 %) |
-| Rendu, temps CPU par image des 50 serres | ≤ 0,5 ms | 0,14 ms |
+| Server, per Tier III greenhouse and per tick | ≤ 20 µs | 5.8 µs |
+| Server, 50 Tier III greenhouses | ≤ 2 % of a tick (1 ms) | 0.29 ms (0.6 %) |
+| Rendering, CPU time per frame for the 50 greenhouses | ≤ 0.5 ms | 0.14 ms |
 
-Les mesures varient de ±10 % d'un lancement à l'autre ; le budget laisse de la marge exprès.
+Measures vary by ±10 % from one run to the next; the budget leaves room on purpose.
 
-## Ce qui les tient
+## What holds them
 
-- **Serveur** : la serre travaille tous les 10 ticks, décalée selon sa position ; entre deux pas,
-  elle ne fait que prélever son énergie. Une récolte de plusieurs cycles tire la table de loot pour
-  8 plants au plus, puis met à l'échelle. Le signal redstone n'est relu qu'au changement d'un voisin.
-- **Rendu** : les plantes sont cuites dans le maillage du chunk (`GreenhouseModel`), pas redessinées
-  à chaque image. Le chunk se reconstruit quand un stade visible change (8 par croissance). Avant :
-  4,9 ms par image pour 1 408 modèles redessinés à chaque image.
+- **Server**: the greenhouse works every 10 ticks, staggered by position; between two steps it only
+  draws its energy. A harvest of several cycles samples the loot table for at most 8 plants, then
+  scales. The redstone signal is only read again when a neighbour changes.
+- **Rendering**: plants are baked into the chunk mesh (`GreenhouseModel`), not redrawn every frame.
+  The chunk is rebuilt when a visible stage changes (8 per growth). Before: 4.9 ms per frame for
+  1,408 models redrawn every frame.
 
-## Limites connues
+## Known limits
 
-- Une serre très accélérée change de stade souvent : chaque changement reconstruit sa section de
-  chunk, sur les threads de construction. À surveiller si un joueur aligne des dizaines de serres
-  à cycle de quelques secondes.
-- Le nombre d'images par seconde n'a pas bougé entre avant et après (45 → 46 sur la machine de
-  mesure) : il était limité ailleurs. Le gain est du temps CPU rendu au reste du jeu.
+- A heavily accelerated greenhouse changes stage often: each change rebuilds its chunk section, on
+  the build threads. Worth watching if a player lines up dozens of greenhouses with cycles of a few
+  seconds.
+- The frame rate did not move between before and after (45 → 46 on the measuring machine): it was
+  limited elsewhere. The gain is CPU time handed back to the rest of the game.
