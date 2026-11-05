@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.1 - 2026-11-05
 
 - The greenhouse: a multiblock placed in one click, three tiers (room, never speed), upgraded in place.
 - Plots with a crop, a substrate and an optional catalyst; any staged crop is recognised automatically, and a datapack file can correct the ones that need it. Vanilla crops ship with their own requirements.
