@@ -9,9 +9,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public final class ControlTab extends ButtonTab {
+public final class ControlTab extends SideTab {
 
     public interface Controls {
 
@@ -43,6 +44,7 @@ public final class ControlTab extends ButtonTab {
 
     private static final ItemStack ICON = new ItemStack(Items.REDSTONE_TORCH);
 
+    private final List<IconButton> buttons = new ArrayList<>();
     private final Controls controls;
 
     public ControlTab(Controls controls) {
@@ -102,12 +104,29 @@ public final class ControlTab extends ButtonTab {
 
     @Override
     protected void renderContent(GuiGraphics graphics, Font font, int x, int y, int mouseX, int mouseY) {
-        renderButtons(graphics, font, x, y, mouseX, mouseY);
+        for (IconButton button : this.buttons) button.render(graphics, font, x, y, mouseX, mouseY);
 
         RedstoneCondition condition = this.controls.condition();
         GuiTheme.tabLabel(graphics, font, text("redstone_condition"), x, y + REDSTONE_LABEL);
         graphics.drawCenteredString(font, text("redstone_threshold", condition.threshold()),
                 x + WIDTH / 2, y + THRESHOLD_ROW + 3, condition.usesThreshold() ? GuiTheme.TAB_VALUE : GuiTheme.TAB_MUTED);
         GuiTheme.tabLabel(graphics, font, text("redstone_signal", this.controls.signal()), x, y + SIGNAL_ROW);
+    }
+
+    @Override
+    protected boolean contentClicked(int x, int y, double mouseX, double mouseY, int button) {
+        for (IconButton b : this.buttons) {
+            if (b.mouseClicked(x, y, mouseX, mouseY)) return true;
+        }
+        return false;
+    }
+
+    @Override
+    protected List<Component> contentTooltip(int x, int y, double mouseX, double mouseY) {
+        for (IconButton b : this.buttons) {
+            List<Component> lines = b.tooltipAt(x, y, mouseX, mouseY);
+            if (!lines.isEmpty()) return lines;
+        }
+        return List.of();
     }
 }

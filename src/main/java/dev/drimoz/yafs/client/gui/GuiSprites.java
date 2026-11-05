@@ -29,7 +29,6 @@ public final class GuiSprites {
     private static final int BUTTON_PRESSED_U = 64;
     private static final int BUTTON_DISABLED_U = 80;
     private static final int INSET_U = 96;
-    private static final int FIELD_U = 112;
     private static final int FRAME_V = 0;
     private static final int FRAME_SIZE = 16;
 
@@ -59,19 +58,10 @@ public final class GuiSprites {
         nineSlice(graphics, x, y, width, height, 1, INSET_U, FRAME_V);
     }
 
-    public static void field(GuiGraphics graphics, int x, int y, int width, int height) {
-        nineSlice(graphics, x, y, width, height, 1, FIELD_U, FRAME_V);
-    }
-
     public static final int SLOT_SIZE = GuiMetrics.SLOT;
-    public static final int BIG_SLOT_SIZE = GuiMetrics.SOCKET;
 
     public static void slot(GuiGraphics graphics, int itemX, int itemY) {
         graphics.blit(SHEET, itemX - 1, itemY - 1, 0, 16, SLOT_SIZE, SLOT_SIZE);
-    }
-
-    public static void bigSlot(GuiGraphics graphics, int x, int y) {
-        graphics.blit(SHEET, x, y, 18, 16, BIG_SLOT_SIZE, BIG_SLOT_SIZE);
     }
 
     private static final int GAUGE_U = 44;
@@ -122,29 +112,8 @@ public final class GuiSprites {
         graphics.disableScissor();
     }
 
-    public static void arrow(GuiGraphics graphics, int x, int y, float progress) {
-        graphics.blit(SHEET, x, y, 112, 16, GuiMetrics.ARROW_WIDTH, GuiMetrics.ARROW_HEIGHT);
-
-        int filled = Math.round(GuiMetrics.ARROW_WIDTH * Math.max(0f, Math.min(1f, progress)));
-        if (filled <= 0) return;
-
-        graphics.blit(SHEET, x, y, 112, 30, filled, GuiMetrics.ARROW_HEIGHT);
-    }
-
-    public static void disabledSlot(GuiGraphics graphics, int itemX, int itemY) {
-        graphics.blit(SHEET, itemX - 1, itemY - 1, 132, 16, SLOT_SIZE, SLOT_SIZE);
-    }
-
-    public static void selectedSlot(GuiGraphics graphics, int itemX, int itemY) {
-        graphics.blit(SHEET, itemX - 1, itemY - 1, 150, 16, SLOT_SIZE, SLOT_SIZE);
-    }
-
     public static void statusLight(GuiGraphics graphics, GuiTheme.Status status, int x, int y) {
         graphics.blit(SHEET, x, y, 168 + status.ordinal() * 8, 16, GuiMetrics.LED_SIZE, GuiMetrics.LED_SIZE);
-    }
-
-    public static void smallLock(GuiGraphics graphics, int itemX, int itemY) {
-        graphics.blit(SHEET, itemX + 9, itemY + 8, 208, 16, 7, 8);
     }
 
     public static void ghostItem(GuiGraphics graphics, Font font, ItemStack stack, int count, int itemX, int itemY) {
@@ -159,31 +128,6 @@ public final class GuiSprites {
             graphics.drawString(font, text, itemX + 17 - font.width(text), itemY + 9, GuiTheme.TEXT_MUTED, false);
         }
         graphics.pose().popPose();
-    }
-
-    public static void tank(GuiGraphics graphics, int frameX, int frameY, FluidStack fluid, int capacity, boolean ghost) {
-        graphics.blit(SHEET, frameX, frameY, 0, 16, SLOT_SIZE, SLOT_SIZE);
-        if (fluid.isEmpty()) return;
-
-        int x = frameX + 1;
-        int y = frameY + 1;
-        float fill = ghost ? 1.0F : Math.min(1.0F, fluid.getAmount() / (float) Math.max(1, capacity));
-        int height = Math.max(1, Math.round(16 * fill));
-
-        IClientFluidTypeExtensions extensions = IClientFluidTypeExtensions.of(fluid.getFluid());
-        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                .apply(extensions.getStillTexture(fluid));
-        int tint = extensions.getTintColor(fluid);
-
-        graphics.enableScissor(x, y + 16 - height, x + 16, y + 16);
-        RenderSystem.enableBlend();
-        graphics.setColor(red(tint), green(tint), blue(tint), 1.0F);
-        graphics.blit(x, y, 0, 16, 16, sprite);
-        graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.disableBlend();
-        graphics.disableScissor();
-
-        if (ghost) graphics.fill(x, y, x + 16, y + 16, GuiTheme.GHOST_WASH);
     }
 
     public static final int ICON_SIZE = 12;

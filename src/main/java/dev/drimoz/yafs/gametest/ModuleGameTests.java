@@ -223,7 +223,7 @@ public class ModuleGameTests {
         int two = greenhouse.energy().getMaxEnergyStored();
         helper.assertTrue(two == GreenhouseBlockEntity.ENERGY_CAPACITY + 2_000_000, "Capacité " + two);
 
-        greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(100));
+        greenhouse.modules().setStackInSlot(0, module("battery").copyWithCount(99));
         int capped = greenhouse.energy().getMaxEnergyStored();
         helper.assertTrue(capped == GreenhouseBlockEntity.ENERGY_CAPACITY + 64_000_000, "Capacité au-delà du plafond " + capped);
         helper.succeed();

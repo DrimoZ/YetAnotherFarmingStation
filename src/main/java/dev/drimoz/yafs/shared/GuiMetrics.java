@@ -10,17 +10,12 @@ public final class GuiMetrics {
 
     public static final int SLOT = 18;
 
-    public static final int SOCKET = 26;
-
     public static int column(int n) {
         return MARGIN - 1 + n * SLOT;
     }
 
     public static final int GAUGE_WIDTH = 14;
     public static final int GAUGE_X = column(0) + (SLOT - GAUGE_WIDTH) / 2;
-
-    public static final int ARROW_WIDTH = 20;
-    public static final int ARROW_HEIGHT = 13;
 
     public static final int LED_SIZE = 7;
     public static final int LED_X = WIDTH - MARGIN - LED_SIZE;
